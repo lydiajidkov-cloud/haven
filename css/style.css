@@ -137,6 +137,7 @@ body {
 
 #board-screen.active {
     flex-direction: column;
+    touch-action: none;
 }
 
 #board-wrapper {
