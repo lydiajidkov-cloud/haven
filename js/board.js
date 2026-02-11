@@ -475,7 +475,14 @@ const Board = (() => {
 
         const connected = findConnected(row, col, item.chain, item.tier);
         if (connected.length >= MIN_MERGE) {
-            // Chain reaction!
+            // Chain reaction bonus — escalating rewards!
+            var chainGems = depth * 5;
+            var chainEnergy = Math.min(depth, 3);
+            Game.addGems(chainGems);
+            Game.addEnergy(chainEnergy);
+            showFloatingText(row, col, 'Chain x' + depth + '! +' + chainGems + '\u{1F48E} +' + chainEnergy + '\u26A1');
+            Game.emit('chainReaction', { depth: depth });
+
             Sound.playChain(depth);
             Game.updateStat('chainRecord', function(v) { return Math.max(v || 0, depth); });
             executeMerge(connected, item.chain, item.tier, row, col, connected.length);
@@ -594,6 +601,13 @@ const Board = (() => {
         // Check if spawn created an auto-merge
         var connected = autoMergeSuppressed ? [] : findConnected(empty.row, empty.col, item.chain, item.tier);
         if (connected.length >= MIN_MERGE) {
+            // Lucky auto-merge bonus!
+            var luckyGems = 2 + connected.length;
+            Game.addGems(luckyGems);
+            Game.addEnergy(1);
+            showFloatingText(empty.row, empty.col, 'Lucky! +' + luckyGems + ' \u{1F48E} +1\u26A1');
+            showToast('\u{1F340} Lucky merge! +' + luckyGems + ' gems, +1 energy');
+            Game.emit('luckyMerge', { count: connected.length });
             setTimeout(function() {
                 executeMerge(connected, item.chain, item.tier, empty.row, empty.col, connected.length);
             }, 400);
