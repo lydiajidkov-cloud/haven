@@ -79,10 +79,117 @@ const Sound = (() => {
         source.start(ctx.currentTime + delay);
     }
 
-    function playMerge(tier) {
+    function playMerge(tier, chain) {
         if (!enabled) return;
-        // Higher tier = higher pitch, richer sound
-        const baseFreq = 440 + tier * 80;
+
+        // Material-specific sound character
+        switch (chain) {
+            case 'crystal':
+            case 'arcane':
+                // Crystal: bright bell/ding — high sine with shimmer
+                playCrystalMerge(tier);
+                break;
+            case 'wood':
+            case 'living':
+                // Wood: warm thunk — low triangle, quick decay
+                playWoodMerge(tier);
+                break;
+            case 'stone':
+            case 'shelter':
+                // Stone: sharp clack — square filtered, snappy
+                playStoneMerge(tier);
+                break;
+            case 'flora':
+            case 'mystic':
+                // Flora: gentle chime — soft sine, airy
+                playFloraMerge(tier);
+                break;
+            case 'creature':
+                // Creature: chirpy warble — rising triangle
+                playCreatureMerge(tier);
+                break;
+            default:
+                playGenericMerge(tier);
+        }
+    }
+
+    function playCrystalMerge(tier) {
+        // Bright bell ding — high frequencies, long sustain, shimmer
+        var base = 880 + tier * 120;
+        playTone(base, 0.25, 'sine', 0.18);
+        playTone(base * 1.5, 0.2, 'sine', 0.12, 0.02);
+        playTone(base * 2, 0.15, 'sine', 0.06, 0.04);
+        if (tier >= 2) {
+            // Shimmer overtone
+            playTone(base * 3, 0.12, 'sine', 0.04, 0.06);
+        }
+        if (tier >= 4) {
+            playTone(base * 4, 0.1, 'sine', 0.03, 0.08);
+            playNoise(0.06, 0.02, 0.08);
+        }
+    }
+
+    function playWoodMerge(tier) {
+        // Warm thunk — low frequency, triangle wave, quick decay
+        var base = 200 + tier * 40;
+        playTone(base, 0.12, 'triangle', 0.22);
+        playTone(base * 1.5, 0.08, 'triangle', 0.1, 0.02);
+        if (tier >= 3) {
+            playTone(base * 2, 0.06, 'sine', 0.06, 0.04);
+        }
+        // Woody knock texture
+        playNoise(0.04, 0.06, 0);
+    }
+
+    function playStoneMerge(tier) {
+        // Sharp clack — mid frequency, square wave, filtered
+        var base = 350 + tier * 60;
+        playTone(base, 0.08, 'square', 0.12);
+        playTone(base * 0.75, 0.1, 'triangle', 0.08, 0.01);
+        if (tier >= 2) {
+            playTone(base * 1.5, 0.06, 'square', 0.05, 0.03);
+        }
+        // Impact noise
+        playNoise(0.05, 0.08, 0);
+        if (tier >= 4) {
+            playTone(base * 2, 0.08, 'sine', 0.04, 0.05);
+        }
+    }
+
+    function playFloraMerge(tier) {
+        // Gentle chime — soft sine, airy, ascending
+        var base = 523 + tier * 90;
+        playTone(base, 0.2, 'sine', 0.14);
+        playTone(base * 1.25, 0.18, 'sine', 0.08, 0.05);
+        if (tier >= 2) {
+            playTone(base * 1.5, 0.15, 'sine', 0.06, 0.08);
+        }
+        if (tier >= 4) {
+            // Breathy shimmer
+            playNoise(0.08, 0.02, 0.06);
+            playTone(base * 2, 0.1, 'sine', 0.04, 0.1);
+        }
+    }
+
+    function playCreatureMerge(tier) {
+        // Chirpy warble — rising pitch, triangle wave
+        var base = 400 + tier * 70;
+        playTone(base, 0.1, 'triangle', 0.15);
+        playTone(base * 1.3, 0.08, 'triangle', 0.12, 0.04);
+        playTone(base * 1.6, 0.06, 'sine', 0.08, 0.08);
+        if (tier >= 3) {
+            playTone(base * 2, 0.06, 'sine', 0.05, 0.1);
+        }
+        if (tier >= 5) {
+            // Dramatic creature sound
+            playTone(base * 2.5, 0.08, 'triangle', 0.04, 0.12);
+            playNoise(0.06, 0.03, 0.1);
+        }
+    }
+
+    function playGenericMerge(tier) {
+        // Fallback — original sound
+        var baseFreq = 440 + tier * 80;
         playTone(baseFreq, 0.15, 'sine', 0.2);
         playTone(baseFreq * 1.5, 0.1, 'triangle', 0.12, 0.03);
         if (tier >= 3) {
@@ -91,7 +198,6 @@ const Sound = (() => {
         if (tier >= 5) {
             playTone(baseFreq * 2.5, 0.06, 'sine', 0.06, 0.08);
         }
-        // Subtle sparkle noise for higher tiers
         if (tier >= 2) {
             playNoise(0.08, 0.03 + tier * 0.01, 0.05);
         }

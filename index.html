@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#0d1b2a">
@@ -387,12 +387,18 @@
             if (e.target === this) this.classList.add('hidden');
         });
 
-        // Prevent pull-to-refresh on mobile
+        // Prevent pull-to-refresh and scroll interference on mobile
+        // Cover the entire board screen, resource nodes, and board area
         document.body.addEventListener('touchmove', function(e) {
-            if (e.target.closest('#board')) {
+            if (e.target.closest('#board-screen') || e.target.closest('#board') || e.target.closest('#resource-nodes')) {
                 e.preventDefault();
             }
         }, { passive: false });
+
+        // Prevent context menu (long-press) on entire app
+        document.getElementById('app').addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
 
     })();
     </script>

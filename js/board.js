@@ -26,6 +26,15 @@ const Board = (() => {
     var dragStartY = 0;
     var dragStarted = false;
     var DRAG_THRESHOLD = 12; // px before a touch becomes a drag
+    var activePointerId = null; // track which finger/pointer owns the interaction
+
+    // Cached grid layout for coordinate math (no elementFromPoint needed)
+    var gridOriginX = 0;
+    var gridOriginY = 0;
+    var cellStepX = 0;
+    var cellStepY = 0;
+    var cellW = 0;
+    var cellH = 0;
 
     // Swipe-merge state
     var swipeChain = [];     // [{row, col}, ...] cells in swipe path
@@ -68,19 +77,64 @@ const Board = (() => {
         setupPointerEvents();
         setupResourceNodes();
         Particles.init(document.getElementById('particle-canvas'));
+
+        // Cache grid layout for touch coordinate math
+        requestAnimationFrame(function() { cacheGridLayout(); });
+        window.addEventListener('resize', function() { cacheGridLayout(); });
     }
 
-    // ─── TAP-TO-SELECT + DRAG ─────────────────────────────────────
+    // ─── TAP-TO-SELECT + DRAG + SWIPE ──────────────────────────────
 
     function setupPointerEvents() {
         boardEl.addEventListener('pointerdown', onPointerDown);
         document.addEventListener('pointermove', onPointerMove);
         document.addEventListener('pointerup', onPointerUp);
-        document.addEventListener('pointercancel', onPointerUp);
+        document.addEventListener('pointercancel', onPointerCancel);
+
+        // Prevent context menu (long-press on Android) and text selection
+        boardEl.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+    }
+
+    // Cache grid layout dimensions for fast coordinate math (no elementFromPoint)
+    function cacheGridLayout() {
+        var r0 = grid[0][0].getBoundingClientRect();
+        var r1 = grid[0][1].getBoundingClientRect();
+        var r2 = grid[1][0].getBoundingClientRect();
+        gridOriginX = r0.left;
+        gridOriginY = r0.top;
+        cellW = r0.width;
+        cellH = r0.height;
+        cellStepX = r1.left - r0.left;
+        cellStepY = r2.top - r0.top;
+    }
+
+    // Pure math cell lookup — no DOM queries during touch move
+    function getCellFromCoords(clientX, clientY) {
+        var relX = clientX - gridOriginX;
+        var relY = clientY - gridOriginY;
+
+        // Quick bounds check
+        if (relX < -cellW * 0.3 || relY < -cellH * 0.3) return null;
+
+        var col = Math.floor(relX / cellStepX);
+        var row = Math.floor(relY / cellStepY);
+
+        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return null;
+
+        // Check finger is over the cell, not the gap
+        var colOffset = relX - col * cellStepX;
+        var rowOffset = relY - row * cellStepY;
+        if (colOffset > cellW || rowOffset > cellH) return null;
+
+        return { row: row, col: col };
     }
 
     function onPointerDown(e) {
         if (animating) return;
+
+        // Reject second finger / additional pointers
+        if (activePointerId !== null) return;
+
         var cell = e.target.closest('.cell');
         if (!cell) return;
 
@@ -88,14 +142,24 @@ const Board = (() => {
         var c = parseInt(cell.dataset.col);
         e.preventDefault();
 
+        // Lock to this pointer
+        activePointerId = e.pointerId;
+
+        // Cache grid layout once per interaction (handles resize/scroll)
+        cacheGridLayout();
+
         // If we already have a selection, handle the second tap
         if (selectedPos) {
             handleTapWithSelection(r, c);
+            activePointerId = null;
             return;
         }
 
         // Nothing selected — need an item to interact with
-        if (!items[r][c]) return;
+        if (!items[r][c]) {
+            activePointerId = null;
+            return;
+        }
 
         Sound.playTap();
         dragItem = items[r][c];
@@ -103,11 +167,11 @@ const Board = (() => {
         dragStartX = e.clientX;
         dragStartY = e.clientY;
         dragStarted = false;
-
-        boardEl.setPointerCapture && boardEl.releasePointerCapture(e.pointerId);
     }
 
     function onPointerMove(e) {
+        // Only track the pointer that started the interaction
+        if (e.pointerId !== activePointerId) return;
         if (!dragFrom || !dragItem) return;
 
         // Check if we've moved enough to start a drag/swipe
@@ -119,7 +183,7 @@ const Board = (() => {
             clearSelection();
 
             // Check if we should start swipe mode
-            var firstTarget = getCellAtPoint(e.clientX, e.clientY);
+            var firstTarget = getCellFromCoords(e.clientX, e.clientY);
             if (firstTarget && isAdjacent(dragFrom, firstTarget) &&
                 items[firstTarget.row] && items[firstTarget.row][firstTarget.col] &&
                 Items.canMerge(dragItem, items[firstTarget.row][firstTarget.col])) {
@@ -135,7 +199,7 @@ const Board = (() => {
 
         // Swipe mode: track finger across cells
         if (swipeActive) {
-            var target = getCellAtPoint(e.clientX, e.clientY);
+            var target = getCellFromCoords(e.clientX, e.clientY);
             if (target && !isCellInSwipe(target.row, target.col)) {
                 // Must be adjacent to the last cell in the chain
                 var last = swipeChain[swipeChain.length - 1];
@@ -162,7 +226,7 @@ const Board = (() => {
 
             // Highlight cell under pointer
             clearHighlight('drag-over');
-            var dragTarget = getCellAtPoint(e.clientX, e.clientY);
+            var dragTarget = getCellFromCoords(e.clientX, e.clientY);
             if (dragTarget && !(dragTarget.row === dragFrom.row && dragTarget.col === dragFrom.col)) {
                 grid[dragTarget.row][dragTarget.col].classList.add('drag-over');
             }
@@ -170,8 +234,13 @@ const Board = (() => {
     }
 
     function onPointerUp(e) {
-        if (!dragFrom) return;
+        if (e.pointerId !== activePointerId) return;
+        if (!dragFrom) {
+            activePointerId = null;
+            return;
+        }
         e.preventDefault();
+        activePointerId = null;
 
         // Swipe-merge completion
         if (swipeActive) {
@@ -179,7 +248,6 @@ const Board = (() => {
             endSwipe();
 
             if (chain.length >= MIN_MERGE) {
-                // Execute the swipe merge — sound/haptic handled by executeMerge
                 var firstCell = chain[0];
                 var item = items[firstCell.row][firstCell.col];
                 executeMerge(chain, item.chain, item.tier, chain[chain.length - 1].row, chain[chain.length - 1].col, chain.length);
@@ -199,7 +267,7 @@ const Board = (() => {
         }
 
         // It was a DRAG — complete it
-        var target = getCellAtPoint(e.clientX, e.clientY);
+        var target = getCellFromCoords(e.clientX, e.clientY);
 
         // Cleanup drag visual
         if (dragEl) { dragEl.remove(); dragEl = null; }
@@ -235,6 +303,28 @@ const Board = (() => {
         dragFrom = null;
     }
 
+    // Handle pointer lost (finger left screen, browser cancelled, etc.)
+    function onPointerCancel(e) {
+        if (e.pointerId !== activePointerId) return;
+        activePointerId = null;
+
+        // Clean up any in-progress interaction
+        if (swipeActive) endSwipe();
+        if (dragEl) { dragEl.remove(); dragEl = null; }
+        clearHighlight('drag-over');
+        clearHighlight('valid-target');
+        clearHighlight('recipe-target');
+
+        if (dragFrom) {
+            var srcItem = grid[dragFrom.row][dragFrom.col].querySelector('.item');
+            if (srcItem) srcItem.classList.remove('drag-source');
+        }
+
+        dragItem = null;
+        dragFrom = null;
+        dragStarted = false;
+    }
+
     function startDragVisual(e) {
         var cell = grid[dragFrom.row][dragFrom.col];
         var itemEl = cell.querySelector('.item');
@@ -246,7 +336,7 @@ const Board = (() => {
         dragEl.style.cssText = 'position:fixed;z-index:1000;pointer-events:none;' +
             'width:' + rect.width + 'px;height:' + rect.height + 'px;' +
             'left:' + rect.left + 'px;top:' + rect.top + 'px;' +
-            'transition:none;opacity:0.85;';
+            'transition:none;opacity:0.85;will-change:left,top;';
         document.body.appendChild(dragEl);
 
         dragOffsetX = e.clientX - rect.left;
@@ -331,14 +421,6 @@ const Board = (() => {
     }
 
     // ─── SHARED HELPERS ───────────────────────────────────────────
-
-    function getCellAtPoint(x, y) {
-        var el = document.elementFromPoint(x, y);
-        if (!el) return null;
-        var cell = el.closest('.cell');
-        if (!cell || !cell.dataset.row) return null;
-        return { row: parseInt(cell.dataset.row), col: parseInt(cell.dataset.col) };
-    }
 
     function highlightTargets(item, skipRow, skipCol) {
         for (var r = 0; r < ROWS; r++) {
@@ -527,8 +609,8 @@ const Board = (() => {
             grid[pos.row][pos.col].classList.add('merging');
         });
 
-        // Sound + haptic
-        Sound.playMerge(tier);
+        // Sound + haptic (material-specific)
+        Sound.playMerge(tier, chain);
         Game.vibrate(tier >= 4 ? [15, 30, 25] : [10]);
 
         // After flash, execute
@@ -652,7 +734,7 @@ const Board = (() => {
         grid[fromRow][fromCol].classList.add('merging');
         grid[toRow][toCol].classList.add('merging');
 
-        Sound.playMerge(recipe.tier + 2);
+        Sound.playMerge(recipe.tier + 2, recipe.chain);
         Game.vibrate([15, 30, 15]);
 
         Game.updateStat('totalMerges', function(v) { return (v || 0) + 1; });
