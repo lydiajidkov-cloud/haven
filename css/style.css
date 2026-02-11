@@ -16,7 +16,7 @@
     --energy-color: #ffd700;
     --gems-color: #9b88ff;
 
-    --cell-size: min(14vw, 58px);
+    --cell-size: min(14vw, 8vh, 58px);
     --cell-gap: 3px;
     --board-padding: 6px;
     --radius: 12px;
@@ -145,8 +145,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px;
+    padding: 4px;
     min-height: 0;
+    overflow: hidden;
 }
 
 #board-container {
@@ -447,7 +448,7 @@ body {
     opacity: 0.8;
 }
 
-#tutorial-dismiss {
+.tutorial-btn, #tutorial-dismiss {
     margin-top: 16px;
     padding: 12px 32px;
     background: linear-gradient(135deg, var(--accent-gold), #e8a000);
@@ -461,8 +462,23 @@ body {
     transition: transform 0.12s;
 }
 
-#tutorial-dismiss:active {
+.tutorial-btn:active, #tutorial-dismiss:active {
     transform: scale(0.95);
+}
+
+.tutorial-arrow-down {
+    width: 0;
+    height: 0;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-top: 12px solid var(--accent-gold);
+    margin: 0 auto 12px;
+    animation: arrow-bounce 1s ease-in-out infinite;
+}
+
+@keyframes arrow-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(6px); }
 }
 
 /* ─── SETTINGS ────────────────────────────────────────────── */
@@ -619,19 +635,34 @@ body {
     display: none !important;
 }
 
-/* Responsive: very small screens */
-@media (max-height: 600px) {
+/* Responsive: small height (laptop/desktop browser with chrome) */
+@media (max-height: 750px) {
     :root {
-        --cell-size: min(12vw, 46px);
+        --cell-size: min(13vw, 7.5vh, 52px);
     }
     #top-bar { padding: 4px 10px; }
-    #game-title { font-size: 18px; }
+    #game-title { font-size: 18px; letter-spacing: 2px; }
     .node { padding: 5px 3px 4px; }
     .node-icon { font-size: 16px; }
+    #resource-nodes { padding: 4px 10px 6px; }
+    #bottom-nav { padding: 1px 0 2px; }
+}
+
+/* Very small height */
+@media (max-height: 600px) {
+    :root {
+        --cell-size: min(12vw, 6.5vh, 44px);
+    }
+    #top-bar { padding: 3px 8px; }
+    #game-title { font-size: 16px; }
+    .node { padding: 4px 2px 3px; }
+    .node-icon { font-size: 14px; }
+    .node-label { font-size: 8px; }
+    .nav-icon { font-size: 16px; }
 }
 
 /* Desktop/wide screens */
-@media (min-width: 500px) {
+@media (min-width: 500px) and (min-height: 800px) {
     :root {
         --cell-size: 58px;
     }

@@ -4,7 +4,7 @@
 const Board = (() => {
     const ROWS = Game.ROWS;
     const COLS = Game.COLS;
-    const MIN_MERGE = 3;
+    const MIN_MERGE = 2;
 
     let boardEl, containerEl;
     let grid = [];   // DOM elements [row][col]
