@@ -894,10 +894,16 @@ const Board = (() => {
                 if (typeof Creatures !== 'undefined' && Creatures.isDoubleRewardActive()) {
                     gemReward *= 2;
                 }
-                // Show appropriate floating text
-                if (gemMultiplier > 1) {
-                    showFloatingText(targetRow, targetCol, gemMultiplier + 'x BONUS! +' + gemReward + ' \u{1F48E}');
+                // Show appropriate floating text + distinct haptics per multiplier
+                if (gemMultiplier === 3) {
+                    showFloatingText(targetRow, targetCol, '3x JACKPOT! +' + gemReward + ' \u{1F48E}');
                     Sound.playCelebration();
+                    Game.vibrate([10, 20, 10, 20, 10, 20, 30]);
+                    emitParticlesAtCell(targetRow, targetCol, 'legendary');
+                } else if (gemMultiplier === 2) {
+                    showFloatingText(targetRow, targetCol, '2x BONUS! +' + gemReward + ' \u{1F48E}');
+                    Sound.playCelebration();
+                    Game.vibrate([10, 20, 15]);
                 } else {
                     showFloatingText(targetRow, targetCol, '+' + gemReward + ' \u{1F48E}');
                 }

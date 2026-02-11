@@ -74,6 +74,21 @@ const Achievements = (() => {
         { id: 'st1', name: 'Warming Up',      desc: 'Reach a merge streak of 10',  icon: '\u{1F525}', category: 'Streak', type: 'merge_streak', target: 10, reward: { gems: 20,  stars: 1 } },
         { id: 'st2', name: 'On Fire',         desc: 'Reach a merge streak of 20',  icon: '\u{1F525}', category: 'Streak', type: 'merge_streak', target: 20, reward: { gems: 50,  stars: 3 } },
         { id: 'st3', name: 'Unstoppable',     desc: 'Reach a merge streak of 30',  icon: '\u{1F525}', category: 'Streak', type: 'merge_streak', target: 30, reward: { gems: 100, stars: 5 } },
+
+        // ── Surge (3) ───────────────────────────────────────────────
+        { id: 'sg1', name: 'First Surge',      desc: 'Activate your first Surge',      icon: '\u26A1', category: 'Surge', type: 'surgesActivated', target: 1,   reward: { gems: 15,  stars: 1 } },
+        { id: 'sg2', name: 'Surge Rider',       desc: 'Activate 25 Surges',             icon: '\u26A1', category: 'Surge', type: 'surgesActivated', target: 25,  reward: { gems: 50,  stars: 3 } },
+        { id: 'sg3', name: 'Surge Lord',         desc: 'Activate 100 Surges',            icon: '\u26A1', category: 'Surge', type: 'surgesActivated', target: 100, reward: { gems: 100, stars: 5 } },
+
+        // ── Lucky (3) ───────────────────────────────────────────────
+        { id: 'lk1', name: 'Lucky Break',       desc: 'Get your first lucky merge',     icon: '\u{1F340}', category: 'Lucky', type: 'luckyMerges', target: 1,   reward: { gems: 10,  stars: 1 } },
+        { id: 'lk2', name: 'Fortune Favours',    desc: 'Get 10 lucky merges',            icon: '\u{1F340}', category: 'Lucky', type: 'luckyMerges', target: 10,  reward: { gems: 30,  stars: 2 } },
+        { id: 'lk3', name: 'Born Lucky',          desc: 'Get 50 lucky merges',            icon: '\u{1F340}', category: 'Lucky', type: 'luckyMerges', target: 50,  reward: { gems: 75,  stars: 4 } },
+
+        // ── Events (3) ──────────────────────────────────────────────
+        { id: 'ev1', name: 'Event Rookie',      desc: 'Claim your first event reward',  icon: '\u{1F3AA}', category: 'Events', type: 'eventTiersClaimed', target: 1,   reward: { gems: 15,  stars: 1 } },
+        { id: 'ev2', name: 'Event Regular',      desc: 'Claim 10 event rewards',         icon: '\u{1F3AA}', category: 'Events', type: 'eventTiersClaimed', target: 10,  reward: { gems: 50,  stars: 3 } },
+        { id: 'ev3', name: 'Event Champion',     desc: 'Claim 25 event rewards',         icon: '\u{1F3AA}', category: 'Events', type: 'eventTiersClaimed', target: 25,  reward: { gems: 100, stars: 5 } },
     ];
 
     // ─── STATE ───────────────────────────────────────────────────────
@@ -106,6 +121,18 @@ const Achievements = (() => {
         Game.on('orderCompleted', onOrderCompleted);
         Game.on('questCompleted', onQuestCompleted);
         Game.on('gemsChanged', onGemsChanged);
+        Game.on('surgeActivated', function() {
+            Game.updateStat('surgesActivated', function(v) { return (v || 0) + 1; });
+            checkAll();
+        });
+        Game.on('luckyMerge', function() {
+            Game.updateStat('luckyMerges', function(v) { return (v || 0) + 1; });
+            checkAll();
+        });
+        Game.on('eventTierClaimed', function() {
+            Game.updateStat('eventTiersClaimed', function(v) { return (v || 0) + 1; });
+            checkAll();
+        });
 
         // Wire up the trophy button
         var trophyBtn = document.getElementById('achievements-btn');
@@ -187,6 +214,27 @@ const Achievements = (() => {
             progress['of3'] = Math.max(progress['of3'] || 0, oc);
             progress['of4'] = Math.max(progress['of4'] || 0, oc);
             progress['of5'] = Math.max(progress['of5'] || 0, oc);
+        }
+
+        // Surges activated
+        if (stats.surgesActivated) {
+            progress['sg1'] = Math.max(progress['sg1'] || 0, stats.surgesActivated);
+            progress['sg2'] = Math.max(progress['sg2'] || 0, stats.surgesActivated);
+            progress['sg3'] = Math.max(progress['sg3'] || 0, stats.surgesActivated);
+        }
+
+        // Lucky merges
+        if (stats.luckyMerges) {
+            progress['lk1'] = Math.max(progress['lk1'] || 0, stats.luckyMerges);
+            progress['lk2'] = Math.max(progress['lk2'] || 0, stats.luckyMerges);
+            progress['lk3'] = Math.max(progress['lk3'] || 0, stats.luckyMerges);
+        }
+
+        // Event tiers claimed
+        if (stats.eventTiersClaimed) {
+            progress['ev1'] = Math.max(progress['ev1'] || 0, stats.eventTiersClaimed);
+            progress['ev2'] = Math.max(progress['ev2'] || 0, stats.eventTiersClaimed);
+            progress['ev3'] = Math.max(progress['ev3'] || 0, stats.eventTiersClaimed);
         }
 
         // Gems earned (track from now; we initialize from current total if no prior tracking)

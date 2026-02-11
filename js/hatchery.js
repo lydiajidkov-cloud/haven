@@ -69,6 +69,23 @@ var Hatchery = (function() {
         }
 
         Game.on('itemProduced', onItemProduced);
+
+        // Creature order discovery bonus — boost next discovery chance
+        Game.on('orderDiscoveryBonus', function() {
+            // Force-discover a random undiscovered creature from available biomes
+            var gs = Game.getState();
+            var highestTier = (gs.stats && gs.stats.highestTier) || 0;
+            var biomeKey = Math.min(highestTier, 7);
+            var availableBiomes = TIER_BIOME_ACCESS[biomeKey] || TIER_BIOME_ACCESS[0];
+            var candidate = pickUndiscovered('common', availableBiomes) ||
+                            pickUndiscovered('uncommon', availableBiomes);
+            if (candidate) {
+                discovered[candidate.id] = { discoveredAt: Date.now(), tier: 0 };
+                saveState();
+                showDiscoveryModal(candidate);
+                Game.emit('creatureDiscovered', { creature: candidate.id, rarity: candidate.rarity, biome: candidate.biome, total: Object.keys(discovered).length });
+            }
+        });
     }
 
     // ─── DISCOVERY MECHANIC ─────────────────────────────────────
