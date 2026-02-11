@@ -123,20 +123,19 @@ body {
 }
 
 .screen {
-    display: none;
+    display: none !important;
     flex-direction: column;
     flex: 1;
     min-height: 0;
 }
 
 .screen.active {
-    display: flex;
+    display: flex !important;
 }
 
 /* ─── BOARD ───────────────────────────────────────────────── */
 
-#board-screen {
-    display: flex;
+#board-screen.active {
     flex-direction: column;
 }
 
@@ -362,6 +361,28 @@ body {
     font-size: 9px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+}
+
+/* ─── BOARD HINT ──────────────────────────────────────────── */
+
+.board-hint {
+    text-align: center;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: var(--accent-gold);
+    background: rgba(255, 215, 0, 0.08);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+    flex-shrink: 0;
+    animation: hint-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes hint-pulse {
+    0%   { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.board-hint.hidden {
+    display: none !important;
 }
 
 /* ─── TOAST ───────────────────────────────────────────────── */

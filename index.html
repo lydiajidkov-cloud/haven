@@ -36,6 +36,9 @@
         <main id="screens">
             <!-- Board Screen -->
             <div id="board-screen" class="screen active">
+                <div id="board-hint" class="board-hint">
+                    👇 Tap a resource button below to spawn items, then drag matching items together to merge!
+                </div>
                 <div id="board-wrapper">
                     <div id="board-container">
                         <canvas id="particle-canvas"></canvas>
@@ -240,6 +243,16 @@
             var el = document.getElementById('gems-display');
             el.style.transform = 'scale(1.1)';
             setTimeout(function() { el.style.transform = ''; }, 150);
+        });
+
+        // Board hint — hide after 3 spawns
+        var hintSpawnCount = 0;
+        Game.on('itemSpawned', function() {
+            hintSpawnCount++;
+            if (hintSpawnCount >= 3) {
+                var hint = document.getElementById('board-hint');
+                if (hint) hint.classList.add('hidden');
+            }
         });
 
         // Stars display

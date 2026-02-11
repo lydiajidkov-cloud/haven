@@ -2,7 +2,7 @@
 
 /* ─── QUEST PANEL ─────────────────────────────────────────── */
 
-#quest-screen {
+#quest-screen.active {
     padding: 8px 12px;
     overflow-y: auto;
 }
@@ -128,8 +128,7 @@
 
 /* ─── ISLAND MAP ──────────────────────────────────────────── */
 
-#island-screen {
-    display: flex;
+#island-screen.active {
     flex-direction: column;
     overflow: hidden;
 }
