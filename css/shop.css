@@ -1,0 +1,491 @@
+/* Haven - Shop, Battle Pass, Daily Login Styles */
+
+/* ─── SHOP SCREEN ─────────────────────────────────────────── */
+
+#shop-screen {
+    overflow-y: auto;
+    padding: 0;
+}
+
+.shop-tabs {
+    display: flex;
+    background: var(--bg-medium);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.shop-tab {
+    flex: 1;
+    padding: 10px 4px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s;
+    text-align: center;
+}
+
+.shop-tab.active {
+    color: var(--accent-gold);
+}
+
+.shop-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--accent-gold);
+    border-radius: 1px;
+}
+
+.shop-tab-content {
+    display: none;
+    padding: 8px 12px 16px;
+}
+
+.shop-tab-content.active {
+    display: block;
+}
+
+/* ─── SHOP ITEMS ──────────────────────────────────────────── */
+
+.shop-section {
+    margin-bottom: 16px;
+}
+
+.shop-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    padding-left: 2px;
+}
+
+.shop-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-medium);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+}
+
+.shop-item.starter-item {
+    border-color: rgba(255,215,0,0.3);
+    background: linear-gradient(135deg, rgba(255,215,0,0.08), var(--bg-medium));
+}
+
+.shop-item.piggy-item {
+    border-color: rgba(255,150,200,0.2);
+}
+
+.shop-item-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+}
+
+.shop-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.shop-item-name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.shop-item-desc {
+    display: block;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+
+.shop-buy-btn {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.1s;
+}
+
+.shop-buy-btn:active {
+    transform: scale(0.95);
+}
+
+.shop-buy-btn.gem-btn {
+    background: linear-gradient(135deg, var(--gems-color), #7060e8);
+    color: white;
+}
+
+.shop-buy-btn.iap-btn {
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+}
+
+.shop-buy-btn.ad-btn {
+    background: linear-gradient(135deg, var(--accent-green), #48a040);
+    color: white;
+}
+
+.shop-buy-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.shop-price-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.shop-original-price {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-decoration: line-through;
+}
+
+/* ─── BATTLE PASS ─────────────────────────────────────────── */
+
+.pass-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.pass-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.pass-premium-btn {
+    padding: 6px 14px;
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pass-premium-badge {
+    font-size: 12px;
+    color: var(--accent-gold);
+    font-weight: 600;
+}
+
+.pass-progress {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.pass-tier-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.pass-xp-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pass-xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-purple), var(--accent-gold));
+    border-radius: 4px;
+    transition: width 0.4s;
+}
+
+.pass-xp-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Tier rows */
+.pass-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pass-tier-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--bg-medium);
+    border-radius: var(--radius-xs);
+    border: 1px solid rgba(255,255,255,0.03);
+    opacity: 0.5;
+}
+
+.pass-tier-row.reached {
+    opacity: 1;
+}
+
+.pass-tier-row.current {
+    border-color: rgba(255,215,0,0.3);
+    background: linear-gradient(135deg, rgba(255,215,0,0.05), var(--bg-medium));
+}
+
+.pass-tier-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    width: 24px;
+    text-align: center;
+}
+
+.pass-tier-row.reached .pass-tier-num {
+    color: var(--accent-gold);
+}
+
+.pass-reward {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.15);
+    border-radius: var(--radius-xs);
+    min-height: 32px;
+}
+
+.pass-reward.premium {
+    background: rgba(123,104,238,0.1);
+    border: 1px solid rgba(123,104,238,0.15);
+}
+
+.pass-reward.locked {
+    opacity: 0.4;
+}
+
+.pass-reward-label {
+    font-size: 11px;
+    color: var(--text-primary);
+}
+
+.locked-label {
+    color: var(--text-secondary);
+}
+
+.pass-claim-btn {
+    padding: 3px 10px;
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pass-claimed-check {
+    color: var(--accent-green);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.pass-reward.claimed {
+    opacity: 0.6;
+}
+
+/* ─── DAILY LOGIN ─────────────────────────────────────────── */
+
+.daily-section {
+    margin-bottom: 16px;
+}
+
+.daily-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    margin-bottom: 8px;
+}
+
+.daily-claim-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(255,215,0,0.1), var(--bg-medium));
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+}
+
+.daily-claim-reward {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.daily-claim-btn {
+    padding: 8px 18px;
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 16px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    animation: claim-pulse 1s ease-in-out infinite alternate;
+}
+
+.daily-claimed-box {
+    padding: 10px;
+    text-align: center;
+    color: var(--accent-green);
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+/* Calendar */
+.daily-calendar {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.daily-cal-day {
+    flex: 0 0 auto;
+    width: 52px;
+    padding: 6px 4px;
+    background: var(--bg-medium);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: var(--radius-xs);
+    text-align: center;
+    position: relative;
+}
+
+.daily-cal-day.current {
+    border-color: rgba(255,215,0,0.4);
+    background: rgba(255,215,0,0.08);
+}
+
+.daily-cal-day.past {
+    opacity: 0.5;
+}
+
+.cal-day-num {
+    display: block;
+    font-size: 9px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.cal-day-reward {
+    display: block;
+    font-size: 10px;
+    color: var(--text-primary);
+}
+
+.cal-check {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 10px;
+    color: var(--accent-green);
+}
+
+/* Daily Quests */
+.daily-quest {
+    padding: 8px 10px;
+    background: var(--bg-medium);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: var(--radius-xs);
+    margin-bottom: 6px;
+}
+
+.daily-quest.complete {
+    border-color: rgba(255,215,0,0.2);
+}
+
+.dq-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.dq-desc {
+    font-size: 12px;
+    color: var(--text-primary);
+}
+
+.dq-progress {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.dq-bar {
+    height: 4px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.dq-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+    border-radius: 2px;
+    transition: width 0.3s;
+}
+
+.daily-quest.complete .dq-fill {
+    background: linear-gradient(90deg, var(--accent-gold), #f0a030);
+}
+
+.dq-claim-btn {
+    display: block;
+    width: 100%;
+    padding: 5px;
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+}
+
+.dq-claimed {
+    display: block;
+    text-align: center;
+    color: var(--accent-green);
+    font-weight: 700;
+    font-size: 14px;
+}

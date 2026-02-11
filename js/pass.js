@@ -1,0 +1,224 @@
+// Haven - Battle Pass (Haven Pass): Tier progression, free + premium tracks
+'use strict';
+
+const Pass = (() => {
+    const TOTAL_TIERS = 40;
+    const XP_PER_TIER = 100;
+
+    // Tier rewards: free and premium track
+    function getTierReward(tier) {
+        var free = null;
+        var premium = null;
+
+        if (tier <= 10) {
+            free = { type: 'gems', amount: 5 + tier * 2, label: '💎 ' + (5 + tier * 2) };
+            premium = { type: 'gems', amount: 15 + tier * 5, label: '💎 ' + (15 + tier * 5) };
+        } else if (tier <= 25) {
+            free = { type: 'gems', amount: 10 + tier, label: '💎 ' + (10 + tier) };
+            premium = tier % 5 === 0 ?
+                { type: 'egg', tier: 2, label: '🥚 Rare Egg' } :
+                { type: 'gems', amount: 20 + tier * 2, label: '💎 ' + (20 + tier * 2) };
+        } else if (tier <= 39) {
+            free = { type: 'energy', amount: 3, label: '⚡ 3 Energy' };
+            premium = tier % 5 === 0 ?
+                { type: 'egg', tier: 3, label: '🥚 Epic Egg' } :
+                { type: 'gems', amount: 30 + tier * 2, label: '💎 ' + (30 + tier * 2) };
+        } else {
+            // Tier 40 — final reward
+            free = { type: 'stars', amount: 5, label: '⭐ 5 Stars' };
+            premium = { type: 'gems', amount: 500, label: '💎 500 + 🏆' };
+        }
+
+        return { free: free, premium: premium };
+    }
+
+    let currentTier = 0;
+    let currentXP = 0;
+    let hasPremium = false;
+    let claimedFree = {};
+    let claimedPremium = {};
+
+    function init() {
+        var state = Game.getState();
+        if (state.pass) {
+            currentTier = state.pass.tier || 0;
+            currentXP = state.pass.xp || 0;
+            hasPremium = state.pass.premium || false;
+            claimedFree = state.pass.claimedFree || {};
+            claimedPremium = state.pass.claimedPremium || {};
+        }
+
+        // Earn XP from game actions
+        Game.on('mergeCompleted', function(data) {
+            addXP(10 + (data.tier || 0) * 5);
+        });
+        Game.on('questCompleted', function() {
+            addXP(50);
+        });
+        Game.on('itemSpawned', function() {
+            addXP(2);
+        });
+
+        renderPass();
+    }
+
+    function addXP(amount) {
+        currentXP += amount;
+        while (currentXP >= XP_PER_TIER && currentTier < TOTAL_TIERS) {
+            currentXP -= XP_PER_TIER;
+            currentTier++;
+        }
+        if (currentTier >= TOTAL_TIERS) {
+            currentXP = 0;
+        }
+        savePassState();
+        renderPass();
+    }
+
+    function claimTierReward(tier, track) {
+        var rewards = getTierReward(tier);
+        var reward = track === 'free' ? rewards.free : rewards.premium;
+        if (!reward) return;
+
+        if (track === 'free') {
+            if (claimedFree[tier]) return;
+            claimedFree[tier] = true;
+        } else {
+            if (!hasPremium) return;
+            if (claimedPremium[tier]) return;
+            claimedPremium[tier] = true;
+        }
+
+        // Grant reward
+        switch (reward.type) {
+            case 'gems':
+                Game.addGems(reward.amount);
+                break;
+            case 'energy':
+                Game.addEnergy(reward.amount);
+                break;
+            case 'stars':
+                Game.addStars(reward.amount);
+                break;
+            case 'egg':
+                Game.emit('shopSpawnRequest', { chain: 'creature', tier: reward.tier || 0 });
+                break;
+        }
+
+        Sound.playCelebration();
+        savePassState();
+        renderPass();
+    }
+
+    function purchasePremium() {
+        var confirmed = confirm('DEMO: Unlock Haven Pass Premium for $7.99?\n(This is a prototype — no real charge)');
+        if (confirmed) {
+            hasPremium = true;
+            Sound.playCelebration();
+            Game.vibrate([20, 40, 30]);
+            savePassState();
+            renderPass();
+        }
+    }
+
+    // ─── RENDERING ───────────────────────────────────────────
+
+    function renderPass() {
+        var container = document.getElementById('pass-content');
+        if (!container) return;
+
+        var pct = currentTier >= TOTAL_TIERS ? 100 : Math.round((currentXP / XP_PER_TIER) * 100);
+
+        var html = '';
+
+        // Header
+        html += '<div class="pass-header">';
+        html += '<h3 class="pass-title">Haven Pass — Season 1</h3>';
+        if (!hasPremium) {
+            html += '<button class="pass-premium-btn" id="pass-buy-premium">Unlock Premium $7.99</button>';
+        } else {
+            html += '<span class="pass-premium-badge">✨ Premium Active</span>';
+        }
+        html += '</div>';
+
+        // Progress
+        html += '<div class="pass-progress">';
+        html += '<span class="pass-tier-label">Tier ' + currentTier + '/' + TOTAL_TIERS + '</span>';
+        html += '<div class="pass-xp-bar"><div class="pass-xp-fill" style="width:' + pct + '%"></div></div>';
+        html += '<span class="pass-xp-label">' + currentXP + '/' + XP_PER_TIER + ' XP</span>';
+        html += '</div>';
+
+        // Tier list (show current tier ±5)
+        html += '<div class="pass-tiers">';
+        var startTier = Math.max(1, currentTier - 2);
+        var endTier = Math.min(TOTAL_TIERS, startTier + 8);
+
+        for (var t = startTier; t <= endTier; t++) {
+            var rewards = getTierReward(t);
+            var reached = t <= currentTier;
+            var fClaimed = !!claimedFree[t];
+            var pClaimed = !!claimedPremium[t];
+
+            html += '<div class="pass-tier-row' + (reached ? ' reached' : '') + (t === currentTier ? ' current' : '') + '">';
+            html += '<span class="pass-tier-num">' + t + '</span>';
+
+            // Free track
+            html += '<div class="pass-reward free' + (fClaimed ? ' claimed' : '') + '">';
+            html += '<span class="pass-reward-label">' + rewards.free.label + '</span>';
+            if (reached && !fClaimed) {
+                html += '<button class="pass-claim-btn" data-tier="' + t + '" data-track="free">Claim</button>';
+            } else if (fClaimed) {
+                html += '<span class="pass-claimed-check">✓</span>';
+            }
+            html += '</div>';
+
+            // Premium track
+            html += '<div class="pass-reward premium' + (pClaimed ? ' claimed' : '') + (!hasPremium ? ' locked' : '') + '">';
+            if (hasPremium || reached) {
+                html += '<span class="pass-reward-label">' + rewards.premium.label + '</span>';
+            } else {
+                html += '<span class="pass-reward-label locked-label">🔒</span>';
+            }
+            if (reached && hasPremium && !pClaimed) {
+                html += '<button class="pass-claim-btn" data-tier="' + t + '" data-track="premium">Claim</button>';
+            } else if (pClaimed) {
+                html += '<span class="pass-claimed-check">✓</span>';
+            }
+            html += '</div>';
+
+            html += '</div>';
+        }
+        html += '</div>';
+
+        container.innerHTML = html;
+
+        // Event listeners
+        var buyBtn = document.getElementById('pass-buy-premium');
+        if (buyBtn) buyBtn.addEventListener('click', purchasePremium);
+
+        container.querySelectorAll('.pass-claim-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                claimTierReward(parseInt(btn.dataset.tier), btn.dataset.track);
+            });
+        });
+    }
+
+    function savePassState() {
+        var state = Game.getState();
+        state.pass = {
+            tier: currentTier,
+            xp: currentXP,
+            premium: hasPremium,
+            claimedFree: claimedFree,
+            claimedPremium: claimedPremium
+        };
+        Game.save();
+    }
+
+    return {
+        init: init,
+        addXP: addXP,
+        renderPass: renderPass,
+        getCurrentTier: function() { return currentTier; }
+    };
+})();

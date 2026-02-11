@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/island.css">
+    <link rel="stylesheet" href="css/shop.css">
 </head>
 <body>
     <div id="app">
@@ -83,8 +84,19 @@
 
             <!-- Shop Screen (Phase 3) -->
             <div id="shop-screen" class="screen">
-                <div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-secondary);">
-                    <p>Shop coming soon...</p>
+                <div class="shop-tabs">
+                    <button class="shop-tab active" data-shop-tab="shop">🛒 Shop</button>
+                    <button class="shop-tab" data-shop-tab="pass">🏆 Pass</button>
+                    <button class="shop-tab" data-shop-tab="daily">🔥 Daily</button>
+                </div>
+                <div id="shop-tab-shop" class="shop-tab-content active">
+                    <div id="shop-content"></div>
+                </div>
+                <div id="shop-tab-pass" class="shop-tab-content">
+                    <div id="pass-content"></div>
+                </div>
+                <div id="shop-tab-daily" class="shop-tab-content">
+                    <div id="daily-content"></div>
                 </div>
             </div>
         </main>
@@ -129,6 +141,9 @@
     <script src="js/board.js"></script>
     <script src="js/quests.js"></script>
     <script src="js/island.js"></script>
+    <script src="js/shop.js"></script>
+    <script src="js/pass.js"></script>
+    <script src="js/daily.js"></script>
 
     <script>
     // ─── INITIALIZATION ──────────────────────────────────────
@@ -140,6 +155,9 @@
         Board.init();
         Quests.init();
         Island.init();
+        Shop.init();
+        Pass.init();
+        Daily.init();
 
         // Init audio on first user interaction
         document.addEventListener('pointerdown', function() {
@@ -228,6 +246,35 @@
                 Board.spawnStarterItems();
             });
         }
+
+        // ─── SHOP TABS ───────────────────────────────────────
+        var shopTabs = document.querySelectorAll('.shop-tab');
+        for (var st = 0; st < shopTabs.length; st++) {
+            shopTabs[st].addEventListener('click', function() {
+                var tabName = this.dataset.shopTab;
+                for (var j = 0; j < shopTabs.length; j++) shopTabs[j].classList.remove('active');
+                this.classList.add('active');
+                document.querySelectorAll('.shop-tab-content').forEach(function(c) { c.classList.remove('active'); });
+                var target = document.getElementById('shop-tab-' + tabName);
+                if (target) target.classList.add('active');
+                Sound.playTap();
+
+                // Re-render active tab content
+                if (tabName === 'shop') Shop.renderShop();
+                if (tabName === 'pass') Pass.renderPass();
+                if (tabName === 'daily') Daily.renderDaily();
+            });
+        }
+
+        // Handle shop spawn requests (from egg purchases)
+        Game.on('shopSpawnRequest', function(data) {
+            // Navigate to board and spawn
+            for (var j = 0; j < navBtns.length; j++) navBtns[j].classList.remove('active');
+            document.querySelector('[data-screen="board"]').classList.add('active');
+            document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+            document.getElementById('board-screen').classList.add('active');
+            Board.spawnItem(data.chain);
+        });
 
         // ─── RANDOM IDLE BOB DELAYS ──────────────────────────
         // Give each cell a random animation delay for the idle bob
