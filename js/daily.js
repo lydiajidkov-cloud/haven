@@ -6,7 +6,7 @@ const Daily = (() => {
         { day: 1,  reward: { gems: 10 },       label: '💎 10' },
         { day: 2,  reward: { gems: 15 },       label: '💎 15' },
         { day: 3,  reward: { gems: 20 },       label: '💎 20' },
-        { day: 4,  reward: { energy: 5 },      label: '⚡ 5' },
+        { day: 4,  reward: { energy: 5, powerup: 'shuffle' }, label: '⚡ 5 + 🔀' },
         { day: 5,  reward: { gems: 30 },       label: '💎 30' },
         { day: 6,  reward: { gems: 35 },       label: '💎 35' },
         { day: 7,  reward: { gems: 50, stars: 2 }, label: '💎 50 + ⭐ 2' },
@@ -20,7 +20,7 @@ const Daily = (() => {
         { day: 15, reward: { gems: 30 },       label: '💎 30' },
         { day: 16, reward: { gems: 35 },       label: '💎 35' },
         { day: 17, reward: { gems: 40 },       label: '💎 40' },
-        { day: 18, reward: { energy: 5 },      label: '⚡ 5' },
+        { day: 18, reward: { energy: 5, powerup: 'mass_match' }, label: '⚡ 5 + 💥' },
         { day: 19, reward: { gems: 50 },       label: '💎 50' },
         { day: 20, reward: { gems: 55 },       label: '💎 55' },
         { day: 21, reward: { gems: 100, stars: 4 }, label: '💎 100 + ⭐ 4' },
@@ -47,6 +47,8 @@ const Daily = (() => {
         { id: 'dq_stone',    desc: 'Produce 3 Stone items', type: 'produce_any', chain: 'stone', target: 3, reward: { gems: 10 } },
         { id: 'dq_flora',    desc: 'Produce 3 Flora items', type: 'produce_any', chain: 'flora', target: 3, reward: { gems: 10 } },
         { id: 'dq_crystal',  desc: 'Produce 3 Crystal items', type: 'produce_any', chain: 'crystal', target: 3, reward: { gems: 10 } },
+        { id: 'dq_powerup1', desc: 'Use a power-up',       type: 'powerup_use', target: 1, reward: { gems: 15 } },
+        { id: 'dq_powerup3', desc: 'Use 3 power-ups',      type: 'powerup_use', target: 3, reward: { gems: 25 } },
     ];
 
     let streak = 0;
@@ -69,6 +71,7 @@ const Daily = (() => {
         Game.on('mergeCompleted', function(data) { updateDailyQuests('merge_count', data); });
         Game.on('itemSpawned', function(data) { updateDailyQuests('spawn_count', data); });
         Game.on('itemProduced', function(data) { updateDailyQuests('reach_tier', data); updateDailyQuests('produce_any', data); });
+        Game.on('powerupUsed', function(data) { updateDailyQuests('powerup_use', data); });
 
         renderDaily();
     }
@@ -116,6 +119,9 @@ const Daily = (() => {
         if (dayReward.reward.gems) Game.addGems(dayReward.reward.gems);
         if (dayReward.reward.energy) Game.addEnergy(dayReward.reward.energy);
         if (dayReward.reward.stars) Game.addStars(dayReward.reward.stars);
+        if (dayReward.reward.powerup && typeof PowerUps !== 'undefined') {
+            PowerUps.addToInventory(dayReward.reward.powerup, 1);
+        }
 
         Sound.playCelebration();
         Game.vibrate([15, 30, 15]);
@@ -153,6 +159,7 @@ const Daily = (() => {
             if (q.type === 'spawn_count' && eventType === 'spawn_count') match = true;
             if (q.type === 'reach_tier' && eventType === 'reach_tier' && data.tier >= (q.tier || 0)) match = true;
             if (q.type === 'produce_any' && eventType === 'produce_any' && data.chain === q.chain) match = true;
+            if (q.type === 'powerup_use' && eventType === 'powerup_use') match = true;
 
             if (match) {
                 q.current = Math.min(q.current + 1, q.target);

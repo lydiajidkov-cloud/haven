@@ -11,23 +11,34 @@ const Pass = (() => {
         var premium = null;
 
         if (tier <= 10) {
-            free = { type: 'gems', amount: 5 + tier * 2, label: '💎 ' + (5 + tier * 2) };
-            premium = { type: 'gems', amount: 15 + tier * 5, label: '💎 ' + (15 + tier * 5) };
+            free = { type: 'gems', amount: 5 + tier * 2, label: '\u{1F48E} ' + (5 + tier * 2) };
+            premium = { type: 'gems', amount: 15 + tier * 5, label: '\u{1F48E} ' + (15 + tier * 5) };
         } else if (tier <= 25) {
-            free = { type: 'gems', amount: 10 + tier, label: '💎 ' + (10 + tier) };
+            free = { type: 'gems', amount: 10 + tier, label: '\u{1F48E} ' + (10 + tier) };
             premium = tier % 5 === 0 ?
-                { type: 'egg', tier: 2, label: '🥚 Rare Egg' } :
-                { type: 'gems', amount: 20 + tier * 2, label: '💎 ' + (20 + tier * 2) };
+                { type: 'egg', tier: 2, label: '\u{1F95A} Rare Egg' } :
+                { type: 'gems', amount: 20 + tier * 2, label: '\u{1F48E} ' + (20 + tier * 2) };
         } else if (tier <= 39) {
-            free = { type: 'energy', amount: 3, label: '⚡ 3 Energy' };
+            free = { type: 'energy', amount: 3, label: '\u26A1 3 Energy' };
             premium = tier % 5 === 0 ?
-                { type: 'egg', tier: 3, label: '🥚 Epic Egg' } :
-                { type: 'gems', amount: 30 + tier * 2, label: '💎 ' + (30 + tier * 2) };
+                { type: 'egg', tier: 3, label: '\u{1F95A} Epic Egg' } :
+                { type: 'gems', amount: 30 + tier * 2, label: '\u{1F48E} ' + (30 + tier * 2) };
         } else {
             // Tier 40 — final reward
-            free = { type: 'stars', amount: 5, label: '⭐ 5 Stars' };
-            premium = { type: 'gems', amount: 500, label: '💎 500 + 🏆' };
+            free = { type: 'stars', amount: 5, label: '\u2B50 5 Stars' };
+            premium = { type: 'gems', amount: 500, label: '\u{1F48E} 500 + \u{1F3C6}' };
         }
+
+        // Power-up overrides for specific tiers
+        // Free track: tier 5 → Shuffle, tier 10 → Mass Match, tier 35 → 2 Shuffles
+        if (tier === 5)  free = { type: 'powerup', powerup: 'shuffle', amount: 1, label: '\u{1F500} Shuffle' };
+        if (tier === 10) free = { type: 'powerup', powerup: 'mass_match', amount: 1, label: '\u{1F4A5} Mass Match' };
+        if (tier === 35) free = { type: 'powerup', powerup: 'shuffle', amount: 2, label: '\u{1F500} Shuffle \u00D72' };
+
+        // Premium track: tier 15 → 2 Upgrade Wands, tier 25 → Power Pack, tier 30 → 2 Golden Spawns
+        if (tier === 15) premium = { type: 'powerup', powerup: 'upgrade_wand', amount: 2, label: '\u{1FA84} Wand \u00D72' };
+        if (tier === 25) premium = { type: 'powerup_pack', label: '\u{1F381} Power Pack' };
+        if (tier === 30) premium = { type: 'powerup', powerup: 'golden_spawn', amount: 2, label: '\u{1F31F} Golden \u00D72' };
 
         return { free: free, premium: premium };
     }
@@ -102,6 +113,19 @@ const Pass = (() => {
                 break;
             case 'egg':
                 Game.emit('shopSpawnRequest', { chain: 'creature', tier: reward.tier || 0 });
+                break;
+            case 'powerup':
+                if (typeof PowerUps !== 'undefined') {
+                    PowerUps.addToInventory(reward.powerup, reward.amount || 1);
+                }
+                break;
+            case 'powerup_pack':
+                if (typeof PowerUps !== 'undefined') {
+                    var types = ['mass_match', 'sort_sweep', 'shuffle', 'upgrade_wand', 'lightning', 'golden_spawn'];
+                    for (var p = 0; p < types.length; p++) {
+                        PowerUps.addToInventory(types[p], 2);
+                    }
+                }
                 break;
         }
 
