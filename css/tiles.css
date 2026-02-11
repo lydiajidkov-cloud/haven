@@ -31,8 +31,7 @@
 }
 
 /* Active/pressed — tactile press-down */
-.item:active,
-.item.drag-source {
+.item:active {
     transform: translateY(1px) scale(0.95) !important;
     box-shadow:
         0 1px 2px rgba(0,0,0,0.4),

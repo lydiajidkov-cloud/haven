@@ -77,12 +77,79 @@ const Shop = (() => {
 
     let boosts = {};
 
+    // ─── DAILY DEALS (rotating, time-limited) ─────────────────
+    var DAILY_DEAL_POOL = [
+        { id: 'dd_energy10',   name: 'Energy Mega Pack',   desc: '10 Energy (50% off!)',         normalPrice: 40,  dealPrice: 20,  icon: '\u26A1',     action: function() { Game.addEnergy(10); } },
+        { id: 'dd_rare_egg',   name: 'Rare Egg Deal',      desc: 'Rare Egg at half price',       normalPrice: 150, dealPrice: 75,  icon: '\u{1F95A}',  action: function() { spawnEgg(2); } },
+        { id: 'dd_epic_egg',   name: 'Epic Egg Flash Sale', desc: 'Epic Egg 40% off',            normalPrice: 400, dealPrice: 240, icon: '\u{1F95A}',  action: function() { spawnEgg(3); } },
+        { id: 'dd_power_pack', name: 'Power Combo',        desc: '3 of each power-up',           normalPrice: 180, dealPrice: 90,  icon: '\u{1F4A5}',  action: function() { var types = ['mass_match','sort_sweep','shuffle','upgrade_wand','lightning','golden_spawn']; for(var i=0;i<types.length;i++) PowerUps.addToInventory(types[i],3); } },
+        { id: 'dd_gem200',     name: 'Gem Jackpot',        desc: '200 gems for price of 100',    normalPrice: 200, dealPrice: 100, icon: '\u{1F48E}',  action: function() { Game.addGems(200); } },
+        { id: 'dd_merge_boost',name: 'Merge Bonanza',      desc: '2x gems from merges (30 min)', normalPrice: 80,  dealPrice: 35,  icon: '\u2728',     action: function() { applyBoost('merge_bonus', 1800); } },
+        { id: 'dd_biome_rand', name: 'Mystery Biome Egg',  desc: 'Random biome creature!',       normalPrice: 350, dealPrice: 175, icon: '\u{1F30D}',  action: function() { var b = ['meadow','forest','ocean','enchanted']; discoverBiomeCreature(b[Math.floor(Math.random()*b.length)]); } },
+        { id: 'dd_shuffle10',  name: 'Shuffle Stash',      desc: '10 Shuffles (60% off!)',       normalPrice: 120, dealPrice: 48,  icon: '\u{1F500}',  action: function() { PowerUps.addToInventory('shuffle', 10); } },
+    ];
+    var dailyDeals = [];
+    var dailyDealDate = null;
+
+    function generateDailyDeals() {
+        var today = new Date().toISOString().slice(0, 10);
+        if (dailyDealDate === today && dailyDeals.length > 0) return;
+
+        // Seeded random from date for deterministic daily deals
+        var seed = 0;
+        for (var i = 0; i < today.length; i++) seed += today.charCodeAt(i) * (i + 1);
+
+        var shuffled = DAILY_DEAL_POOL.slice();
+        for (var j = shuffled.length - 1; j > 0; j--) {
+            seed = (seed * 16807 + 1) % 2147483647;
+            var k = seed % (j + 1);
+            var temp = shuffled[j]; shuffled[j] = shuffled[k]; shuffled[k] = temp;
+        }
+
+        dailyDeals = shuffled.slice(0, 3);
+        dailyDealDate = today;
+
+        // Load purchased state
+        var state = Game.getState();
+        var purchased = (state.shop && state.shop.dailyDealsPurchased && state.shop.dailyDealsPurchased.date === today)
+            ? state.shop.dailyDealsPurchased.ids : {};
+        for (var d = 0; d < dailyDeals.length; d++) {
+            dailyDeals[d].purchased = !!purchased[dailyDeals[d].id];
+        }
+    }
+
+    function purchaseDailyDeal(dealIndex) {
+        var deal = dailyDeals[dealIndex];
+        if (!deal || deal.purchased) return;
+        if (Game.getGems() < deal.dealPrice) {
+            showShopToast('Not enough gems!');
+            Sound.playError();
+            return;
+        }
+        Game.addGems(-deal.dealPrice);
+        deal.action();
+        deal.purchased = true;
+
+        var state = Game.getState();
+        state.shop = state.shop || {};
+        state.shop.dailyDealsPurchased = state.shop.dailyDealsPurchased || { date: dailyDealDate, ids: {} };
+        state.shop.dailyDealsPurchased.date = dailyDealDate;
+        state.shop.dailyDealsPurchased.ids[deal.id] = true;
+        Game.save();
+
+        Sound.playPurchase();
+        showShopToast(deal.name + ' purchased!');
+        renderShop();
+    }
+
     function init() {
         var state = Game.getState();
         if (state.shop) {
             piggyGems = state.shop.piggyGems || 0;
             boosts = state.shop.boosts || {};
         }
+
+        generateDailyDeals();
 
         // Accumulate piggy gems on merges
         Game.on('mergeCompleted', function() {
@@ -236,6 +303,27 @@ const Shop = (() => {
         html += '<button class="shop-buy-btn ad-btn">Watch</button>';
         html += '</div></div>';
 
+        // Daily Deals
+        generateDailyDeals();
+        var dealHoursLeft = 24 - new Date().getHours();
+        html += '<div class="shop-section shop-daily-deals">';
+        html += '<h3 class="shop-section-title">\u{1F525} Daily Deals <span class="deal-timer">Refreshes in ' + dealHoursLeft + 'h</span></h3>';
+        for (var dd = 0; dd < dailyDeals.length; dd++) {
+            var deal = dailyDeals[dd];
+            html += '<div class="shop-item deal-item' + (deal.purchased ? ' deal-purchased' : '') + '" data-deal="' + dd + '">';
+            html += '<span class="shop-item-icon">' + deal.icon + '</span>';
+            html += '<div class="shop-item-info"><span class="shop-item-name">' + deal.name + '</span>';
+            html += '<span class="shop-item-desc">' + deal.desc + '</span></div>';
+            if (deal.purchased) {
+                html += '<span class="deal-sold-badge">SOLD</span>';
+            } else {
+                html += '<div class="shop-price-stack"><span class="shop-original-price">\u{1F48E}' + deal.normalPrice + '</span>';
+                html += '<button class="shop-buy-btn deal-btn">\u{1F48E} ' + deal.dealPrice + '</button></div>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+
         // Starter Pack (if not bought and enough play sessions)
         if (!state.shop || !state.shop.starterBought) {
             html += '<div class="shop-section">';
@@ -341,6 +429,16 @@ const Shop = (() => {
 
         var piggyBtn = document.getElementById('shop-piggy');
         if (piggyBtn) piggyBtn.querySelector('.shop-buy-btn').addEventListener('click', breakPiggyBank);
+
+        // Daily deal buttons
+        container.querySelectorAll('.deal-item[data-deal]').forEach(function(el) {
+            var btn = el.querySelector('.deal-btn');
+            if (btn) {
+                btn.addEventListener('click', function() {
+                    purchaseDailyDeal(parseInt(el.dataset.deal));
+                });
+            }
+        });
     }
 
     function showShopToast(msg) {

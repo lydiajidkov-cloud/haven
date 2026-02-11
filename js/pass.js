@@ -3,6 +3,8 @@
 
 const Pass = (() => {
     const TOTAL_TIERS = 40;
+    const SEASON_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30-day season
+    var seasonStartTime = 0;
     // Graduated XP curve — fast early tiers, challenging late tiers
     function xpForTier(tier) {
         if (tier <= 5) return 60;       // Quick wins for new players
@@ -64,6 +66,10 @@ const Pass = (() => {
             hasPremium = state.pass.premium || false;
             claimedFree = state.pass.claimedFree || {};
             claimedPremium = state.pass.claimedPremium || {};
+            seasonStartTime = state.pass.seasonStart || Date.now();
+        }
+        if (!seasonStartTime) {
+            seasonStartTime = Date.now();
         }
 
         // Earn XP from game actions
@@ -175,9 +181,15 @@ const Pass = (() => {
 
         var html = '';
 
+        // Season timer
+        var seasonEnd = seasonStartTime + SEASON_DURATION_MS;
+        var timeLeft = Math.max(0, seasonEnd - Date.now());
+        var daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000));
+
         // Header
         html += '<div class="pass-header">';
         html += '<h3 class="pass-title">Haven Pass — Season 1</h3>';
+        html += '<span class="pass-season-timer' + (daysLeft <= 7 ? ' pass-timer-urgent' : '') + '">' + daysLeft + ' days left</span>';
         if (!hasPremium) {
             html += '<button class="pass-premium-btn" id="pass-buy-premium">Unlock Premium $7.99</button>';
         } else {
@@ -254,7 +266,8 @@ const Pass = (() => {
             xp: currentXP,
             premium: hasPremium,
             claimedFree: claimedFree,
-            claimedPremium: claimedPremium
+            claimedPremium: claimedPremium,
+            seasonStart: seasonStartTime
         };
         Game.save();
     }

@@ -148,9 +148,11 @@ const Daily = (() => {
         var dayData = CALENDAR_REWARDS[dayIndex];
         if (!dayData) return;
 
-        // Grant rewards
+        // Grant rewards — streak multiplier increases each full week
+        var streakMultiplier = Math.min(2, 1 + Math.floor(calendar.streak / 7) * 0.25);
         var rewards = dayData.rewards;
-        if (rewards.gems) Game.addGems(rewards.gems);
+        var gemsEarned = rewards.gems ? Math.floor(rewards.gems * streakMultiplier) : 0;
+        if (gemsEarned) Game.addGems(gemsEarned);
         if (rewards.energy) Game.addEnergy(rewards.energy);
         if (rewards.stars) Game.addStars(rewards.stars);
         if (rewards.egg === 'common') {
@@ -285,7 +287,7 @@ const Daily = (() => {
                 q.claimed = true;
                 if (q.reward.gems) Game.addGems(q.reward.gems);
                 if (q.reward.energy) Game.addEnergy(q.reward.energy);
-                Sound.playMerge(4);
+                Sound.playCelebration();
                 saveDailyState();
                 renderDaily();
                 return;
@@ -303,17 +305,18 @@ const Daily = (() => {
 
         // ── Streak banner ──
         html += '<div class="cal-streak-banner">';
+        var currentMultiplier = Math.min(2, 1 + Math.floor(calendar.streak / 7) * 0.25);
         if (calendar.streak > 0) {
             html += '<span class="cal-streak-fire">\uD83D\uDD25</span>';
             html += '<span class="cal-streak-text">Day ' + calendar.streak + ' streak';
-            if (calendar.streak < 7) {
-                html += ' \u2014 Don\'t break it!';
-            } else {
-                html += ' \u2014 Amazing!';
+            if (currentMultiplier > 1) {
+                html += ' \u2014 ' + currentMultiplier.toFixed(2).replace(/\.?0+$/, '') + 'x gem bonus!';
+            } else if (calendar.streak < 7) {
+                html += ' \u2014 7 days = 1.25x gems!';
             }
             html += '</span>';
         } else {
-            html += '<span class="cal-streak-text">Start your streak today!</span>';
+            html += '<span class="cal-streak-text">Start a streak for bonus gems!</span>';
         }
         html += '</div>';
 

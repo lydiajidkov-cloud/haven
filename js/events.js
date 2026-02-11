@@ -14,6 +14,7 @@ const Events = (() => {
             name: 'Crystal Rush',
             desc: 'Crystal merges award 2x gems!',
             icon: '\u{1F48E}',
+            exclusiveCreature: { id: 'crystal_sprite', name: 'Crystal Sprite', emoji: '\u{1F48E}', rarity: 'rare', biome: 'enchanted', passive: { type: 'gem_bonus', value: 3 } },
             modifier: { type: 'gem_multiplier', chain: 'crystal', value: 2 },
             challenges: [
                 { tier: 'bronze', desc: 'Merge 50 crystals',  target: 50,  reward: { gems: 50 } },
@@ -29,6 +30,7 @@ const Events = (() => {
             name: 'Timber Time',
             desc: 'Wood items spawn 1 tier higher!',
             icon: '\u{1F332}',
+            exclusiveCreature: { id: 'timber_stag', name: 'Timber Stag', emoji: '\u{1F98C}', rarity: 'rare', biome: 'forest', passive: { type: 'energy_regen', value: 3 } },
             modifier: { type: 'spawn_tier_boost', chain: 'wood', value: 1 },
             challenges: [
                 { tier: 'bronze', desc: 'Spawn 40 wood items',  target: 40,  reward: { gems: 50 } },
@@ -44,6 +46,7 @@ const Events = (() => {
             name: 'Flora Festival',
             desc: 'Flora chain reactions are 2x more likely!',
             icon: '\u{1F338}',
+            exclusiveCreature: { id: 'blossom_fae', name: 'Blossom Fae', emoji: '\u{1F33A}', rarity: 'rare', biome: 'spring', passive: { type: 'discovery_chance', value: 3 } },
             modifier: { type: 'chain_reaction_boost', chain: 'flora', value: 2 },
             challenges: [
                 { tier: 'bronze', desc: 'Merge 60 flora items',  target: 60,  reward: { gems: 50 } },
@@ -59,6 +62,7 @@ const Events = (() => {
             name: 'Stone Surge',
             desc: 'Stone merges fill surge meter 2x faster!',
             icon: '\u26F0\uFE0F',
+            exclusiveCreature: { id: 'granite_golem', name: 'Granite Golem', emoji: '\u{1FAA8}', rarity: 'rare', biome: 'ocean', passive: { type: 'xp_bonus', value: 3 } },
             modifier: { type: 'surge_boost', chain: 'stone', value: 2 },
             challenges: [
                 { tier: 'bronze', desc: 'Merge 50 stone items',  target: 50,  reward: { gems: 50 } },
@@ -74,6 +78,7 @@ const Events = (() => {
             name: 'Discovery Week',
             desc: 'Creature discovery chance doubled!',
             icon: '\u{1F95A}',
+            exclusiveCreature: { id: 'egg_oracle', name: 'Egg Oracle', emoji: '\u{1F52E}', rarity: 'rare', biome: 'celestial', passive: { type: 'discovery_chance', value: 5 } },
             modifier: { type: 'discovery_boost', chain: 'creature', value: 2 },
             challenges: [
                 { tier: 'bronze', desc: 'Spawn 30 creature eggs',  target: 30,  reward: { gems: 50 } },
@@ -89,6 +94,7 @@ const Events = (() => {
             name: 'Merge Mania',
             desc: 'All merges need only 2 items!',
             icon: '\u{1F525}',
+            exclusiveCreature: { id: 'merge_spirit', name: 'Merge Spirit', emoji: '\u{1F525}', rarity: 'legendary', biome: 'celestial', passive: { type: 'gem_bonus', value: 7 } },
             modifier: { type: 'min_merge_override', value: 2 },
             challenges: [
                 { tier: 'bronze', desc: 'Perform 40 merges',  target: 40,  reward: { gems: 50 } },
@@ -104,6 +110,7 @@ const Events = (() => {
             name: 'Chain Master',
             desc: 'Cross-chain recipes give 3x rewards!',
             icon: '\u{1F517}',
+            exclusiveCreature: { id: 'chain_weaver', name: 'Chain Weaver', emoji: '\u{1F578}\uFE0F', rarity: 'rare', biome: 'enchanted', passive: { type: 'xp_bonus', value: 3 } },
             modifier: { type: 'crosschain_reward_multiplier', value: 3 },
             challenges: [
                 { tier: 'bronze', desc: 'Perform 10 cross-chain merges',  target: 10,  reward: { gems: 50 } },
@@ -119,6 +126,7 @@ const Events = (() => {
             name: 'Speed Demon',
             desc: 'Energy regenerates 2x faster!',
             icon: '\u26A1',
+            exclusiveCreature: { id: 'lightning_lynx', name: 'Lightning Lynx', emoji: '\u26A1', rarity: 'rare', biome: 'summer', passive: { type: 'energy_regen', value: 5 } },
             modifier: { type: 'energy_regen_multiplier', value: 2 },
             challenges: [
                 { tier: 'bronze', desc: 'Use 80 energy',  target: 80,  reward: { gems: 50 } },
@@ -473,6 +481,11 @@ const Events = (() => {
             html += '<span class="challenge-reward">' + rewardText + '</span>';
             html += '</div>';
 
+            // Event-exclusive creature badge on gold tier
+            if (currentEvent.exclusiveCreature && c.tier === 'gold') {
+                html += '<div class="challenge-exclusive-badge">' + currentEvent.exclusiveCreature.emoji + ' ' + currentEvent.exclusiveCreature.name + ' <span class="exclusive-tag">EVENT ONLY</span></div>';
+            }
+
             if (claimed) {
                 html += '<div class="challenge-claimed-badge">Claimed</div>';
             } else if (completed) {
@@ -533,7 +546,16 @@ const Events = (() => {
         // Grant rewards
         if (challenge.reward.gems) Game.addGems(challenge.reward.gems);
         if (challenge.reward.stars) Game.addStars(challenge.reward.stars);
-        if (challenge.reward.egg) {
+        if (challenge.reward.egg && currentEvent.exclusiveCreature && tier === 'gold') {
+            // Grant event-exclusive creature
+            var ec = currentEvent.exclusiveCreature;
+            var gState = Game.getState();
+            gState.hatchery = gState.hatchery || { discovered: {} };
+            if (!gState.hatchery.discovered) gState.hatchery.discovered = {};
+            gState.hatchery.discovered[ec.id] = { discoveredAt: Date.now(), tier: 0, eventExclusive: true };
+            Game.save();
+            Game.emit('creatureDiscovered', { creature: ec.id, rarity: ec.rarity, biome: ec.biome, exclusive: true });
+        } else if (challenge.reward.egg) {
             // Spawn a rare egg via shop system
             Game.emit('shopSpawnRequest', { chain: 'creature', tier: 2 });
         }

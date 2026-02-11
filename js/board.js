@@ -24,6 +24,10 @@ const Board = (() => {
     var SURGE_ANIM_FAST = 140;    // ms merge animation during surge (was 180)
     var SURGE_ANIM_NORMAL = 250;  // ms merge animation normally (was 320)
 
+    // Pity counter — guarantees gem multiplier every N merges
+    var mergesSinceBonus = 0;
+    var PITY_THRESHOLD = 12;
+
     // Tutorial overrides
     var forcedSpawnTier = null;
     var autoMergeSuppressed = false;
@@ -90,6 +94,9 @@ const Board = (() => {
         setupPointerEvents();
         setupResourceNodes();
         Particles.init(document.getElementById('particle-canvas'));
+
+        // Check clutter state on load
+        updateClutterIndicator();
 
         // Cache grid layout for touch coordinate math
         requestAnimationFrame(function() { cacheGridLayout(); });
@@ -702,6 +709,20 @@ const Board = (() => {
             items[fromRow][fromCol] = item;
             renderCell(fromRow, fromCol);
             Sound.playError();
+
+            // Near-miss: flash matching items elsewhere on the board
+            for (var nr = 0; nr < ROWS; nr++) {
+                for (var nc = 0; nc < COLS; nc++) {
+                    if (nr === fromRow && nc === fromCol) continue;
+                    if (items[nr][nc] && items[nr][nc].chain === item.chain && items[nr][nc].tier === item.tier) {
+                        var nmEl = grid[nr][nc].querySelector('.item');
+                        if (nmEl) {
+                            nmEl.classList.add('near-match-pulse');
+                            (function(el) { setTimeout(function() { el.classList.remove('near-match-pulse'); }, 600); })(nmEl);
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -740,6 +761,10 @@ const Board = (() => {
         var nextTier = tier + 1;
         var isMaxTier = !Items.hasNextTier(chain, tier);
         var isBigMerge = totalCount >= 5;
+        // Near-miss: "Almost 5x!" when one more match would have been a big merge
+        if (totalCount === 4) {
+            showFloatingText(targetRow, targetCol, 'Almost 5x!');
+        }
         var nextDef = Items.getItemDef(chain, isMaxTier ? tier : nextTier);
 
         // Lock all involved cells
@@ -859,8 +884,9 @@ const Board = (() => {
                 // Random multiplier — variable ratio reinforcement
                 var roll = Math.random();
                 var gemMultiplier = 1;
-                if (roll < 0.05) { gemMultiplier = 3; }
-                else if (roll < 0.20) { gemMultiplier = 2; }
+                mergesSinceBonus++;
+                if (roll < 0.05 || mergesSinceBonus >= PITY_THRESHOLD * 2) { gemMultiplier = 3; mergesSinceBonus = 0; }
+                else if (roll < 0.20 || mergesSinceBonus >= PITY_THRESHOLD) { gemMultiplier = 2; mergesSinceBonus = 0; }
                 if (gemMultiplier > 1) {
                     gemReward *= gemMultiplier;
                 }
@@ -893,6 +919,7 @@ const Board = (() => {
             }, Math.min(delay, 200));
 
             syncToGameState();
+            updateClutterIndicator();
         }, delay);
     }
 
@@ -1000,19 +1027,93 @@ const Board = (() => {
         }
     }
 
+    // ─── TIER-0 CLUTTER TAX ─────────────────────────────────────────
+    // When too many tier-0 items clog the board, spawns cost extra energy.
+    // This creates pressure to merge or clear junk, making Lightning and
+    // merge planning strategically important.
+    var CLUTTER_THRESHOLD = 8;  // tier-0 items before tax kicks in
+    var CLUTTER_EXTRA_COST = 1; // extra energy per spawn when cluttered
+
+    function countTierZero() {
+        var count = 0;
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (items[r][c] && items[r][c].tier === 0) count++;
+            }
+        }
+        return count;
+    }
+
+    function isCluttered() {
+        return countTierZero() > CLUTTER_THRESHOLD;
+    }
+
+    // Update visual clutter warning on resource nodes
+    function updateClutterIndicator() {
+        var nodesEl = document.getElementById('resource-nodes');
+        if (!nodesEl) return;
+        if (isCluttered()) {
+            nodesEl.classList.add('cluttered');
+            // Ensure warning label exists
+            if (!nodesEl.querySelector('.clutter-warning')) {
+                var warn = document.createElement('div');
+                warn.className = 'clutter-warning';
+                warn.textContent = 'Cluttered! Spawns cost 2 energy';
+                nodesEl.appendChild(warn);
+            }
+        } else {
+            nodesEl.classList.remove('cluttered');
+            var existing = nodesEl.querySelector('.clutter-warning');
+            if (existing) existing.remove();
+        }
+    }
+
     function spawnItem(chain) {
-        if (!Game.useEnergy()) {
+        // Check clutter tax: if board is cluttered with tier-0 items, extra energy cost
+        var cluttered = isCluttered();
+        var totalCost = 1 + (cluttered ? CLUTTER_EXTRA_COST : 0);
+
+        if (Game.getEnergy() < totalCost) {
             Sound.playEnergyEmpty();
             var energyEl = document.getElementById('energy-display');
             energyEl.classList.add('shake');
             setTimeout(function() { energyEl.classList.remove('shake'); }, 500);
+            if (cluttered) {
+                showToast('Cluttered! Spawns cost ' + totalCost + ' energy. Merge or clear tier-0 items!');
+            } else {
+                // Count available merges to encourage continued play
+                var availableMerges = 0;
+                var visitedCells = {};
+                for (var er = 0; er < ROWS; er++) {
+                    for (var ec = 0; ec < COLS; ec++) {
+                        var ek = er + ',' + ec;
+                        if (visitedCells[ek] || !items[er][ec]) continue;
+                        var cluster = findConnected(er, ec, items[er][ec].chain, items[er][ec].tier);
+                        for (var ci = 0; ci < cluster.length; ci++) { visitedCells[cluster[ci].row + ',' + cluster[ci].col] = true; }
+                        if (cluster.length >= MIN_MERGE) availableMerges++;
+                    }
+                }
+                if (availableMerges > 0) {
+                    showToast('No energy, but ' + availableMerges + ' merge' + (availableMerges > 1 ? 's' : '') + ' ready!');
+                }
+            }
             return;
+        }
+
+        // Consume energy (base cost)
+        if (!Game.useEnergy()) {
+            Sound.playEnergyEmpty();
+            return;
+        }
+        // Consume extra clutter tax energy
+        if (cluttered) {
+            Game.useEnergy(); // second point
         }
 
         var empty = getRandomEmptyCell();
         if (!empty) {
             Sound.playError();
-            Game.addEnergy(1); // Refund
+            Game.addEnergy(totalCost); // Refund full cost
             showToast('Board is full! Merge some items first.');
             return;
         }
@@ -1076,9 +1177,10 @@ const Board = (() => {
             }, 400);
         } else {
             // Near-miss: spawned item is adjacent to exactly 1 matching item
+            // findConnected includes the starting cell, so length===2 means self + 1 neighbor
             var nearMatch = findConnected(empty.row, empty.col, item.chain, item.tier);
-            if (nearMatch.length === 1) {
-                var adjCell = grid[nearMatch[0].row][nearMatch[0].col];
+            if (nearMatch.length === 2) {
+                var adjCell = grid[nearMatch[1].row][nearMatch[1].col];
                 var adjEl = adjCell ? adjCell.querySelector('.item') : null;
                 if (adjEl) {
                     adjEl.classList.add('near-match-pulse');
@@ -1087,6 +1189,9 @@ const Board = (() => {
             }
             syncToGameState();
         }
+
+        // Update clutter indicator after every spawn
+        updateClutterIndicator();
     }
 
     // First play: place starter items designed for the tutorial flow
@@ -1475,6 +1580,7 @@ const Board = (() => {
                             '\u26A1 +' + destroyed + '\u{1F48E}'
                         );
                         syncToGameState();
+                        updateClutterIndicator();
                     }
                 }, 400);
             }, i * 40);
@@ -1611,6 +1717,9 @@ const Board = (() => {
         shuffleBoard: shuffleBoard,
         upgradeItem: upgradeItem,
         clearTierZero: clearTierZero,
-        getItemAt: function(r, c) { return items[r] ? items[r][c] : null; }
+        getItemAt: function(r, c) { return items[r] ? items[r][c] : null; },
+        isCluttered: isCluttered,
+        countTierZero: countTierZero,
+        CLUTTER_THRESHOLD: CLUTTER_THRESHOLD
     };
 })();

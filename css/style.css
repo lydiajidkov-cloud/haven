@@ -297,6 +297,35 @@ body {
     gap: 5px;
     padding: 6px 10px 8px;
     flex-shrink: 0;
+    position: relative;
+}
+
+/* Clutter tax visual feedback */
+#resource-nodes.cluttered .node {
+    border-color: rgba(248, 113, 113, 0.4);
+    box-shadow: 0 0 6px rgba(248, 113, 113, 0.15);
+}
+
+.clutter-warning {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: #f87171;
+    font-weight: 700;
+    background: rgba(20, 10, 30, 0.9);
+    padding: 1px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    white-space: nowrap;
+    animation: clutter-pulse 2s ease-in-out infinite;
+    z-index: 5;
+}
+
+@keyframes clutter-pulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
 }
 
 .node {
@@ -509,6 +538,19 @@ body {
 @keyframes order-almost-pulse {
     0%, 100% { background: rgba(255, 215, 0, 0.03); }
     50%      { background: rgba(255, 215, 0, 0.12); }
+}
+
+.order-exact-badge {
+    font-size: 8px;
+    color: #f87171;
+    font-weight: 700;
+    margin-left: 4px;
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    border-radius: 4px;
+    padding: 0 3px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 .order-almost-badge {

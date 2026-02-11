@@ -130,6 +130,9 @@ const Orders = (() => {
     }
 
     // Check if an item at (row, col) matches any unfulfilled requirement of active order
+    // EXACT-TIER matching: items must be precisely the requested tier.
+    // This creates "deliver now vs. keep merging" tension — if you merge past
+    // the needed tier, that item can no longer fill this order.
     function canDeliverItem(item) {
         if (!deliveryMode) return false;
         var order = orders[deliveryMode.orderIndex];
@@ -138,7 +141,7 @@ const Orders = (() => {
         for (var i = 0; i < order.requirements.length; i++) {
             var req = order.requirements[i];
             if (req.delivered >= req.count) continue;
-            if (item.chain === req.chain && item.tier >= req.tier) {
+            if (item.chain === req.chain && item.tier === req.tier) {
                 return true;
             }
         }
@@ -155,7 +158,7 @@ const Orders = (() => {
         for (var i = 0; i < order.requirements.length; i++) {
             var req = order.requirements[i];
             if (req.delivered >= req.count) continue;
-            if (item.chain === req.chain && item.tier >= req.tier) {
+            if (item.chain === req.chain && item.tier === req.tier) {
                 req.delivered++;
                 Sound.playOrderDeliver();
 
@@ -288,6 +291,9 @@ const Orders = (() => {
                 html += '<div class="order-req' + (done ? ' req-done' : '') + (remaining === 1 ? ' req-almost' : '') + '">';
                 html += '<span class="order-req-icon">' + chainIcon + '</span>';
                 html += '<span class="order-req-text">' + req.delivered + '/' + req.count + ' ' + itemName + '</span>';
+                if (!done) {
+                    html += '<span class="order-exact-badge">Exact</span>';
+                }
                 if (!done && remaining === 1) {
                     html += '<span class="order-almost-badge">1 away!</span>';
                 }
