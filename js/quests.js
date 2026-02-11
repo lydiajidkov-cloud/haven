@@ -7,37 +7,71 @@ const Quests = (() => {
     // Quest pool — each has a unique id, type, requirements, and rewards
     const questPool = [
         // Wood chain
-        { id: 'w1', desc: 'Produce 3 Branches',   type: 'produce', chain: 'wood',    tier: 1, target: 3, reward: { stars: 1, gems: 5 } },
-        { id: 'w2', desc: 'Produce 2 Logs',        type: 'produce', chain: 'wood',    tier: 2, target: 2, reward: { stars: 1, gems: 10 } },
-        { id: 'w3', desc: 'Produce 1 Plank',       type: 'produce', chain: 'wood',    tier: 3, target: 1, reward: { stars: 2, gems: 15 } },
-        { id: 'w4', desc: 'Produce 1 Beam',        type: 'produce', chain: 'wood',    tier: 4, target: 1, reward: { stars: 3, gems: 20 } },
-        { id: 'w5', desc: 'Produce 1 Frame',       type: 'produce', chain: 'wood',    tier: 5, target: 1, reward: { stars: 4, gems: 30 } },
+        { id: 'w1', desc: 'Produce 3 Branches',      type: 'produce', chain: 'wood',    tier: 1, target: 3, reward: { stars: 1, gems: 5 } },
+        { id: 'w2', desc: 'Produce 2 Logs',           type: 'produce', chain: 'wood',    tier: 2, target: 2, reward: { stars: 1, gems: 10 } },
+        { id: 'w3', desc: 'Produce 1 Plank',          type: 'produce', chain: 'wood',    tier: 3, target: 1, reward: { stars: 2, gems: 15 } },
+        { id: 'w4', desc: 'Produce 1 Beam',           type: 'produce', chain: 'wood',    tier: 4, target: 1, reward: { stars: 3, gems: 20 } },
+        { id: 'w5', desc: 'Produce 1 Frame',          type: 'produce', chain: 'wood',    tier: 5, target: 1, reward: { stars: 4, gems: 30 } },
+        { id: 'w6', desc: 'Produce 1 Workshop',       type: 'produce', chain: 'wood',    tier: 7, target: 1, reward: { stars: 6, gems: 60 } },
+        { id: 'w7', desc: 'Produce 1 Treehouse',      type: 'produce', chain: 'wood',    tier: 9, target: 1, reward: { stars: 8, gems: 100 } },
         // Stone chain
-        { id: 's1', desc: 'Produce 3 Rocks',       type: 'produce', chain: 'stone',   tier: 1, target: 3, reward: { stars: 1, gems: 5 } },
-        { id: 's2', desc: 'Produce 2 Boulders',    type: 'produce', chain: 'stone',   tier: 2, target: 2, reward: { stars: 1, gems: 10 } },
-        { id: 's3', desc: 'Produce 1 Slab',        type: 'produce', chain: 'stone',   tier: 3, target: 1, reward: { stars: 2, gems: 15 } },
-        { id: 's4', desc: 'Produce 1 Block',       type: 'produce', chain: 'stone',   tier: 4, target: 1, reward: { stars: 3, gems: 20 } },
+        { id: 's1', desc: 'Produce 3 Rocks',          type: 'produce', chain: 'stone',   tier: 1, target: 3, reward: { stars: 1, gems: 5 } },
+        { id: 's2', desc: 'Produce 2 Boulders',       type: 'produce', chain: 'stone',   tier: 2, target: 2, reward: { stars: 1, gems: 10 } },
+        { id: 's3', desc: 'Produce 1 Slab',           type: 'produce', chain: 'stone',   tier: 3, target: 1, reward: { stars: 2, gems: 15 } },
+        { id: 's4', desc: 'Produce 1 Block',          type: 'produce', chain: 'stone',   tier: 4, target: 1, reward: { stars: 3, gems: 20 } },
+        { id: 's5', desc: 'Produce 1 Arch',           type: 'produce', chain: 'stone',   tier: 7, target: 1, reward: { stars: 6, gems: 60 } },
+        { id: 's6', desc: 'Produce 1 Fortress',       type: 'produce', chain: 'stone',   tier: 9, target: 1, reward: { stars: 8, gems: 100 } },
         // Flora chain
-        { id: 'f1', desc: 'Produce 3 Sprouts',     type: 'produce', chain: 'flora',   tier: 1, target: 3, reward: { stars: 1, gems: 5 } },
-        { id: 'f2', desc: 'Produce 2 Buds',        type: 'produce', chain: 'flora',   tier: 2, target: 2, reward: { stars: 1, gems: 10 } },
-        { id: 'f3', desc: 'Produce 1 Flower',      type: 'produce', chain: 'flora',   tier: 3, target: 1, reward: { stars: 2, gems: 15 } },
-        { id: 'f4', desc: 'Produce 1 Bouquet',     type: 'produce', chain: 'flora',   tier: 4, target: 1, reward: { stars: 3, gems: 20 } },
+        { id: 'f1', desc: 'Produce 3 Sprouts',        type: 'produce', chain: 'flora',   tier: 1, target: 3, reward: { stars: 1, gems: 5 } },
+        { id: 'f2', desc: 'Produce 2 Buds',           type: 'produce', chain: 'flora',   tier: 2, target: 2, reward: { stars: 1, gems: 10 } },
+        { id: 'f3', desc: 'Produce 1 Flower',         type: 'produce', chain: 'flora',   tier: 3, target: 1, reward: { stars: 2, gems: 15 } },
+        { id: 'f4', desc: 'Produce 1 Bouquet',        type: 'produce', chain: 'flora',   tier: 4, target: 1, reward: { stars: 3, gems: 20 } },
+        { id: 'f5', desc: 'Produce 1 Meadow',         type: 'produce', chain: 'flora',   tier: 7, target: 1, reward: { stars: 6, gems: 60 } },
+        { id: 'f6', desc: 'Produce 1 Eden',           type: 'produce', chain: 'flora',   tier: 9, target: 1, reward: { stars: 8, gems: 100 } },
         // Crystal chain
-        { id: 'c1', desc: 'Produce 3 Fragments',   type: 'produce', chain: 'crystal', tier: 1, target: 3, reward: { stars: 1, gems: 5 } },
-        { id: 'c2', desc: 'Produce 2 Gems',        type: 'produce', chain: 'crystal', tier: 2, target: 2, reward: { stars: 1, gems: 10 } },
-        { id: 'c3', desc: 'Produce 1 Crystal',     type: 'produce', chain: 'crystal', tier: 3, target: 1, reward: { stars: 2, gems: 15 } },
-        { id: 'c4', desc: 'Produce 1 Prism',       type: 'produce', chain: 'crystal', tier: 4, target: 1, reward: { stars: 3, gems: 25 } },
+        { id: 'c1', desc: 'Produce 3 Fragments',      type: 'produce', chain: 'crystal', tier: 1, target: 3, reward: { stars: 1, gems: 5 } },
+        { id: 'c2', desc: 'Produce 2 Gems',           type: 'produce', chain: 'crystal', tier: 2, target: 2, reward: { stars: 1, gems: 10 } },
+        { id: 'c3', desc: 'Produce 1 Crystal',        type: 'produce', chain: 'crystal', tier: 3, target: 1, reward: { stars: 2, gems: 15 } },
+        { id: 'c4', desc: 'Produce 1 Prism',          type: 'produce', chain: 'crystal', tier: 4, target: 1, reward: { stars: 3, gems: 25 } },
+        { id: 'c5', desc: 'Produce 1 Nexus',          type: 'produce', chain: 'crystal', tier: 7, target: 1, reward: { stars: 6, gems: 60 } },
+        { id: 'c6', desc: 'Produce 1 Infinity',       type: 'produce', chain: 'crystal', tier: 9, target: 1, reward: { stars: 8, gems: 100 } },
         // Creature chain
-        { id: 'cr1', desc: 'Produce 2 Hatchlings', type: 'produce', chain: 'creature', tier: 1, target: 2, reward: { stars: 1, gems: 10 } },
-        { id: 'cr2', desc: 'Produce 1 Fledgling',  type: 'produce', chain: 'creature', tier: 2, target: 1, reward: { stars: 2, gems: 15 } },
-        { id: 'cr3', desc: 'Produce 1 Juvenile',   type: 'produce', chain: 'creature', tier: 3, target: 1, reward: { stars: 3, gems: 25 } },
-        // General quests
-        { id: 'g1', desc: 'Merge 10 times',        type: 'merge_count',  target: 10, reward: { stars: 1, gems: 5 } },
-        { id: 'g2', desc: 'Merge 25 times',        type: 'merge_count',  target: 25, reward: { stars: 2, gems: 10 } },
-        { id: 'g3', desc: 'Spawn 15 items',        type: 'spawn_count',  target: 15, reward: { stars: 1, gems: 5 } },
-        { id: 'g4', desc: 'Create a Tier 4 item',  type: 'reach_tier',   tier: 4,    target: 1, reward: { stars: 3, gems: 20 } },
-        { id: 'g5', desc: 'Create a Tier 5 item',  type: 'reach_tier',   tier: 5,    target: 1, reward: { stars: 4, gems: 30 } },
-        { id: 'g6', desc: 'Create a Tier 6 item',  type: 'reach_tier',   tier: 6,    target: 1, reward: { stars: 5, gems: 50 } },
+        { id: 'cr1', desc: 'Produce 2 Hatchlings',    type: 'produce', chain: 'creature', tier: 1, target: 2, reward: { stars: 1, gems: 10 } },
+        { id: 'cr2', desc: 'Produce 1 Fledgling',     type: 'produce', chain: 'creature', tier: 2, target: 1, reward: { stars: 2, gems: 15 } },
+        { id: 'cr3', desc: 'Produce 1 Juvenile',      type: 'produce', chain: 'creature', tier: 3, target: 1, reward: { stars: 3, gems: 25 } },
+        { id: 'cr4', desc: 'Produce 1 Elder',         type: 'produce', chain: 'creature', tier: 5, target: 1, reward: { stars: 5, gems: 40 } },
+        { id: 'cr5', desc: 'Produce 1 Dragon',        type: 'produce', chain: 'creature', tier: 7, target: 1, reward: { stars: 8, gems: 100 } },
+        // Hybrid chain discovery
+        { id: 'h1', desc: 'Create a Vine',            type: 'produce', chain: 'living',   tier: 0, target: 1, reward: { stars: 3, gems: 25 } },
+        { id: 'h2', desc: 'Create a Runestone',       type: 'produce', chain: 'arcane',   tier: 0, target: 1, reward: { stars: 3, gems: 25 } },
+        { id: 'h3', desc: 'Create a Scaffold',        type: 'produce', chain: 'shelter',  tier: 0, target: 1, reward: { stars: 3, gems: 25 } },
+        { id: 'h4', desc: 'Create Fairy Dust',        type: 'produce', chain: 'mystic',   tier: 0, target: 1, reward: { stars: 3, gems: 25 } },
+        { id: 'h5', desc: 'Create a World Tree',      type: 'produce', chain: 'living',   tier: 4, target: 1, reward: { stars: 8, gems: 100 } },
+        { id: 'h6', desc: "Create a Philosopher\u2019s Stone", type: 'produce', chain: 'arcane', tier: 4, target: 1, reward: { stars: 8, gems: 100 } },
+        { id: 'h7', desc: 'Create a Citadel',         type: 'produce', chain: 'shelter',  tier: 4, target: 1, reward: { stars: 8, gems: 100 } },
+        { id: 'h8', desc: 'Create a Celestial',       type: 'produce', chain: 'mystic',   tier: 4, target: 1, reward: { stars: 8, gems: 100 } },
+        // General milestones
+        { id: 'g1', desc: 'Merge 10 times',           type: 'merge_count',  target: 10,  reward: { stars: 1, gems: 5 } },
+        { id: 'g2', desc: 'Merge 25 times',           type: 'merge_count',  target: 25,  reward: { stars: 2, gems: 10 } },
+        { id: 'g3', desc: 'Merge 50 times',           type: 'merge_count',  target: 50,  reward: { stars: 3, gems: 20 } },
+        { id: 'g4', desc: 'Merge 100 times',          type: 'merge_count',  target: 100, reward: { stars: 5, gems: 50 } },
+        { id: 'g5', desc: 'Spawn 15 items',           type: 'spawn_count',  target: 15,  reward: { stars: 1, gems: 5 } },
+        { id: 'g6', desc: 'Spawn 50 items',           type: 'spawn_count',  target: 50,  reward: { stars: 2, gems: 15 } },
+        { id: 'g7', desc: 'Spawn 100 items',          type: 'spawn_count',  target: 100, reward: { stars: 3, gems: 25 } },
+        // Tier milestones
+        { id: 'g8',  desc: 'Create a Tier 4 item',    type: 'reach_tier',   tier: 4, target: 1, reward: { stars: 3, gems: 20 } },
+        { id: 'g9',  desc: 'Create a Tier 5 item',    type: 'reach_tier',   tier: 5, target: 1, reward: { stars: 4, gems: 30 } },
+        { id: 'g10', desc: 'Create a Tier 6 item',    type: 'reach_tier',   tier: 6, target: 1, reward: { stars: 5, gems: 50 } },
+        { id: 'g11', desc: 'Create a Tier 7 item',    type: 'reach_tier',   tier: 7, target: 1, reward: { stars: 6, gems: 60 } },
+        { id: 'g12', desc: 'Create a Tier 8 item',    type: 'reach_tier',   tier: 8, target: 1, reward: { stars: 7, gems: 80 } },
+        { id: 'g13', desc: 'Create a Tier 9 item',    type: 'reach_tier',   tier: 9, target: 1, reward: { stars: 8, gems: 100 } },
+        // Cross-chain achievements
+        { id: 'x1', desc: 'Perform a cross-chain merge',       type: 'crosschain_count', target: 1,  reward: { stars: 2, gems: 15 } },
+        { id: 'x2', desc: 'Perform 5 cross-chain merges',      type: 'crosschain_count', target: 5,  reward: { stars: 3, gems: 30 } },
+        { id: 'x3', desc: 'Perform 15 cross-chain merges',     type: 'crosschain_count', target: 15, reward: { stars: 5, gems: 50 } },
+        // Big merge achievements
+        { id: 'b1', desc: 'Merge 5 items at once',    type: 'big_merge',    target: 5, reward: { stars: 3, gems: 20 } },
+        { id: 'b2', desc: 'Merge 7 items at once',    type: 'big_merge',    target: 7, reward: { stars: 5, gems: 50 } },
     ];
 
     let activeQuests = [];   // Current active quests with progress
@@ -59,6 +93,7 @@ const Quests = (() => {
         Game.on('itemProduced', onItemProduced);
         Game.on('mergeCompleted', onMergeCompleted);
         Game.on('itemSpawned', onItemSpawned);
+        Game.on('crossChainMerge', onCrossChainMerge);
 
         renderQuestPanel();
     }
@@ -148,6 +183,28 @@ const Quests = (() => {
                 if (q.current >= q.target) q.completed = true;
                 changed = true;
             }
+            if (q.type === 'big_merge' && data.count >= q.target) {
+                q.current = 1;
+                q.completed = true;
+                changed = true;
+            }
+        }
+        if (changed) {
+            saveQuestState();
+            renderQuestPanel();
+        }
+    }
+
+    function onCrossChainMerge(data) {
+        var changed = false;
+        for (var i = 0; i < activeQuests.length; i++) {
+            var q = activeQuests[i];
+            if (q.completed || q.claimed) continue;
+            if (q.type === 'crosschain_count') {
+                q.current = Math.min(q.current + 1, q.target);
+                if (q.current >= q.target) q.completed = true;
+                changed = true;
+            }
         }
         if (changed) {
             saveQuestState();
@@ -225,6 +282,10 @@ const Quests = (() => {
             if (q.chain) {
                 var chainData = Items.chains[q.chain];
                 chainIcon = chainData ? chainData.icon : '';
+            } else if (q.type === 'crosschain_count') {
+                chainIcon = '\u{1F52E}'; // crystal ball for cross-chain
+            } else if (q.type === 'big_merge') {
+                chainIcon = '\u{1F4A5}'; // explosion for big merge
             } else {
                 chainIcon = '\u2B50'; // star for general quests
             }

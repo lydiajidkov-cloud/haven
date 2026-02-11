@@ -146,6 +146,7 @@ const Board = (() => {
         if (dragEl) { dragEl.remove(); dragEl = null; }
         clearHighlight('drag-over');
         clearHighlight('valid-target');
+        clearHighlight('recipe-target');
 
         // Restore source visual
         var srcItem = grid[dragFrom.row][dragFrom.col].querySelector('.item');
@@ -162,6 +163,11 @@ const Board = (() => {
 
         if (items[tr][tc] && Items.canMerge(dragItem, items[tr][tc])) {
             attemptMerge(dragFrom.row, dragFrom.col, tr, tc);
+        } else if (items[tr][tc]) {
+            var recipe = Items.getCrossChainResult(dragItem, items[tr][tc]);
+            if (recipe) {
+                executeCrossChainMerge(dragFrom.row, dragFrom.col, tr, tc, recipe);
+            }
         } else if (!items[tr][tc]) {
             moveItem(dragFrom.row, dragFrom.col, tr, tc);
         }
@@ -208,6 +214,7 @@ const Board = (() => {
         }
         selectedPos = null;
         clearHighlight('valid-target');
+        clearHighlight('recipe-target');
     }
 
     function handleTapWithSelection(r, c) {
@@ -226,6 +233,16 @@ const Board = (() => {
             clearSelection();
             attemptMerge(sr, sc, r, c);
             return;
+        }
+
+        // Cross-chain recipe
+        if (items[r][c]) {
+            var recipe = Items.getCrossChainResult(items[sr][sc], items[r][c]);
+            if (recipe) {
+                clearSelection();
+                executeCrossChainMerge(sr, sc, r, c, recipe);
+                return;
+            }
         }
 
         // Tap empty cell = move
@@ -268,8 +285,11 @@ const Board = (() => {
         for (var r = 0; r < ROWS; r++) {
             for (var c = 0; c < COLS; c++) {
                 if (r === skipRow && c === skipCol) continue;
-                if (items[r][c] && Items.canMerge(item, items[r][c])) {
+                if (!items[r][c]) continue;
+                if (Items.canMerge(item, items[r][c])) {
                     grid[r][c].classList.add('valid-target');
+                } else if (Items.getCrossChainResult(item, items[r][c])) {
+                    grid[r][c].classList.add('recipe-target');
                 }
             }
         }
@@ -463,6 +483,58 @@ const Board = (() => {
             animating = false;
             syncToGameState();
         }
+    }
+
+    // ─── CROSS-CHAIN MERGE ───────────────────────────────────────
+
+    function executeCrossChainMerge(fromRow, fromCol, toRow, toCol, recipe) {
+        animating = true;
+
+        // Flash both cells
+        grid[fromRow][fromCol].classList.add('merging');
+        grid[toRow][toCol].classList.add('merging');
+
+        Sound.playMerge(recipe.tier + 2);
+        Game.vibrate([15, 30, 15]);
+
+        Game.updateStat('totalMerges', function(v) { return (v || 0) + 1; });
+        Game.emit('mergeCompleted', { chain: recipe.chain, tier: recipe.tier, count: 2, crossChain: true });
+
+        setTimeout(function() {
+            // Remove both source items
+            items[fromRow][fromCol] = null;
+            items[toRow][toCol] = null;
+            grid[fromRow][fromCol].classList.remove('merging');
+            grid[toRow][toCol].classList.remove('merging');
+            renderCell(fromRow, fromCol);
+
+            // Place hybrid result
+            var newItem = Items.createItem(recipe.chain, recipe.tier);
+            items[toRow][toCol] = newItem;
+            renderCell(toRow, toCol);
+
+            Game.emit('itemProduced', { chain: recipe.chain, tier: recipe.tier });
+            Game.emit('crossChainMerge', { chain: recipe.chain, tier: recipe.tier });
+
+            // Pop animation + particles
+            var newEl = grid[toRow][toCol].querySelector('.item');
+            if (newEl) {
+                newEl.classList.add('merge-result');
+                setTimeout(function() { newEl.classList.remove('merge-result'); }, 400);
+            }
+
+            var def = Items.getItemDef(recipe.chain, recipe.tier);
+            emitParticlesAtCell(toRow, toCol, 'chain', {
+                color: def ? def.glow : '#FFD700',
+                count: 20
+            });
+
+            boardEl.classList.add('screen-shake');
+            setTimeout(function() { boardEl.classList.remove('screen-shake'); }, 300);
+
+            animating = false;
+            syncToGameState();
+        }, 350);
     }
 
     // ─── RESOURCE NODES ──────────────────────────────────────────
