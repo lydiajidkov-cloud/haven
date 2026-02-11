@@ -191,6 +191,11 @@ body {
     transition: background 0.15s, box-shadow 0.15s;
 }
 
+.cell.selected {
+    background: rgba(255, 215, 0, 0.25);
+    box-shadow: 0 0 0 2px var(--accent-gold), inset 0 0 8px rgba(255, 215, 0, 0.2);
+}
+
 .cell.valid-target {
     background: rgba(255, 215, 0, 0.15);
 }

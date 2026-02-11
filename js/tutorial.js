@@ -33,7 +33,7 @@ var Tutorial = (function() {
     var TOOLTIP_TEXT = {
         spawn1: 'Tap the Wood button!',
         spawn2: 'Tap again \u2014 you need two matching items to merge.',
-        spawn3: 'Drag one Seed onto the other!'
+        spawn3: 'Tap one Seed, then tap the other!'
     };
 
     var currentStep = 0;

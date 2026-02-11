@@ -15,12 +15,17 @@ const Board = (() => {
     var forcedSpawnTier = null;
     var autoMergeSuppressed = false;
 
-    // Drag state
-    let dragItem = null;
-    let dragFrom = null;
-    let dragEl = null;
-    let dragOffsetX = 0;
-    let dragOffsetY = 0;
+    // Interaction state (tap-to-select + drag fallback)
+    var selectedPos = null;  // {row, col} of selected item
+    var dragItem = null;
+    var dragFrom = null;
+    var dragEl = null;
+    var dragOffsetX = 0;
+    var dragOffsetY = 0;
+    var dragStartX = 0;
+    var dragStartY = 0;
+    var dragStarted = false;
+    var DRAG_THRESHOLD = 12; // px before a touch becomes a drag
 
     function init() {
         containerEl = document.getElementById('board-container');
@@ -55,14 +60,14 @@ const Board = (() => {
             }
         }
 
-        setupDragEvents();
+        setupPointerEvents();
         setupResourceNodes();
         Particles.init(document.getElementById('particle-canvas'));
     }
 
-    // ─── DRAG AND DROP ───────────────────────────────────────────
+    // ─── TAP-TO-SELECT + DRAG ─────────────────────────────────────
 
-    function setupDragEvents() {
+    function setupPointerEvents() {
         boardEl.addEventListener('pointerdown', onPointerDown);
         document.addEventListener('pointermove', onPointerMove);
         document.addEventListener('pointerup', onPointerUp);
@@ -71,121 +76,198 @@ const Board = (() => {
 
     function onPointerDown(e) {
         if (animating) return;
-        const cell = e.target.closest('.cell');
+        var cell = e.target.closest('.cell');
         if (!cell) return;
 
-        const r = parseInt(cell.dataset.row);
-        const c = parseInt(cell.dataset.col);
+        var r = parseInt(cell.dataset.row);
+        var c = parseInt(cell.dataset.col);
+        e.preventDefault();
+
+        // If we already have a selection, handle the second tap
+        if (selectedPos) {
+            handleTapWithSelection(r, c);
+            return;
+        }
+
+        // Nothing selected — need an item to interact with
         if (!items[r][c]) return;
 
-        e.preventDefault();
-        boardEl.setPointerCapture && boardEl.releasePointerCapture(e.pointerId);
         Sound.playTap();
-
         dragItem = items[r][c];
         dragFrom = { row: r, col: c };
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        dragStarted = false;
 
-        // Create floating drag element
-        const itemEl = cell.querySelector('.item');
-        if (!itemEl) return;
-
-        const rect = itemEl.getBoundingClientRect();
-        dragEl = itemEl.cloneNode(true);
-        dragEl.classList.add('dragging');
-        dragEl.style.cssText = 'position:fixed;z-index:1000;pointer-events:none;' +
-            'width:' + rect.width + 'px;height:' + rect.height + 'px;' +
-            'left:' + rect.left + 'px;top:' + rect.top + 'px;' +
-            'transition:none;';
-        document.body.appendChild(dragEl);
-
-        dragOffsetX = e.clientX - rect.left;
-        dragOffsetY = e.clientY - rect.top;
-
-        // Dim source
-        itemEl.classList.add('drag-source');
-
-        // Highlight valid merge targets
-        highlightTargets(dragItem);
+        boardEl.setPointerCapture && boardEl.releasePointerCapture(e.pointerId);
     }
 
     function onPointerMove(e) {
-        if (!dragEl) return;
-        e.preventDefault();
+        if (!dragFrom || !dragItem) return;
 
+        // Check if we've moved enough to start a drag
+        if (!dragStarted) {
+            var dx = e.clientX - dragStartX;
+            var dy = e.clientY - dragStartY;
+            if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+            dragStarted = true;
+            clearSelection();
+            startDragVisual(e);
+        }
+
+        e.preventDefault();
         dragEl.style.left = (e.clientX - dragOffsetX) + 'px';
         dragEl.style.top = (e.clientY - dragOffsetY) + 'px';
 
         // Highlight cell under pointer
         clearHighlight('drag-over');
-        const target = getCellAtPoint(e.clientX, e.clientY);
+        var target = getCellAtPoint(e.clientX, e.clientY);
         if (target && !(target.row === dragFrom.row && target.col === dragFrom.col)) {
             grid[target.row][target.col].classList.add('drag-over');
         }
     }
 
     function onPointerUp(e) {
-        if (!dragEl) return;
+        if (!dragFrom) return;
         e.preventDefault();
 
-        const target = getCellAtPoint(e.clientX, e.clientY);
-
-        // Cleanup drag visual
-        dragEl.remove();
-        dragEl = null;
-        clearHighlight('drag-over');
-        clearHighlight('valid-target');
-
-        // Restore source visual
-        const srcCell = grid[dragFrom.row][dragFrom.col];
-        const srcItem = srcCell.querySelector('.item');
-        if (srcItem) srcItem.classList.remove('drag-source');
-
-        if (!target || (target.row === dragFrom.row && target.col === dragFrom.col)) {
-            // Dropped on same cell or outside — cancel
+        if (!dragStarted) {
+            // It was a TAP — select the item
+            selectItem(dragFrom.row, dragFrom.col);
             dragItem = null;
             dragFrom = null;
             return;
         }
 
-        const tr = target.row;
-        const tc = target.col;
+        // It was a DRAG — complete it
+        var target = getCellAtPoint(e.clientX, e.clientY);
+
+        // Cleanup drag visual
+        if (dragEl) { dragEl.remove(); dragEl = null; }
+        clearHighlight('drag-over');
+        clearHighlight('valid-target');
+
+        // Restore source visual
+        var srcItem = grid[dragFrom.row][dragFrom.col].querySelector('.item');
+        if (srcItem) srcItem.classList.remove('drag-source');
+
+        if (!target || (target.row === dragFrom.row && target.col === dragFrom.col)) {
+            dragItem = null;
+            dragFrom = null;
+            return;
+        }
+
+        var tr = target.row;
+        var tc = target.col;
 
         if (items[tr][tc] && Items.canMerge(dragItem, items[tr][tc])) {
-            // Merge attempt
             attemptMerge(dragFrom.row, dragFrom.col, tr, tc);
         } else if (!items[tr][tc]) {
-            // Move to empty cell
-            items[tr][tc] = items[dragFrom.row][dragFrom.col];
-            items[dragFrom.row][dragFrom.col] = null;
-            renderCell(dragFrom.row, dragFrom.col);
-            renderCell(tr, tc);
-            // Pop animation on the moved item
-            const movedEl = grid[tr][tc].querySelector('.item');
-            if (movedEl) {
-                movedEl.classList.add('spawn-in');
-                setTimeout(function() { movedEl.classList.remove('spawn-in'); }, 300);
-            }
-            syncToGameState();
+            moveItem(dragFrom.row, dragFrom.col, tr, tc);
         }
-        // else: different item at target — cancel silently
 
         dragItem = null;
         dragFrom = null;
     }
 
+    function startDragVisual(e) {
+        var cell = grid[dragFrom.row][dragFrom.col];
+        var itemEl = cell.querySelector('.item');
+        if (!itemEl) return;
+
+        var rect = itemEl.getBoundingClientRect();
+        dragEl = itemEl.cloneNode(true);
+        dragEl.classList.add('dragging');
+        dragEl.style.cssText = 'position:fixed;z-index:1000;pointer-events:none;' +
+            'width:' + rect.width + 'px;height:' + rect.height + 'px;' +
+            'left:' + rect.left + 'px;top:' + rect.top + 'px;' +
+            'transition:none;opacity:0.85;';
+        document.body.appendChild(dragEl);
+
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+
+        itemEl.classList.add('drag-source');
+        highlightTargets(dragItem, dragFrom.row, dragFrom.col);
+    }
+
+    // ─── TAP SELECTION ────────────────────────────────────────────
+
+    function selectItem(r, c) {
+        clearSelection();
+        if (!items[r][c]) return;
+        selectedPos = { row: r, col: c };
+        grid[r][c].classList.add('selected');
+        highlightTargets(items[r][c], r, c);
+        Sound.playTap();
+    }
+
+    function clearSelection() {
+        if (selectedPos) {
+            grid[selectedPos.row][selectedPos.col].classList.remove('selected');
+        }
+        selectedPos = null;
+        clearHighlight('valid-target');
+    }
+
+    function handleTapWithSelection(r, c) {
+        var sr = selectedPos.row;
+        var sc = selectedPos.col;
+
+        // Tap same cell = deselect
+        if (r === sr && c === sc) {
+            clearSelection();
+            Sound.playTap();
+            return;
+        }
+
+        // Tap matching item = merge
+        if (items[r][c] && Items.canMerge(items[sr][sc], items[r][c])) {
+            clearSelection();
+            attemptMerge(sr, sc, r, c);
+            return;
+        }
+
+        // Tap empty cell = move
+        if (!items[r][c]) {
+            clearSelection();
+            moveItem(sr, sc, r, c);
+            return;
+        }
+
+        // Tap different non-matching item = select that one instead
+        clearSelection();
+        selectItem(r, c);
+    }
+
+    function moveItem(fromR, fromC, toR, toC) {
+        items[toR][toC] = items[fromR][fromC];
+        items[fromR][fromC] = null;
+        renderCell(fromR, fromC);
+        renderCell(toR, toC);
+        var movedEl = grid[toR][toC].querySelector('.item');
+        if (movedEl) {
+            movedEl.classList.add('spawn-in');
+            setTimeout(function() { movedEl.classList.remove('spawn-in'); }, 300);
+        }
+        Sound.playTap();
+        syncToGameState();
+    }
+
+    // ─── SHARED HELPERS ───────────────────────────────────────────
+
     function getCellAtPoint(x, y) {
-        // Use elementFromPoint for efficiency
-        const el = document.elementFromPoint(x, y);
+        var el = document.elementFromPoint(x, y);
         if (!el) return null;
-        const cell = el.closest('.cell');
+        var cell = el.closest('.cell');
         if (!cell || !cell.dataset.row) return null;
         return { row: parseInt(cell.dataset.row), col: parseInt(cell.dataset.col) };
     }
 
-    function highlightTargets(item) {
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                if (r === dragFrom.row && c === dragFrom.col) continue;
+    function highlightTargets(item, skipRow, skipCol) {
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (r === skipRow && c === skipCol) continue;
                 if (items[r][c] && Items.canMerge(item, items[r][c])) {
                     grid[r][c].classList.add('valid-target');
                 }
@@ -194,8 +276,8 @@ const Board = (() => {
     }
 
     function clearHighlight(cls) {
-        const els = boardEl.querySelectorAll('.' + cls);
-        for (let i = 0; i < els.length; i++) {
+        var els = boardEl.querySelectorAll('.' + cls);
+        for (var i = 0; i < els.length; i++) {
             els[i].classList.remove(cls);
         }
     }
