@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0d1b2a">
+    <title>Haven</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Top Bar -->
+        <header id="top-bar">
+            <div id="energy-display">
+                <span class="energy-icon">⚡</span>
+                <span id="energy-count">5</span>/<span id="energy-max">5</span>
+                <span id="energy-timer" class="hidden"></span>
+            </div>
+            <h1 id="game-title">Haven</h1>
+            <div id="gems-display">
+                <span class="gems-icon">💎</span>
+                <span id="gems-count">50</span>
+            </div>
+        </header>
+
+        <!-- Screens -->
+        <main id="screens">
+            <!-- Board Screen -->
+            <div id="board-screen" class="screen active">
+                <div id="board-wrapper">
+                    <div id="board-container">
+                        <canvas id="particle-canvas"></canvas>
+                        <div id="board"></div>
+                    </div>
+                </div>
+
+                <!-- Resource Nodes -->
+                <div id="resource-nodes">
+                    <button class="node" data-chain="wood">
+                        <span class="node-icon">🌲</span>
+                        <span class="node-label">Wood</span>
+                    </button>
+                    <button class="node" data-chain="stone">
+                        <span class="node-icon">⛰️</span>
+                        <span class="node-label">Stone</span>
+                    </button>
+                    <button class="node" data-chain="flora">
+                        <span class="node-icon">🌸</span>
+                        <span class="node-label">Flora</span>
+                    </button>
+                    <button class="node" data-chain="crystal">
+                        <span class="node-icon">💎</span>
+                        <span class="node-label">Crystal</span>
+                    </button>
+                    <button class="node" data-chain="creature">
+                        <span class="node-icon">🥚</span>
+                        <span class="node-label">Egg</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quest Screen (Phase 2) -->
+            <div id="quest-screen" class="screen">
+                <div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-secondary);">
+                    <p>Quests coming soon...</p>
+                </div>
+            </div>
+
+            <!-- Island Screen (Phase 2) -->
+            <div id="island-screen" class="screen">
+                <div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-secondary);">
+                    <p>Island map coming soon...</p>
+                </div>
+            </div>
+
+            <!-- Shop Screen (Phase 3) -->
+            <div id="shop-screen" class="screen">
+                <div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-secondary);">
+                    <p>Shop coming soon...</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav id="bottom-nav">
+            <button class="nav-btn active" data-screen="board">
+                <span class="nav-icon">⬡</span>
+                <span class="nav-label">Board</span>
+            </button>
+            <button class="nav-btn" data-screen="quest">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Quests</span>
+            </button>
+            <button class="nav-btn" data-screen="island">
+                <span class="nav-icon">🏝️</span>
+                <span class="nav-label">Island</span>
+            </button>
+            <button class="nav-btn" data-screen="shop">
+                <span class="nav-icon">🛒</span>
+                <span class="nav-label">Shop</span>
+            </button>
+        </nav>
+
+        <!-- Tutorial Overlay -->
+        <div id="tutorial-overlay" class="hidden">
+            <div class="tutorial-card">
+                <h2>Welcome to Haven!</h2>
+                <p>Tap the resource nodes below to spawn items on the board.</p>
+                <p>Drag matching items together — merge 3 or more to create higher-tier items!</p>
+                <p class="tutorial-hint">5-item merges give bonus items ✨</p>
+                <button id="tutorial-dismiss">Let's Go!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts (order matters: dependencies first) -->
+    <script src="js/items.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/board.js"></script>
+
+    <script>
+    // ─── INITIALIZATION ──────────────────────────────────────
+    (function() {
+        'use strict';
+
+        // Init core systems
+        Game.init();
+        Board.init();
+
+        // Init audio on first user interaction
+        document.addEventListener('pointerdown', function() {
+            Sound.init();
+        }, { once: true });
+
+        // ─── UI BINDINGS ─────────────────────────────────────
+
+        // Energy display
+        Game.on('energyChanged', function(energy) {
+            document.getElementById('energy-count').textContent = energy;
+            document.getElementById('energy-max').textContent = Game.getMaxEnergy();
+        });
+
+        Game.on('energyTimer', function(ms) {
+            var timerEl = document.getElementById('energy-timer');
+            if (ms === null || ms <= 0) {
+                timerEl.classList.add('hidden');
+                return;
+            }
+            var min = Math.floor(ms / 60000);
+            var sec = Math.floor((ms % 60000) / 1000);
+            timerEl.textContent = min + ':' + (sec < 10 ? '0' : '') + sec;
+            timerEl.classList.remove('hidden');
+        });
+
+        // Gems display
+        Game.on('gemsChanged', function(gems) {
+            document.getElementById('gems-count').textContent = gems;
+            // Brief flash animation
+            var el = document.getElementById('gems-display');
+            el.style.transform = 'scale(1.1)';
+            setTimeout(function() { el.style.transform = ''; }, 150);
+        });
+
+        // Set initial values
+        document.getElementById('energy-count').textContent = Game.getEnergy();
+        document.getElementById('energy-max').textContent = Game.getMaxEnergy();
+        document.getElementById('gems-count').textContent = Game.getGems();
+
+        // ─── NAVIGATION ──────────────────────────────────────
+
+        var navBtns = document.querySelectorAll('.nav-btn');
+        for (var i = 0; i < navBtns.length; i++) {
+            navBtns[i].addEventListener('click', function() {
+                var screenName = this.dataset.screen;
+
+                // Update active nav button
+                for (var j = 0; j < navBtns.length; j++) {
+                    navBtns[j].classList.remove('active');
+                }
+                this.classList.add('active');
+
+                // Switch screen
+                var screens = document.querySelectorAll('.screen');
+                for (var k = 0; k < screens.length; k++) {
+                    screens[k].classList.remove('active');
+                }
+                var target = document.getElementById(screenName + '-screen');
+                if (target) target.classList.add('active');
+
+                Sound.playTap();
+            });
+        }
+
+        // ─── TUTORIAL / FIRST PLAY ───────────────────────────
+
+        var state = Game.getState();
+        if (state.firstPlay) {
+            document.getElementById('tutorial-overlay').classList.remove('hidden');
+            document.getElementById('tutorial-dismiss').addEventListener('click', function() {
+                document.getElementById('tutorial-overlay').classList.add('hidden');
+                Sound.init();
+                Sound.playTap();
+                state.firstPlay = false;
+                Game.save();
+
+                // Spawn starter items for a guided first experience
+                Board.spawnStarterItems();
+            });
+        }
+
+        // ─── RANDOM IDLE BOB DELAYS ──────────────────────────
+        // Give each cell a random animation delay for the idle bob
+        var cells = document.querySelectorAll('.cell');
+        for (var c = 0; c < cells.length; c++) {
+            cells[c].style.setProperty('--bob-delay', (Math.random() * 4).toFixed(2) + 's');
+        }
+
+        // ─── RESIZE HANDLER ──────────────────────────────────
+        window.addEventListener('resize', function() {
+            Particles.resize();
+        });
+
+        // Prevent pull-to-refresh on mobile
+        document.body.addEventListener('touchmove', function(e) {
+            if (e.target.closest('#board')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+    })();
+    </script>
+</body>
+</html>
