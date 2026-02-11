@@ -86,6 +86,12 @@ const Achievements = (() => {
         { id: 'lk3', name: 'Born Lucky',          desc: 'Get 50 lucky merges',            icon: '\u{1F340}', category: 'Lucky', type: 'luckyMerges', target: 50,  reward: { gems: 75,  stars: 4 } },
 
         // ── Events (3) ──────────────────────────────────────────────
+        // ── Discovery (3) ──────────────────────────────────────────
+        { id: 'ds1', name: 'Curious Mind',        desc: 'Discover 10 unique items',       icon: '\u{1F50D}', category: 'Discovery', type: 'itemsDiscovered', target: 10,  reward: { gems: 15,  stars: 1 } },
+        { id: 'ds2', name: 'Cataloguer',           desc: 'Discover 30 unique items',       icon: '\u{1F50D}', category: 'Discovery', type: 'itemsDiscovered', target: 30,  reward: { gems: 40,  stars: 3 } },
+        { id: 'ds3', name: 'Encyclopedist',        desc: 'Discover all unique items',      icon: '\u{1F4D6}', category: 'Discovery', type: 'itemsDiscovered', target: 70,  reward: { gems: 100, stars: 5 } },
+
+        // ── Events (3) ──────────────────────────────────────────────
         { id: 'ev1', name: 'Event Rookie',      desc: 'Claim your first event reward',  icon: '\u{1F3AA}', category: 'Events', type: 'eventTiersClaimed', target: 1,   reward: { gems: 15,  stars: 1 } },
         { id: 'ev2', name: 'Event Regular',      desc: 'Claim 10 event rewards',         icon: '\u{1F3AA}', category: 'Events', type: 'eventTiersClaimed', target: 10,  reward: { gems: 50,  stars: 3 } },
         { id: 'ev3', name: 'Event Champion',     desc: 'Claim 25 event rewards',         icon: '\u{1F3AA}', category: 'Events', type: 'eventTiersClaimed', target: 25,  reward: { gems: 100, stars: 5 } },
@@ -121,6 +127,12 @@ const Achievements = (() => {
         Game.on('orderCompleted', onOrderCompleted);
         Game.on('questCompleted', onQuestCompleted);
         Game.on('gemsChanged', onGemsChanged);
+        Game.on('itemDiscovered', function(data) {
+            updateProgress('ds1', data.total);
+            updateProgress('ds2', data.total);
+            updateProgress('ds3', data.total);
+            checkAll();
+        });
         Game.on('surgeActivated', function() {
             Game.updateStat('surgesActivated', function(v) { return (v || 0) + 1; });
             checkAll();
@@ -228,6 +240,13 @@ const Achievements = (() => {
             progress['lk1'] = Math.max(progress['lk1'] || 0, stats.luckyMerges);
             progress['lk2'] = Math.max(progress['lk2'] || 0, stats.luckyMerges);
             progress['lk3'] = Math.max(progress['lk3'] || 0, stats.luckyMerges);
+        }
+
+        // Items discovered
+        if (stats.itemsDiscovered) {
+            progress['ds1'] = Math.max(progress['ds1'] || 0, stats.itemsDiscovered);
+            progress['ds2'] = Math.max(progress['ds2'] || 0, stats.itemsDiscovered);
+            progress['ds3'] = Math.max(progress['ds3'] || 0, stats.itemsDiscovered);
         }
 
         // Event tiers claimed

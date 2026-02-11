@@ -839,6 +839,9 @@ const Board = (() => {
             // Emit event for quest tracking
             Game.emit('itemProduced', { chain: chain, tier: actualTier });
 
+            // Item discovery reward — first time reaching any chain+tier
+            checkItemDiscovery(chain, actualTier);
+
             // Pop animation
             var newEl = grid[targetRow][targetCol].querySelector('.item');
             if (newEl) {
@@ -1359,6 +1362,39 @@ const Board = (() => {
         var px = cellRect.left - boardRect.left + cellRect.width / 2;
         var py = cellRect.top - boardRect.top + cellRect.height / 2;
         Particles.emit(px, py, type, options);
+    }
+
+    // ─── ITEM DISCOVERY REWARDS ──────────────────────────────────
+    // Award gems the first time any chain+tier combo is produced (Travel Town mechanic).
+    // Creates constant micro-dopamine hits: "New Discovery! Mossy Log (Wood Tier 3) +2 gems"
+
+    function checkItemDiscovery(chain, tier) {
+        var state = Game.getState();
+        if (!state.discoveredItems) state.discoveredItems = {};
+        var key = chain + '_' + tier;
+        if (state.discoveredItems[key]) return; // already discovered
+
+        // Mark as discovered
+        state.discoveredItems[key] = Date.now();
+        Game.save();
+
+        // Gem reward scales with tier
+        var gemReward = tier <= 2 ? 1 : (tier <= 5 ? 2 : 3);
+        Game.addGems(gemReward);
+
+        // Get item name for the toast
+        var def = Items.getItemDef(chain, tier);
+        var itemName = def ? def.name : ('Tier ' + tier);
+        var chainName = def ? def.chainName : chain;
+
+        // Show discovery toast + floating text
+        showFloatingText(0, 3, 'NEW! +' + gemReward + ' \u{1F48E}');
+        showToast('\u{1F50D} New Discovery: ' + itemName + ' (' + chainName + ')');
+
+        // Track stat for achievements
+        var totalDiscovered = Object.keys(state.discoveredItems).length;
+        Game.updateStat('itemsDiscovered', totalDiscovered);
+        Game.emit('itemDiscovered', { chain: chain, tier: tier, total: totalDiscovered });
     }
 
     function showFloatingText(row, col, text) {
