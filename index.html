@@ -244,6 +244,12 @@
             document.getElementById('energy-max').textContent = Game.getMaxEnergy();
         });
 
+        Game.on('energyLow', function() {
+            if (typeof Board !== 'undefined' && Board.showToast) {
+                Board.showToast('Energy running low! Merge to keep going.');
+            }
+        });
+
         Game.on('energyTimer', function(ms) {
             var timerEl = document.getElementById('energy-timer');
             if (ms === null || ms <= 0) {

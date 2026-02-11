@@ -36,7 +36,7 @@ var Tutorial = (function() {
             id: 'chain-merge',
             type: 'spotlight',
             target: 'wood-node',
-            instruction: 'Great! Now tap Wood twice to spawn more \u2014 matching neighbors merge automatically!',
+            instruction: 'Great! Tap Wood to spawn items (costs 1 energy each). Matching neighbors merge automatically!',
             position: 'above',
             event: 'mergeCompleted',
             setupFn: 'setupChainMerge'

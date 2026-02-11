@@ -631,6 +631,7 @@ const Board = (() => {
         }
 
         surgeMergeCount = 0;
+        Sound.playSurgeEnd();
         Game.emit('surgeEnded');
     }
 
@@ -711,6 +712,7 @@ const Board = (() => {
             Sound.playError();
 
             // Near-miss: flash matching items elsewhere on the board
+            var nearMissPlayed = false;
             for (var nr = 0; nr < ROWS; nr++) {
                 for (var nc = 0; nc < COLS; nc++) {
                     if (nr === fromRow && nc === fromCol) continue;
@@ -719,10 +721,12 @@ const Board = (() => {
                         if (nmEl) {
                             nmEl.classList.add('near-match-pulse');
                             (function(el) { setTimeout(function() { el.classList.remove('near-match-pulse'); }, 600); })(nmEl);
+                            nearMissPlayed = true;
                         }
                     }
                 }
             }
+            if (nearMissPlayed) Sound.playNearMiss();
         }
     }
 
@@ -1118,9 +1122,32 @@ const Board = (() => {
 
         var empty = getRandomEmptyCell();
         if (!empty) {
-            Sound.playError();
+            Sound.playBoardFull();
             Game.addEnergy(totalCost); // Refund full cost
             showToast('Board is full! Merge some items first.');
+            // Free shuffle safety valve if no merges possible
+            var hasMerge = false;
+            for (var fr = 0; fr < ROWS && !hasMerge; fr++) {
+                for (var fc = 0; fc < COLS && !hasMerge; fc++) {
+                    if (!items[fr][fc]) continue;
+                    var adj = [[fr-1,fc],[fr+1,fc],[fr,fc-1],[fr,fc+1]];
+                    for (var a = 0; a < adj.length; a++) {
+                        var ar = adj[a][0], ac = adj[a][1];
+                        if (ar >= 0 && ar < ROWS && ac >= 0 && ac < COLS && items[ar][ac] &&
+                            items[ar][ac].chain === items[fr][fc].chain && items[ar][ac].tier === items[fr][fc].tier) {
+                            hasMerge = true; break;
+                        }
+                    }
+                }
+            }
+            if (!hasMerge) {
+                showToast('No merges possible! Free shuffle incoming...');
+                setTimeout(function() {
+                    if (typeof PowerUps !== 'undefined' && PowerUps.activateShuffle) {
+                        PowerUps.activateShuffle();
+                    }
+                }, 800);
+            }
             return;
         }
 
@@ -1191,6 +1218,7 @@ const Board = (() => {
                 if (adjEl) {
                     adjEl.classList.add('near-match-pulse');
                     setTimeout(function() { adjEl.classList.remove('near-match-pulse'); }, 600);
+                    Sound.playNearMiss();
                 }
             }
             syncToGameState();

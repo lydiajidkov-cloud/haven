@@ -48,9 +48,9 @@ var PowerUps = (function() {
             name: 'Golden Spawn',
             icon: '\u{1F31F}',
             desc: 'Next 3 spawns guaranteed tier 2-3',
-            cost: 30,
-            earnEvent: 'daily',
-            earnThreshold: 1
+            cost: 50,
+            earnEvent: 'mergeCompleted',
+            earnThreshold: 80
         }
     };
 

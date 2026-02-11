@@ -8,7 +8,7 @@ var Welcome = (function() {
     var AUTO_DISMISS_MS = 10000;            // Auto-dismiss after 10 seconds
     var COUNTUP_DURATION_MS = 1500;         // Animated countup duration
 
-    var WORKER_INCOME = { common: 1, uncommon: 3, rare: 6, legendary: 15 }; // gems per hour (mirror island.js)
+    var WORKER_INCOME = { common: 3, uncommon: 8, rare: 15, legendary: 30 }; // gems per hour (mirror island.js)
 
     var dismissTimer = null;
 

@@ -605,6 +605,30 @@ const Sound = (() => {
         }
     }
 
+    function playNearMiss() {
+        // Quick two-note descending chime — "so close" sigh
+        if (!enabled) return;
+        playTone(600, 0.1, 'triangle', 0.06);
+        playTone(420, 0.15, 'triangle', 0.05, 0.06);
+    }
+
+    function playSurgeEnd() {
+        // Descending 3-note phrase — winding down cue
+        if (!enabled) return;
+        playTone(659, 0.12, 'triangle', 0.08);       // E5
+        playTone(523, 0.12, 'triangle', 0.07, 0.1);   // C5
+        playTone(440, 0.15, 'triangle', 0.06, 0.2);   // A4
+        playNoise(0.06, 0.03, 0.25);                   // low rumble
+    }
+
+    function playBoardFull() {
+        // Deep ominous descending tone — board is stuck
+        if (!enabled) return;
+        playTone(180, 0.2, 'triangle', 0.1);
+        playTone(120, 0.25, 'triangle', 0.08, 0.1);
+        playNoise(0.04, 0.04, 0.15);
+    }
+
     function setEnabled(val) {
         enabled = val;
     }
@@ -635,6 +659,9 @@ const Sound = (() => {
         playAchievement,
         playOrderClaim,
         playStreakMilestone,
+        playNearMiss,
+        playSurgeEnd,
+        playBoardFull,
         setEnabled,
         isEnabled,
         getMergeStreak: function() { return mergeStreak; }

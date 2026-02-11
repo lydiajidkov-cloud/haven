@@ -108,7 +108,7 @@ var Island = (function() {
 
     // ─── WORKERS ─────────────────────────────────────────────────
     var workers = {};  // nodeIndex → { creatureId, lastCollected }
-    var WORKER_INCOME = { common: 1, uncommon: 3, rare: 6, legendary: 15 }; // gems per hour (nerfed for economy balance)
+    var WORKER_INCOME = { common: 3, uncommon: 8, rare: 15, legendary: 30 }; // gems per hour (rebalanced: was too low relative to active play)
     var MAX_OFFLINE_HOURS = 8;
 
     // ─── OLD AREA ID → NODE INDEX MAP (for migration) ────────────
