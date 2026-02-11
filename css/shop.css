@@ -321,6 +321,7 @@
 }
 
 /* ─── DAILY LOGIN ─────────────────────────────────────────── */
+/* Calendar styles are in css/daily.css */
 
 .daily-section {
     margin-bottom: 16px;
@@ -331,93 +332,6 @@
     font-weight: 700;
     color: var(--accent-gold);
     margin-bottom: 8px;
-}
-
-.daily-claim-box {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    background: linear-gradient(135deg, rgba(255,215,0,0.1), var(--bg-medium));
-    border: 1px solid rgba(255,215,0,0.3);
-    border-radius: var(--radius-sm);
-    margin-bottom: 10px;
-}
-
-.daily-claim-reward {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--accent-gold);
-}
-
-.daily-claim-btn {
-    padding: 8px 18px;
-    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
-    color: #1a1a2e;
-    border: none;
-    border-radius: 16px;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    animation: claim-pulse 1s ease-in-out infinite alternate;
-}
-
-.daily-claimed-box {
-    padding: 10px;
-    text-align: center;
-    color: var(--accent-green);
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 10px;
-}
-
-/* Calendar */
-.daily-calendar {
-    display: flex;
-    gap: 4px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-}
-
-.daily-cal-day {
-    flex: 0 0 auto;
-    width: 52px;
-    padding: 6px 4px;
-    background: var(--bg-medium);
-    border: 1px solid rgba(255,255,255,0.05);
-    border-radius: var(--radius-xs);
-    text-align: center;
-    position: relative;
-}
-
-.daily-cal-day.current {
-    border-color: rgba(255,215,0,0.4);
-    background: rgba(255,215,0,0.08);
-}
-
-.daily-cal-day.past {
-    opacity: 0.5;
-}
-
-.cal-day-num {
-    display: block;
-    font-size: 9px;
-    color: var(--text-secondary);
-    margin-bottom: 2px;
-}
-
-.cal-day-reward {
-    display: block;
-    font-size: 10px;
-    color: var(--text-primary);
-}
-
-.cal-check {
-    position: absolute;
-    top: 2px;
-    right: 4px;
-    font-size: 10px;
-    color: var(--accent-green);
 }
 
 /* Daily Quests */

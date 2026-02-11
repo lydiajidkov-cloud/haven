@@ -1,0 +1,924 @@
+/* Haven - Tile Visual Overhaul: Chain Identity + Tier Progression
+ * Pure CSS — no images, SVG, or canvas.
+ * Classes: .item-{chain} for chain identity, .item-tier-{N} for tier styling.
+ * renderCell() should add BOTH classes to each .item element.
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   GENERAL TILE DEPTH & TACTILE FEEL
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Base depth for all items — subtle 3D lift */
+.item {
+    box-shadow:
+        0 2px 4px rgba(0,0,0,0.35),
+        0 4px 8px rgba(0,0,0,0.15),
+        inset 0 1px 2px rgba(255,255,255,0.15),
+        inset 0 -1px 2px rgba(0,0,0,0.2);
+    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+
+/* Hover lift (desktop) */
+@media (hover: hover) {
+    .item:hover {
+        transform: translateY(-1px);
+        box-shadow:
+            0 4px 10px rgba(0,0,0,0.4),
+            0 6px 14px rgba(0,0,0,0.15),
+            inset 0 1px 2px rgba(255,255,255,0.2),
+            inset 0 -1px 2px rgba(0,0,0,0.2);
+    }
+}
+
+/* Active/pressed — tactile press-down */
+.item:active,
+.item.drag-source {
+    transform: translateY(1px) scale(0.95) !important;
+    box-shadow:
+        0 1px 2px rgba(0,0,0,0.4),
+        inset 0 2px 4px rgba(0,0,0,0.25) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAIN: WOOD — warm browns, woodgrain, organic rounded shape
+   ═══════════════════════════════════════════════════════════════ */
+
+.item-wood {
+    border-radius: 10px 12px 10px 12px; /* organic, slightly irregular */
+    border: 1px solid rgba(196, 164, 108, 0.35);
+    /* Subtle woodgrain via repeating-linear-gradient */
+    background-image:
+        repeating-linear-gradient(
+            82deg,
+            transparent,
+            transparent 3px,
+            rgba(139, 105, 20, 0.08) 3px,
+            rgba(139, 105, 20, 0.08) 4px
+        );
+    background-blend-mode: overlay;
+}
+
+.item-wood .item-symbol {
+    color: rgba(255, 248, 220, 0.95);
+    text-shadow: 0 1px 2px rgba(90, 60, 10, 0.6);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAIN: STONE — cool grey/slate, angular, sharp, crack texture
+   ═══════════════════════════════════════════════════════════════ */
+
+.item-stone {
+    border-radius: 4px; /* sharp, angular */
+    border: 1px solid rgba(160, 175, 190, 0.3);
+    /* Subtle crack texture via layered diagonal box-shadows */
+    box-shadow:
+        0 2px 4px rgba(0,0,0,0.35),
+        0 4px 8px rgba(0,0,0,0.15),
+        inset 0 1px 2px rgba(255,255,255,0.12),
+        inset 0 -1px 2px rgba(0,0,0,0.2),
+        inset 3px 3px 6px rgba(0,0,0,0.08),
+        inset -2px -2px 4px rgba(255,255,255,0.04);
+    background-image:
+        linear-gradient(
+            135deg,
+            transparent 40%,
+            rgba(0,0,0,0.04) 41%,
+            rgba(0,0,0,0.04) 42%,
+            transparent 43%
+        ),
+        linear-gradient(
+            -45deg,
+            transparent 60%,
+            rgba(255,255,255,0.03) 61%,
+            rgba(255,255,255,0.03) 62%,
+            transparent 63%
+        );
+    background-blend-mode: overlay;
+}
+
+.item-stone .item-symbol {
+    color: rgba(220, 230, 240, 0.92);
+    text-shadow: 0 1px 2px rgba(30, 40, 55, 0.6);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAIN: FLORA — green-to-pink gradient, soft glow, petal shape
+   ═══════════════════════════════════════════════════════════════ */
+
+.item-flora {
+    border-radius: 14px 6px 14px 6px; /* petal-like, asymmetric */
+    border: 1px solid rgba(136, 200, 100, 0.3);
+    background-image:
+        radial-gradient(
+            ellipse at 30% 20%,
+            rgba(255, 255, 255, 0.08) 0%,
+            transparent 60%
+        );
+    background-blend-mode: overlay;
+}
+
+.item-flora .item-symbol {
+    color: rgba(255, 255, 240, 0.95);
+    text-shadow: 0 1px 3px rgba(50, 100, 30, 0.5);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAIN: CRYSTAL — blue-to-purple, crystalline facets, sparkle
+   ═══════════════════════════════════════════════════════════════ */
+
+.item-crystal {
+    border-radius: 6px 10px 6px 10px; /* crystalline, geometric-ish */
+    border: 1px solid rgba(155, 136, 255, 0.35);
+    /* Multi-facet effect via layered gradients */
+    background-image:
+        linear-gradient(
+            120deg,
+            rgba(255,255,255,0.1) 0%,
+            transparent 30%
+        ),
+        linear-gradient(
+            240deg,
+            rgba(255,255,255,0.06) 0%,
+            transparent 25%
+        ),
+        linear-gradient(
+            0deg,
+            rgba(0,0,0,0.08) 0%,
+            transparent 40%
+        );
+    background-blend-mode: overlay;
+}
+
+.item-crystal .item-symbol {
+    color: rgba(230, 220, 255, 0.97);
+    text-shadow:
+        0 0 4px rgba(155, 136, 255, 0.4),
+        0 1px 2px rgba(40, 20, 80, 0.5);
+}
+
+/* Crystal sparkle — always on, intensity scales with tier */
+.item-crystal::after {
+    content: '';
+    position: absolute;
+    top: 15%;
+    right: 18%;
+    width: 4px;
+    height: 4px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0;
+    animation: crystal-sparkle-subtle 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes crystal-sparkle-subtle {
+    0%, 80%, 100% { opacity: 0; transform: scale(0.5); }
+    85% { opacity: 0.7; transform: scale(1); }
+    90% { opacity: 0; transform: scale(0.5); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CHAIN: CREATURE — warm gold/amber, egg-like oval, inner glow
+   ═══════════════════════════════════════════════════════════════ */
+
+.item-creature {
+    border-radius: 44% 44% 50% 50%; /* egg-like oval */
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    background-image:
+        radial-gradient(
+            ellipse at 40% 30%,
+            rgba(255, 255, 200, 0.12) 0%,
+            transparent 55%
+        );
+    background-blend-mode: overlay;
+}
+
+.item-creature .item-symbol {
+    color: rgba(255, 250, 230, 0.95);
+    text-shadow: 0 1px 3px rgba(120, 80, 0, 0.5);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   HYBRID CHAINS — dual-tone gradients blending parent colors
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Living (Wood + Flora): brown-to-green, organic + leafy */
+.item-living {
+    border-radius: 12px 8px 12px 8px;
+    border: 1px solid rgba(120, 180, 60, 0.35);
+    background-image:
+        linear-gradient(
+            135deg,
+            rgba(160, 132, 92, 0.2) 0%,
+            transparent 40%,
+            rgba(107, 142, 35, 0.2) 100%
+        );
+    background-blend-mode: overlay;
+}
+
+.item-living .item-symbol {
+    color: rgba(230, 255, 210, 0.95);
+    text-shadow: 0 1px 2px rgba(50, 80, 20, 0.5);
+}
+
+/* Arcane (Stone + Crystal): grey-to-purple, mystical + angular */
+.item-arcane {
+    border-radius: 5px 8px 5px 8px;
+    border: 1px solid rgba(128, 128, 192, 0.35);
+    background-image:
+        linear-gradient(
+            135deg,
+            rgba(112, 128, 144, 0.15) 0%,
+            transparent 40%,
+            rgba(123, 104, 238, 0.15) 100%
+        ),
+        linear-gradient(
+            45deg,
+            transparent 45%,
+            rgba(155, 136, 255, 0.05) 50%,
+            transparent 55%
+        );
+    background-blend-mode: overlay;
+}
+
+.item-arcane .item-symbol {
+    color: rgba(210, 200, 255, 0.95);
+    text-shadow:
+        0 0 4px rgba(128, 128, 192, 0.3),
+        0 1px 2px rgba(30, 20, 60, 0.5);
+}
+
+/* Shelter (Wood + Stone): warm brown-to-cool grey, sturdy */
+.item-shelter {
+    border-radius: 6px;
+    border: 1px solid rgba(192, 168, 128, 0.35);
+    background-image:
+        linear-gradient(
+            160deg,
+            rgba(160, 132, 92, 0.15) 0%,
+            transparent 50%,
+            rgba(112, 128, 144, 0.1) 100%
+        );
+    background-blend-mode: overlay;
+}
+
+.item-shelter .item-symbol {
+    color: rgba(255, 245, 225, 0.95);
+    text-shadow: 0 1px 2px rgba(80, 60, 30, 0.5);
+}
+
+/* Mystic (Flora + Crystal): green-to-purple, ethereal + petal */
+.item-mystic {
+    border-radius: 12px 8px 12px 8px;
+    border: 1px solid rgba(200, 140, 220, 0.35);
+    background-image:
+        linear-gradient(
+            135deg,
+            rgba(136, 184, 64, 0.1) 0%,
+            transparent 40%,
+            rgba(200, 140, 220, 0.15) 100%
+        ),
+        radial-gradient(
+            ellipse at 35% 25%,
+            rgba(255, 200, 255, 0.08) 0%,
+            transparent 50%
+        );
+    background-blend-mode: overlay;
+}
+
+.item-mystic .item-symbol {
+    color: rgba(255, 230, 255, 0.95);
+    text-shadow:
+        0 0 3px rgba(200, 140, 220, 0.3),
+        0 1px 2px rgba(60, 20, 60, 0.5);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   TIER PROGRESSION
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- Tier 0-1: Muted, small, no glow --- */
+
+.item-tier-0 {
+    filter: saturate(0.75) brightness(0.9);
+}
+
+.item-tier-0 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.32);
+    opacity: 0.82;
+}
+
+.item-tier-1 {
+    filter: saturate(0.85) brightness(0.95);
+}
+
+.item-tier-1 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.35);
+    opacity: 0.88;
+}
+
+
+/* --- Tier 2-3: Brighter, subtle glow --- */
+
+.item-tier-2 {
+    filter: saturate(1) brightness(1);
+}
+
+.item-tier-2 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.38);
+}
+
+.item-tier-3 {
+    filter: saturate(1.05) brightness(1.02);
+}
+
+.item-tier-3 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.40);
+}
+
+/* Subtle glow for tier 2-3 */
+.item-tier-2,
+.item-tier-3 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 4px 10px rgba(0,0,0,0.12),
+        inset 0 1px 2px rgba(255,255,255,0.18),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+}
+
+/* Chain-specific subtle glow at tier 2-3 */
+.item-wood.item-tier-2,
+.item-wood.item-tier-3 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 8px rgba(196, 164, 108, 0.15),
+        inset 0 1px 2px rgba(255,255,255,0.18),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+}
+
+.item-stone.item-tier-2,
+.item-stone.item-tier-3 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 8px rgba(160, 175, 190, 0.15),
+        inset 0 1px 2px rgba(255,255,255,0.12),
+        inset 0 -1px 2px rgba(0,0,0,0.15),
+        inset 3px 3px 6px rgba(0,0,0,0.06);
+}
+
+.item-flora.item-tier-2,
+.item-flora.item-tier-3 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 8px rgba(136, 200, 100, 0.15),
+        inset 0 1px 2px rgba(255,255,255,0.18),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+}
+
+.item-crystal.item-tier-2,
+.item-crystal.item-tier-3 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 8px rgba(155, 136, 255, 0.15),
+        0 0 4px rgba(100, 140, 220, 0.1),
+        inset 0 1px 2px rgba(255,255,255,0.18),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+}
+
+.item-creature.item-tier-2,
+.item-creature.item-tier-3 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 8px rgba(255, 215, 0, 0.12),
+        inset 0 1px 2px rgba(255,255,255,0.18),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+}
+
+
+/* --- Tier 4-5: Vivid colors, prominent glow, pulse --- */
+
+.item-tier-4 {
+    filter: saturate(1.15) brightness(1.05);
+}
+
+.item-tier-4 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.42);
+}
+
+.item-tier-5 {
+    filter: saturate(1.25) brightness(1.08);
+}
+
+.item-tier-5 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.44);
+}
+
+/* Prominent glow + gentle pulse for tier 4-5 */
+.item-wood.item-tier-4,
+.item-wood.item-tier-5 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 14px rgba(221, 184, 108, 0.35),
+        0 0 28px rgba(221, 184, 108, 0.12),
+        inset 0 1px 3px rgba(255,255,255,0.2),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+    animation: tier-pulse-wood 2.5s ease-in-out infinite;
+}
+
+.item-stone.item-tier-4,
+.item-stone.item-tier-5 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 14px rgba(176, 194, 210, 0.35),
+        0 0 28px rgba(176, 194, 210, 0.12),
+        inset 0 1px 3px rgba(255,255,255,0.15),
+        inset 0 -1px 2px rgba(0,0,0,0.15),
+        inset 3px 3px 6px rgba(0,0,0,0.06);
+    animation: tier-pulse-stone 2.5s ease-in-out infinite;
+}
+
+.item-flora.item-tier-4,
+.item-flora.item-tier-5 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 14px rgba(200, 130, 170, 0.35),
+        0 0 28px rgba(200, 130, 170, 0.12),
+        inset 0 1px 3px rgba(255,255,255,0.2),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+    animation: tier-pulse-flora 2.5s ease-in-out infinite;
+}
+
+.item-crystal.item-tier-4,
+.item-crystal.item-tier-5 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 14px rgba(155, 136, 255, 0.4),
+        0 0 28px rgba(130, 160, 255, 0.15),
+        0 0 6px rgba(200, 180, 255, 0.2),
+        inset 0 1px 3px rgba(255,255,255,0.22),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+    animation: tier-pulse-crystal 2.5s ease-in-out infinite;
+}
+
+.item-creature.item-tier-4,
+.item-creature.item-tier-5 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 14px rgba(255, 180, 60, 0.35),
+        0 0 28px rgba(255, 180, 60, 0.12),
+        inset 0 1px 3px rgba(255,255,255,0.2),
+        inset 0 -1px 2px rgba(0,0,0,0.15);
+    animation: tier-pulse-creature 2.5s ease-in-out infinite;
+}
+
+/* Pulse keyframes per chain for tier 4-5 */
+@keyframes tier-pulse-wood {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(221,184,108,0.3), inset 0 1px 3px rgba(255,255,255,0.2); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(221,184,108,0.45), 0 0 36px rgba(221,184,108,0.15), inset 0 1px 3px rgba(255,255,255,0.25); }
+}
+
+@keyframes tier-pulse-stone {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(176,194,210,0.3), inset 0 1px 3px rgba(255,255,255,0.15); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(176,194,210,0.45), 0 0 36px rgba(176,194,210,0.15), inset 0 1px 3px rgba(255,255,255,0.2); }
+}
+
+@keyframes tier-pulse-flora {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(200,130,170,0.3), inset 0 1px 3px rgba(255,255,255,0.2); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(200,130,170,0.45), 0 0 36px rgba(200,130,170,0.15), inset 0 1px 3px rgba(255,255,255,0.25); }
+}
+
+@keyframes tier-pulse-crystal {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(155,136,255,0.35), 0 0 6px rgba(200,180,255,0.15), inset 0 1px 3px rgba(255,255,255,0.22); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(155,136,255,0.5), 0 0 40px rgba(130,160,255,0.2), 0 0 8px rgba(200,180,255,0.25), inset 0 1px 3px rgba(255,255,255,0.28); }
+}
+
+@keyframes tier-pulse-creature {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(255,180,60,0.3), inset 0 1px 3px rgba(255,255,255,0.2); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(255,180,60,0.45), 0 0 36px rgba(255,180,60,0.15), inset 0 1px 3px rgba(255,255,255,0.25); }
+}
+
+/* Hybrid chains tier 4-5 pulse */
+.item-living.item-tier-4,
+.item-living.item-tier-5 {
+    animation: tier-pulse-living 2.5s ease-in-out infinite;
+}
+
+.item-arcane.item-tier-4,
+.item-arcane.item-tier-5 {
+    animation: tier-pulse-arcane 2.5s ease-in-out infinite;
+}
+
+.item-shelter.item-tier-4,
+.item-shelter.item-tier-5 {
+    animation: tier-pulse-shelter 2.5s ease-in-out infinite;
+}
+
+.item-mystic.item-tier-4,
+.item-mystic.item-tier-5 {
+    animation: tier-pulse-mystic 2.5s ease-in-out infinite;
+}
+
+@keyframes tier-pulse-living {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(120,180,60,0.3); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(120,180,60,0.45), 0 0 36px rgba(120,180,60,0.15); }
+}
+
+@keyframes tier-pulse-arcane {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(128,128,192,0.3); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(128,128,192,0.45), 0 0 36px rgba(128,128,192,0.15); }
+}
+
+@keyframes tier-pulse-shelter {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(192,168,128,0.3); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(192,168,128,0.45), 0 0 36px rgba(192,168,128,0.15); }
+}
+
+@keyframes tier-pulse-mystic {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 14px rgba(200,140,220,0.3); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 22px rgba(200,140,220,0.45), 0 0 36px rgba(200,140,220,0.15); }
+}
+
+
+/* --- Tier 6-7: Full glow halo + shimmer animation --- */
+
+.item-tier-6 {
+    filter: saturate(1.3) brightness(1.1);
+}
+
+.item-tier-6 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.46);
+}
+
+.item-tier-7 {
+    filter: saturate(1.35) brightness(1.15);
+}
+
+.item-tier-7 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.48);
+}
+
+/* Full glow halo — uses ::before as halo element */
+.item-tier-6::before,
+.item-tier-7::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+    opacity: 0.5;
+    z-index: -1;
+    pointer-events: none;
+    animation: halo-shimmer 2s ease-in-out infinite;
+}
+
+/* Chain-specific halo colors */
+.item-wood.item-tier-6::before,
+.item-wood.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(255, 224, 160, 0.4) 0%, transparent 70%);
+}
+
+.item-stone.item-tier-6::before,
+.item-stone.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(200, 216, 232, 0.4) 0%, transparent 70%);
+}
+
+.item-flora.item-tier-6::before,
+.item-flora.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(255, 176, 204, 0.4) 0%, transparent 70%);
+}
+
+.item-crystal.item-tier-6::before,
+.item-crystal.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(180, 160, 255, 0.5) 0%, transparent 70%);
+}
+
+.item-creature.item-tier-6::before,
+.item-creature.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(255, 200, 80, 0.4) 0%, transparent 70%);
+}
+
+.item-living.item-tier-6::before,
+.item-living.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(160, 220, 80, 0.4) 0%, transparent 70%);
+}
+
+.item-arcane.item-tier-6::before,
+.item-arcane.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(160, 150, 220, 0.4) 0%, transparent 70%);
+}
+
+.item-shelter.item-tier-6::before,
+.item-shelter.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(220, 200, 170, 0.4) 0%, transparent 70%);
+}
+
+.item-mystic.item-tier-6::before,
+.item-mystic.item-tier-7::before {
+    background: radial-gradient(ellipse, rgba(230, 180, 255, 0.45) 0%, transparent 70%);
+}
+
+/* Shimmer sweep for tier 6-7 */
+.item-tier-6,
+.item-tier-7 {
+    overflow: hidden;
+    position: relative;
+}
+
+/* Use a pseudo-element shimmer only on tier-6 and tier-7 items that don't have ::after used already */
+/* For crystal, ::after is already used for sparkle, so the shimmer goes on the halo instead */
+
+@keyframes halo-shimmer {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50%      { opacity: 0.65; transform: scale(1.08); }
+}
+
+/* Tier 6-7 box-shadow glows */
+.item-wood.item-tier-6,
+.item-wood.item-tier-7 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 20px rgba(255,224,160,0.4),
+        0 0 40px rgba(255,224,160,0.15),
+        inset 0 1px 3px rgba(255,255,255,0.25);
+    animation: tier-pulse-wood-hi 2s ease-in-out infinite;
+}
+
+.item-stone.item-tier-6,
+.item-stone.item-tier-7 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 20px rgba(200,216,232,0.4),
+        0 0 40px rgba(200,216,232,0.15),
+        inset 0 1px 3px rgba(255,255,255,0.2);
+    animation: tier-pulse-stone-hi 2s ease-in-out infinite;
+}
+
+.item-flora.item-tier-6,
+.item-flora.item-tier-7 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 20px rgba(255,176,204,0.4),
+        0 0 40px rgba(255,176,204,0.15),
+        inset 0 1px 3px rgba(255,255,255,0.25);
+    animation: tier-pulse-flora-hi 2s ease-in-out infinite;
+}
+
+.item-crystal.item-tier-6,
+.item-crystal.item-tier-7 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 20px rgba(180,160,255,0.45),
+        0 0 40px rgba(155,136,255,0.2),
+        0 0 8px rgba(220,200,255,0.25),
+        inset 0 1px 3px rgba(255,255,255,0.25);
+    animation: tier-pulse-crystal-hi 2s ease-in-out infinite;
+}
+
+.item-creature.item-tier-6,
+.item-creature.item-tier-7 {
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.3),
+        0 0 20px rgba(255,200,80,0.4),
+        0 0 40px rgba(255,200,80,0.15),
+        inset 0 1px 3px rgba(255,255,255,0.25);
+    animation: tier-pulse-creature-hi 2s ease-in-out infinite;
+}
+
+@keyframes tier-pulse-wood-hi {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 20px rgba(255,224,160,0.35), inset 0 1px 3px rgba(255,255,255,0.25); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 30px rgba(255,224,160,0.55), 0 0 50px rgba(255,224,160,0.2), inset 0 1px 3px rgba(255,255,255,0.3); }
+}
+
+@keyframes tier-pulse-stone-hi {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 20px rgba(200,216,232,0.35), inset 0 1px 3px rgba(255,255,255,0.2); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 30px rgba(200,216,232,0.55), 0 0 50px rgba(200,216,232,0.2), inset 0 1px 3px rgba(255,255,255,0.25); }
+}
+
+@keyframes tier-pulse-flora-hi {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 20px rgba(255,176,204,0.35), inset 0 1px 3px rgba(255,255,255,0.25); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 30px rgba(255,176,204,0.55), 0 0 50px rgba(255,176,204,0.2), inset 0 1px 3px rgba(255,255,255,0.3); }
+}
+
+@keyframes tier-pulse-crystal-hi {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 20px rgba(180,160,255,0.4), 0 0 8px rgba(220,200,255,0.2), inset 0 1px 3px rgba(255,255,255,0.25); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 32px rgba(180,160,255,0.6), 0 0 50px rgba(155,136,255,0.25), 0 0 10px rgba(220,200,255,0.3), inset 0 1px 3px rgba(255,255,255,0.3); }
+}
+
+@keyframes tier-pulse-creature-hi {
+    0%, 100% { box-shadow: 0 2px 6px rgba(0,0,0,0.3), 0 0 20px rgba(255,200,80,0.35), inset 0 1px 3px rgba(255,255,255,0.25); }
+    50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 30px rgba(255,200,80,0.55), 0 0 50px rgba(255,200,80,0.2), inset 0 1px 3px rgba(255,255,255,0.3); }
+}
+
+
+/* --- Tier 8-9: LEGENDARY — rainbow border + sparkle particles --- */
+
+.item-tier-8 {
+    filter: saturate(1.4) brightness(1.18);
+}
+
+.item-tier-8 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.5);
+}
+
+.item-tier-9 {
+    filter: saturate(1.5) brightness(1.22);
+}
+
+.item-tier-9 .item-symbol {
+    font-size: calc(var(--cell-size) * 0.52);
+}
+
+/* Rainbow animated border */
+.item-tier-8,
+.item-tier-9 {
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    overflow: visible;
+}
+
+/* Rainbow border via ::before */
+.item-tier-8::before,
+.item-tier-9::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+    padding: 2px;
+    background: conic-gradient(
+        from var(--rainbow-angle, 0deg),
+        #ff6b6b, #ffa500, #ffd700, #5cb85c, #4ecdc4, #7b68ee, #c77dff, #ff6b6b
+    );
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    z-index: -1;
+    pointer-events: none;
+    animation: rainbow-rotate 3s linear infinite;
+}
+
+@keyframes rainbow-rotate {
+    to { --rainbow-angle: 360deg; }
+}
+
+/* Fallback for browsers without @property: animate via filter hue-rotate */
+@supports not (background: conic-gradient(from 0deg, red, blue)) {
+    .item-tier-8::before,
+    .item-tier-9::before {
+        background: linear-gradient(90deg, #ff6b6b, #ffd700, #5cb85c, #7b68ee, #ff6b6b);
+        background-size: 200% 100%;
+        animation: rainbow-slide 2s linear infinite;
+    }
+}
+
+@keyframes rainbow-slide {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+/* Register custom property for conic-gradient animation */
+@property --rainbow-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+/* Sparkle particles via multiple ::after box-shadows */
+.item-tier-8::after,
+.item-tier-9::after {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: white;
+    pointer-events: none;
+    z-index: 2;
+    animation: legendary-sparkles 2.5s ease-in-out infinite;
+    box-shadow:
+        8px -8px 0 0 rgba(255,215,0,0.8),
+        -7px 6px 0 0 rgba(200,180,255,0.7),
+        10px 5px 0 0 rgba(255,180,100,0.6),
+        -5px -10px 0 0 rgba(180,230,255,0.7),
+        12px 0px 0 0 rgba(255,150,200,0.6),
+        -10px -3px 0 0 rgba(200,255,180,0.5);
+    top: 20%;
+    left: 25%;
+}
+
+@keyframes legendary-sparkles {
+    0%   { opacity: 0; transform: scale(0.5) rotate(0deg); }
+    20%  { opacity: 1; transform: scale(1) rotate(30deg); }
+    40%  { opacity: 0.3; transform: scale(0.7) rotate(60deg); }
+    60%  { opacity: 1; transform: scale(1.1) rotate(120deg); }
+    80%  { opacity: 0.5; transform: scale(0.8) rotate(200deg); }
+    100% { opacity: 0; transform: scale(0.5) rotate(360deg); }
+}
+
+/* Tier 8-9 enhanced glow (on top of chain glow) */
+.item-tier-8,
+.item-tier-9 {
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.3),
+        0 0 24px rgba(255,215,0,0.3),
+        0 0 48px rgba(200,180,255,0.15),
+        0 0 60px rgba(255,200,100,0.1),
+        inset 0 1px 3px rgba(255,255,255,0.3);
+}
+
+/* Tier 9 gets extra-intense glow */
+.item-tier-9 {
+    box-shadow:
+        0 2px 8px rgba(0,0,0,0.3),
+        0 0 28px rgba(255,215,0,0.4),
+        0 0 56px rgba(200,180,255,0.2),
+        0 0 70px rgba(255,200,100,0.15),
+        0 0 12px rgba(255,255,255,0.15),
+        inset 0 1px 3px rgba(255,255,255,0.35);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CRYSTAL SPARKLE SCALING WITH TIER
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Override crystal sparkle for higher tiers — brighter and faster */
+.item-crystal.item-tier-4::after,
+.item-crystal.item-tier-5::after {
+    animation: crystal-sparkle-medium 2s ease-in-out infinite;
+    width: 5px;
+    height: 5px;
+}
+
+.item-crystal.item-tier-6::after,
+.item-crystal.item-tier-7::after {
+    animation: crystal-sparkle-bright 1.5s ease-in-out infinite;
+    width: 5px;
+    height: 5px;
+    box-shadow:
+        6px -5px 0 0 rgba(255,255,255,0.6),
+        -4px 7px 0 0 rgba(200,180,255,0.5);
+}
+
+/* Tier 8-9 crystal: legendary particles take over ::after, sparkle not needed */
+
+@keyframes crystal-sparkle-medium {
+    0%, 70%, 100% { opacity: 0; transform: scale(0.5); }
+    75% { opacity: 0.9; transform: scale(1.2); }
+    80% { opacity: 0; transform: scale(0.5); }
+}
+
+@keyframes crystal-sparkle-bright {
+    0%, 60%, 100% { opacity: 0; transform: scale(0.5); }
+    65% { opacity: 1; transform: scale(1.3); }
+    72% { opacity: 0; transform: scale(0.5); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MERGE FLASH ENHANCEMENT
+   ═══════════════════════════════════════════════════════════════ */
+
+/* When items merge, add a satisfying white flash overlay */
+.cell.merging::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, transparent 70%);
+    animation: merge-cell-flash 0.35s ease-out forwards;
+    pointer-events: none;
+    z-index: 5;
+}
+
+@keyframes merge-cell-flash {
+    0%   { opacity: 0; transform: scale(0.5); }
+    30%  { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(1.5); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SPAWN-IN ENHANCEMENT (bouncy + glow)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Override the base spawn-in with a more satisfying bounce */
+.item.spawn-in {
+    animation: spawn-bouncy 0.4s cubic-bezier(0.22, 1.5, 0.36, 1) !important;
+}
+
+@keyframes spawn-bouncy {
+    0%   { transform: scale(0) rotate(-15deg); opacity: 0; filter: brightness(2); }
+    40%  { transform: scale(1.2) rotate(4deg); opacity: 1; filter: brightness(1.5); }
+    65%  { transform: scale(0.92) rotate(-1deg); filter: brightness(1.1); }
+    85%  { transform: scale(1.04); filter: brightness(1); }
+    100% { transform: scale(1) rotate(0); filter: brightness(1); }
+}

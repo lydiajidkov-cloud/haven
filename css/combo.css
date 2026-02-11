@@ -1,0 +1,222 @@
+/* Haven - Combo/Streak Visual Feedback */
+
+/* ─── COMBO OVERLAY CONTAINER ──────────────────────────────── */
+
+#combo-overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 15; /* above particles (10), below tutorial (1000) */
+}
+
+/* ─── COMBO COUNTER (top-right of board) ──────────────────── */
+
+#combo-counter {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.3s ease-out;
+    text-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.6),
+        0 0 20px currentColor;
+    font-variant-numeric: tabular-nums;
+    font-family: -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+#combo-counter.visible {
+    opacity: 1;
+}
+
+#combo-counter.combo-punch {
+    animation: combo-punch 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes combo-punch {
+    0%   { transform: scale(1.6); }
+    50%  { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}
+
+/* Fade out when streak ends */
+#combo-counter.combo-fade-out {
+    animation: combo-fade-out 0.8s ease-out forwards;
+}
+
+@keyframes combo-fade-out {
+    0%   { opacity: 1; transform: scale(1); }
+    60%  { opacity: 0.6; transform: scale(0.95); }
+    100% { opacity: 0; transform: scale(0.8) translateY(-8px); }
+}
+
+/* ─── COLOR TIERS ────────────────────────────────────────── */
+
+#combo-counter.combo-white  { color: #ffffff; }
+#combo-counter.combo-yellow { color: #ffd700; }
+#combo-counter.combo-orange { color: #ff8c00; }
+#combo-counter.combo-red    { color: #ff3030; text-shadow: 0 2px 8px rgba(0,0,0,0.6), 0 0 25px rgba(255,48,48,0.6); }
+
+#combo-counter.combo-rainbow {
+    background: linear-gradient(90deg, #ff0000, #ff8000, #ffff00, #00ff00, #0080ff, #8000ff, #ff0080);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: combo-punch 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+               rainbow-shift 1.5s linear infinite;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)) drop-shadow(0 0 12px rgba(255,255,255,0.3));
+}
+
+@keyframes rainbow-shift {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+}
+
+/* ─── STREAK TIMER BAR (depleting arc/bar) ───────────────── */
+
+#streak-timer-bar {
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    width: 60px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+#streak-timer-bar.visible {
+    opacity: 1;
+}
+
+#streak-timer-fill {
+    height: 100%;
+    width: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,215,0,0.8));
+    transform-origin: right center;
+    transition: none; /* JS controls the width directly for smooth depletion */
+}
+
+/* Color the timer bar based on urgency */
+#streak-timer-bar.timer-urgent #streak-timer-fill {
+    background: linear-gradient(90deg, rgba(255,60,60,0.4), rgba(255,60,60,0.9));
+}
+
+/* ─── MILESTONE FLASH TEXT ───────────────────────────────── */
+
+#combo-milestone {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.5);
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+    white-space: nowrap;
+}
+
+#combo-milestone.milestone-show {
+    animation: milestone-flash 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes milestone-flash {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+    15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    30%  { transform: translate(-50%, -50%) scale(0.95); }
+    40%  { transform: translate(-50%, -50%) scale(1); }
+    75%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -55%) scale(1.05); }
+}
+
+/* Milestone at x10+: larger */
+#combo-milestone.milestone-big {
+    font-size: 34px;
+}
+
+/* Milestone at x20+: screen shake handled by board class */
+#combo-milestone.milestone-epic {
+    font-size: 40px;
+}
+
+/* Milestone color classes */
+#combo-milestone.ms-white   { color: #ffffff; }
+#combo-milestone.ms-gold    { color: #ffd700; }
+#combo-milestone.ms-orange  { color: #ff8c00; }
+#combo-milestone.ms-red     { color: #ff3030; }
+
+#combo-milestone.ms-rainbow {
+    background: linear-gradient(90deg, #ff0000, #ff8000, #ffff00, #00ff00, #0080ff, #8000ff, #ff0080);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: milestone-flash 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+               rainbow-shift 1s linear infinite;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6)) drop-shadow(0 0 16px rgba(255,255,255,0.4));
+}
+
+/* ─── EDGE GLOW (for x10+ milestones) ───────────────────── */
+
+#combo-edge-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius, 12px);
+    pointer-events: none;
+    opacity: 0;
+    z-index: 14;
+}
+
+#combo-edge-glow.glow-active {
+    animation: edge-glow-pulse 0.8s ease-out forwards;
+}
+
+@keyframes edge-glow-pulse {
+    0%   { opacity: 0; box-shadow: inset 0 0 30px rgba(255, 215, 0, 0.6); }
+    30%  { opacity: 1; box-shadow: inset 0 0 50px rgba(255, 215, 0, 0.4); }
+    100% { opacity: 0; box-shadow: inset 0 0 20px rgba(255, 215, 0, 0); }
+}
+
+#combo-edge-glow.glow-red {
+    animation: edge-glow-red 0.8s ease-out forwards;
+}
+
+@keyframes edge-glow-red {
+    0%   { opacity: 0; box-shadow: inset 0 0 40px rgba(255, 48, 48, 0.6); }
+    30%  { opacity: 1; box-shadow: inset 0 0 60px rgba(255, 48, 48, 0.4); }
+    100% { opacity: 0; box-shadow: inset 0 0 20px rgba(255, 48, 48, 0); }
+}
+
+/* ─── COMBO SCREEN SHAKE (stronger than normal merge shake) ── */
+
+#board-container.combo-shake {
+    animation: combo-board-shake 0.4s ease-out;
+}
+
+@keyframes combo-board-shake {
+    0%, 100% { transform: translate(0, 0); }
+    10%  { transform: translate(-4px, 3px); }
+    20%  { transform: translate(5px, -2px); }
+    30%  { transform: translate(-5px, -3px); }
+    40%  { transform: translate(4px, 3px); }
+    50%  { transform: translate(-3px, 2px); }
+    60%  { transform: translate(3px, -1px); }
+    70%  { transform: translate(-2px, 1px); }
+    80%  { transform: translate(1px, -1px); }
+}

@@ -12,6 +12,14 @@
     <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/island.css">
     <link rel="stylesheet" href="css/shop.css">
+    <link rel="stylesheet" href="css/tiles.css">
+    <link rel="stylesheet" href="css/tutorial.css">
+    <link rel="stylesheet" href="css/recipes.css">
+    <link rel="stylesheet" href="css/welcome.css">
+    <link rel="stylesheet" href="css/combo.css">
+    <link rel="stylesheet" href="css/daily.css">
+    <link rel="stylesheet" href="css/events.css">
+    <link rel="stylesheet" href="css/achievements.css">
 </head>
 <body>
     <div id="app">
@@ -28,6 +36,7 @@
                     <span class="gems-icon">💎</span>
                     <span id="gems-count">50</span>
                 </div>
+                <button id="achievements-btn" title="Achievements">🏆<span id="achievements-badge" class="hidden">0</span></button>
                 <button id="settings-btn" class="settings-gear" title="Settings">⚙️</button>
             </div>
         </header>
@@ -44,11 +53,18 @@
                     <span id="surge-label"></span>
                 </div>
                 <div id="powerup-bar"></div>
+                <div id="orders-panel"></div>
                 <div id="board-wrapper">
                     <div id="board-container">
                         <canvas id="particle-canvas"></canvas>
                         <div id="board"></div>
                     </div>
+                </div>
+
+                <!-- Companion Bar (2 slots, between board and resource nodes) -->
+                <div id="companion-bar" style="display:none;">
+                    <div class="companion-slot empty" data-slot="slot1"><span class="companion-plus">+</span></div>
+                    <div class="companion-slot empty" data-slot="slot2"><span class="companion-plus">+</span></div>
                 </div>
 
                 <!-- Resource Nodes -->
@@ -177,6 +193,8 @@
     <script src="js/game.js"></script>
     <script src="js/powerups.js"></script>
     <script src="js/board.js"></script>
+    <script src="js/orders.js"></script>
+    <script src="js/combo.js"></script>
     <script src="js/quests.js"></script>
     <script src="js/island.js"></script>
     <script src="js/creatures.js"></script>
@@ -184,6 +202,10 @@
     <script src="js/shop.js"></script>
     <script src="js/pass.js"></script>
     <script src="js/daily.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/achievements.js"></script>
+    <script src="js/recipes.js"></script>
+    <script src="js/welcome.js"></script>
     <script src="js/tutorial.js"></script>
 
     <script>
@@ -195,12 +217,19 @@
         Game.init();
         Board.init();
         PowerUps.init();
+        Orders.init();
         Quests.init();
         Island.init();
         Hatchery.init();
+        Creatures.initCompanions();
         Shop.init();
         Pass.init();
         Daily.init();
+        Combo.init();
+        Events.init();
+        Achievements.init();
+        Recipes.init();
+        Welcome.init();
 
         // Init audio on first user interaction
         document.addEventListener('pointerdown', function() {
@@ -279,13 +308,16 @@
                 var target = document.getElementById(screenName + '-screen');
                 if (target) target.classList.add('active');
 
-                Sound.playTap();
+                Sound.playNavSwitch();
             });
         }
 
         // ─── TUTORIAL / FIRST PLAY ───────────────────────────
 
         Tutorial.start();
+
+        // ─── EXIT HOOK (return retention) ────────────────────
+        Game.initExitHook();
 
         // ─── SHOP TABS ───────────────────────────────────────
         var shopTabs = document.querySelectorAll('.shop-tab');
@@ -297,7 +329,7 @@
                 document.querySelectorAll('.shop-tab-content').forEach(function(c) { c.classList.remove('active'); });
                 var target = document.getElementById('shop-tab-' + tabName);
                 if (target) target.classList.add('active');
-                Sound.playTap();
+                Sound.playNavSwitch();
 
                 // Re-render active tab content
                 if (tabName === 'shop') Shop.renderShop();
@@ -316,7 +348,7 @@
                 document.querySelectorAll('.island-tab-content').forEach(function(c) { c.classList.remove('active'); });
                 var target = document.getElementById('island-tab-' + tabName);
                 if (target) target.classList.add('active');
-                Sound.playTap();
+                Sound.playNavSwitch();
 
                 // Render hatchery when switching to it
                 if (tabName === 'hatchery') {
@@ -334,6 +366,17 @@
             document.getElementById('board-screen').classList.add('active');
             Board.spawnItem(data.chain);
         });
+
+        // ─── COMPANION BAR CLICKS ───────────────────────────
+        var compSlots = document.querySelectorAll('.companion-slot');
+        for (var cs = 0; cs < compSlots.length; cs++) {
+            (function(slotEl) {
+                slotEl.addEventListener('click', function() {
+                    Creatures.showCompanionModal(slotEl.dataset.slot);
+                    Sound.playTap();
+                });
+            })(compSlots[cs]);
+        }
 
         // ─── RANDOM IDLE BOB DELAYS ──────────────────────────
         // Give each cell a random animation delay for the idle bob

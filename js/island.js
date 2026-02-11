@@ -106,6 +106,11 @@ var Island = (function() {
     var unlockedNodes = [];  // array of node indices
     var currentNode = 0;     // highest unlocked + 1 (next to unlock)
 
+    // ─── WORKERS ─────────────────────────────────────────────────
+    var workers = {};  // nodeIndex → { creatureId, lastCollected }
+    var WORKER_INCOME = { common: 1, uncommon: 3, rare: 6, legendary: 15 }; // gems per hour (nerfed for economy balance)
+    var MAX_OFFLINE_HOURS = 8;
+
     // ─── OLD AREA ID → NODE INDEX MAP (for migration) ────────────
     var OLD_AREA_MAP = {
         'coral-shore': 0, 'sandy-beach': 1, 'tide-pools': 2,
@@ -147,6 +152,14 @@ var Island = (function() {
             unlockedNodes = [];
             currentNode = 0;
         }
+
+        // Load workers
+        if (state.island && state.island.workers) {
+            workers = state.island.workers;
+        }
+
+        // Auto-collect worker income on app open
+        collectAllWorkerIncome();
 
         Game.on('starsChanged', function() { renderRoadmap(); });
         Game.on('questCompleted', function() { renderRoadmap(); });
@@ -322,7 +335,14 @@ var Island = (function() {
             if (isUnlocked && node.boss && node.creature) {
                 nodeInner = '<span class="roadmap-node-emoji">' + node.creature.emoji + '</span>';
             } else if (isUnlocked) {
-                nodeInner = '<span class="roadmap-node-emoji">\u2705</span>';
+                // Show worker creature or "+" slot
+                var wk = workers[i];
+                if (wk && typeof Creatures !== 'undefined') {
+                    var wCreature = Creatures.getCreatureById(wk.creatureId);
+                    nodeInner = '<span class="roadmap-node-emoji">' + (wCreature ? wCreature.emoji : '\u2705') + '</span>';
+                } else {
+                    nodeInner = '<span class="roadmap-node-emoji" style="opacity:0.3;font-size:16px;">+</span>';
+                }
             } else if (canUnlock) {
                 nodeInner = '<span class="roadmap-node-emoji">\u{1F513}</span>';
             } else if (isNext) {
@@ -345,7 +365,7 @@ var Island = (function() {
                     if (unlocked && n.boss) {
                         showBossDetail(n);
                     } else if (unlocked) {
-                        // Already unlocked — just show info
+                        showWorkerAssignModal(idx, n);
                     } else if (canUn) {
                         unlockNode(idx);
                     } else if (next) {
@@ -488,7 +508,8 @@ var Island = (function() {
         var state = Game.getState();
         state.island = {
             unlockedNodes: unlockedNodes,
-            currentNode: currentNode
+            currentNode: currentNode,
+            workers: workers
         };
         Game.save();
     }
@@ -505,6 +526,191 @@ var Island = (function() {
         return count;
     }
 
+    // ─── WORKER FUNCTIONS ─────────────────────────────────────────
+
+    function assignWorker(nodeIndex, creatureId) {
+        workers[nodeIndex] = {
+            creatureId: creatureId,
+            lastCollected: Date.now()
+        };
+        saveIslandState();
+        renderRoadmap();
+    }
+
+    function removeWorker(nodeIndex) {
+        delete workers[nodeIndex];
+        saveIslandState();
+        renderRoadmap();
+    }
+
+    function collectAllWorkerIncome() {
+        if (typeof Creatures === 'undefined') return;
+        var now = Date.now();
+        var totalGems = 0;
+        var workerKeys = Object.keys(workers);
+
+        for (var i = 0; i < workerKeys.length; i++) {
+            var nodeIdx = workerKeys[i];
+            var worker = workers[nodeIdx];
+            if (!worker) continue;
+
+            var creature = Creatures.getCreatureById(worker.creatureId);
+            if (!creature) continue;
+
+            var elapsed = Math.min(now - worker.lastCollected, MAX_OFFLINE_HOURS * 3600000);
+            var hours = elapsed / 3600000;
+            var income = Math.floor(hours * (WORKER_INCOME[creature.rarity] || 3));
+
+            if (income > 0) {
+                totalGems += income;
+                workers[nodeIdx].lastCollected = now;
+            }
+        }
+
+        if (totalGems > 0) {
+            Game.addGems(totalGems);
+            Sound.playWorkerCollect();
+            saveIslandState();
+            // Toast notification
+            setTimeout(function() {
+                var toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.textContent = '\u{1F48E} Your workers earned ' + totalGems + ' gems while you were away!';
+                var app = document.getElementById('app');
+                if (app) {
+                    app.appendChild(toast);
+                    setTimeout(function() { toast.classList.add('toast-show'); }, 10);
+                    setTimeout(function() {
+                        toast.classList.remove('toast-show');
+                        setTimeout(function() { toast.remove(); }, 300);
+                    }, 3000);
+                }
+            }, 500);
+        }
+    }
+
+    function getAssignedCreatureIds() {
+        var ids = {};
+        var keys = Object.keys(workers);
+        for (var i = 0; i < keys.length; i++) {
+            if (workers[keys[i]]) {
+                ids[workers[keys[i]].creatureId] = true;
+            }
+        }
+        return ids;
+    }
+
+    function showWorkerAssignModal(nodeIndex, node) {
+        if (typeof Creatures === 'undefined') return;
+
+        var modal = document.getElementById('island-modal');
+        if (!modal) return;
+
+        var currentWorker = workers[nodeIndex];
+        var assignedIds = getAssignedCreatureIds();
+        var state = Game.getState();
+        var discoveredMap = (state.hatchery && state.hatchery.discovered) || {};
+
+        // Build available creature list (discovered, not already assigned as worker or companion)
+        var available = [];
+        for (var i = 0; i < Creatures.creatures.length; i++) {
+            var c = Creatures.creatures[i];
+            if (!discoveredMap[c.id]) continue;
+            if (assignedIds[c.id] && !(currentWorker && currentWorker.creatureId === c.id)) continue;
+            if (Creatures.isCreatureCompanion && Creatures.isCreatureCompanion(c.id)) continue;
+            available.push(c);
+        }
+
+        // Sort by rarity value (legendary first)
+        var rarityOrder = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
+        available.sort(function(a, b) {
+            return (rarityOrder[a.rarity] || 9) - (rarityOrder[b.rarity] || 9);
+        });
+
+        var RARITY_COLORS = {
+            common: '#8a9ab0', uncommon: '#5cb85c', rare: '#7b68ee', legendary: '#ffd700'
+        };
+
+        var html = '<div class="island-modal-card" style="max-height:85vh;">';
+        html += '<h3>\u{1F477} Assign Worker</h3>';
+        html += '<p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">' +
+            node.region.name + ' \u2022 Node ' + (nodeIndex + 1) + '</p>';
+
+        // Current worker
+        if (currentWorker) {
+            var curr = Creatures.getCreatureById(currentWorker.creatureId);
+            if (curr) {
+                var incomeRate = WORKER_INCOME[curr.rarity] || 3;
+                html += '<div style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.2);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">';
+                html += '<span>' + curr.emoji + ' ' + curr.name + ' \u2014 ' + incomeRate + '\u{1F48E}/hr</span>';
+                html += '<button class="worker-remove-btn" style="background:rgba(255,100,100,0.2);color:#ff6b6b;border:1px solid rgba(255,100,100,0.3);border-radius:12px;padding:3px 10px;font-size:11px;cursor:pointer;">Remove</button>';
+                html += '</div>';
+            }
+        }
+
+        // Available list
+        if (available.length === 0) {
+            html += '<p style="text-align:center;color:var(--text-secondary);font-size:12px;padding:20px 0;">No creatures available. Discover more creatures!</p>';
+        } else {
+            html += '<div style="max-height:40vh;overflow-y:auto;">';
+            for (var j = 0; j < available.length; j++) {
+                var ac = available[j];
+                var rate = WORKER_INCOME[ac.rarity] || 3;
+                var rarityLabel = ac.rarity.charAt(0).toUpperCase() + ac.rarity.slice(1);
+                var isCurrent = currentWorker && currentWorker.creatureId === ac.id;
+                html += '<div class="worker-option" data-creature="' + ac.id + '" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer;margin-bottom:4px;' +
+                    'background:' + (isCurrent ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.03)') + ';border:1px solid ' + (isCurrent ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.06)') + ';">';
+                html += '<span style="font-size:24px;">' + ac.emoji + '</span>';
+                html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + ac.name + '</div>';
+                html += '<div style="font-size:10px;color:' + RARITY_COLORS[ac.rarity] + ';">' + rarityLabel + ' \u2022 ' + rate + '\u{1F48E}/hr</div></div>';
+                if (isCurrent) {
+                    html += '<span style="font-size:10px;color:var(--accent-gold);">Assigned</span>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        html += '<button class="modal-close-btn" style="margin-top:12px;">Close</button>';
+        html += '</div>';
+
+        modal.innerHTML = html;
+        modal.classList.remove('hidden');
+        Sound.playTap();
+
+        // Event: close
+        modal.querySelector('.modal-close-btn').addEventListener('click', function() {
+            modal.classList.add('hidden');
+        });
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.classList.add('hidden');
+        });
+
+        // Event: remove worker
+        var removeBtn = modal.querySelector('.worker-remove-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                removeWorker(nodeIndex);
+                modal.classList.add('hidden');
+                Sound.playTap();
+            });
+        }
+
+        // Event: assign worker
+        var options = modal.querySelectorAll('.worker-option');
+        for (var k = 0; k < options.length; k++) {
+            (function(opt) {
+                opt.addEventListener('click', function() {
+                    var creatureId = opt.getAttribute('data-creature');
+                    assignWorker(nodeIndex, creatureId);
+                    modal.classList.add('hidden');
+                    Sound.playWorkerAssign();
+                    Game.vibrate([10, 20, 10]);
+                });
+            })(options[k]);
+        }
+    }
+
     return {
         init: init,
         unlockNode: unlockNode,
@@ -513,6 +719,10 @@ var Island = (function() {
         getCreatureCount: getCreatureCount,
         renderIslandMap: renderRoadmap,
         allNodes: allNodes,
-        REGIONS: REGIONS
+        REGIONS: REGIONS,
+        assignWorker: assignWorker,
+        removeWorker: removeWorker,
+        collectAllWorkerIncome: collectAllWorkerIncome,
+        getAssignedCreatureIds: getAssignedCreatureIds
     };
 })();

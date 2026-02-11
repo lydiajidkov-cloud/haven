@@ -3,7 +3,14 @@
 
 const Pass = (() => {
     const TOTAL_TIERS = 40;
-    const XP_PER_TIER = 100;
+    // Graduated XP curve — fast early tiers, challenging late tiers
+    function xpForTier(tier) {
+        if (tier <= 5) return 60;       // Quick wins for new players
+        if (tier <= 15) return 80;      // Moderate mid-game
+        if (tier <= 30) return 100;     // Standard late
+        return 130;                      // Challenging final stretch
+    }
+    var XP_PER_TIER = 100; // fallback default
 
     // Tier rewards: free and premium track
     function getTierReward(tier) {
@@ -74,10 +81,22 @@ const Pass = (() => {
     }
 
     function addXP(amount) {
+        // Apply creature passive XP bonus
+        if (typeof Creatures !== 'undefined') {
+            var gs = Game.getState();
+            if (gs.hatchery && gs.hatchery.discovered) {
+                var bonuses = Creatures.calculatePassiveBonuses(gs.hatchery.discovered);
+                if (bonuses.xp_bonus > 0) {
+                    amount = Math.round(amount * (1 + bonuses.xp_bonus / 100));
+                }
+            }
+        }
         currentXP += amount;
-        while (currentXP >= XP_PER_TIER && currentTier < TOTAL_TIERS) {
-            currentXP -= XP_PER_TIER;
+        var tierXP = xpForTier(currentTier + 1);
+        while (currentXP >= tierXP && currentTier < TOTAL_TIERS) {
+            currentXP -= tierXP;
             currentTier++;
+            tierXP = xpForTier(currentTier + 1);
         }
         if (currentTier >= TOTAL_TIERS) {
             currentXP = 0;
@@ -151,7 +170,8 @@ const Pass = (() => {
         var container = document.getElementById('pass-content');
         if (!container) return;
 
-        var pct = currentTier >= TOTAL_TIERS ? 100 : Math.round((currentXP / XP_PER_TIER) * 100);
+        var tierXPNeeded = xpForTier(currentTier + 1);
+        var pct = currentTier >= TOTAL_TIERS ? 100 : Math.round((currentXP / tierXPNeeded) * 100);
 
         var html = '';
 
@@ -169,7 +189,7 @@ const Pass = (() => {
         html += '<div class="pass-progress">';
         html += '<span class="pass-tier-label">Tier ' + currentTier + '/' + TOTAL_TIERS + '</span>';
         html += '<div class="pass-xp-bar"><div class="pass-xp-fill" style="width:' + pct + '%"></div></div>';
-        html += '<span class="pass-xp-label">' + currentXP + '/' + XP_PER_TIER + ' XP</span>';
+        html += '<span class="pass-xp-label">' + currentXP + '/' + tierXPNeeded + ' XP</span>';
         html += '</div>';
 
         // Tier list (show current tier ±5)

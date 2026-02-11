@@ -466,6 +466,64 @@ body {
                 inset 0 0 15px rgba(249,115,22,0.08);
 }
 
+/* ─── SURGE "ALMOST" NEAR-MISS PULSE ─────────────────────── */
+
+#surge-bar.surge-almost #surge-fill {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    animation: surge-almost-pulse 0.6s ease-in-out infinite;
+}
+
+@keyframes surge-almost-pulse {
+    0%, 100% { opacity: 0.7; }
+    50%      { opacity: 1; }
+}
+
+#surge-bar.surge-almost #surge-label {
+    color: #fbbf24;
+    animation: surge-almost-text 0.8s ease-in-out infinite;
+}
+
+@keyframes surge-almost-text {
+    0%, 100% { opacity: 0.5; }
+    50%      { opacity: 1; }
+}
+
+/* ─── NEAR-MATCH SPAWN PULSE ─────────────────────────────── */
+
+.near-match-pulse {
+    animation: near-match-glow 0.6s ease-out !important;
+}
+
+@keyframes near-match-glow {
+    0%   { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.6); transform: scale(1); }
+    50%  { box-shadow: 0 0 12px 4px rgba(255, 215, 0, 0.4); transform: scale(1.08); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); transform: scale(1); }
+}
+
+/* ─── ORDER "1 AWAY" NEAR-MISS ───────────────────────────── */
+
+.order-req.req-almost {
+    animation: order-almost-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes order-almost-pulse {
+    0%, 100% { background: rgba(255, 215, 0, 0.03); }
+    50%      { background: rgba(255, 215, 0, 0.12); }
+}
+
+.order-almost-badge {
+    font-size: 9px;
+    color: #fbbf24;
+    font-weight: 700;
+    margin-left: 4px;
+    animation: order-badge-bounce 1s ease-in-out infinite;
+}
+
+@keyframes order-badge-bounce {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-2px); }
+}
+
 /* ─── POWER-UP BAR ───────────────────────────────────────── */
 
 #powerup-bar {
@@ -903,6 +961,195 @@ body {
     .node-icon { font-size: 14px; }
     .node-label { font-size: 8px; }
     .nav-icon { font-size: 16px; }
+}
+
+/* ─── ORDERS PANEL ───────────────────────────────────────── */
+
+#orders-panel {
+    display: flex;
+    gap: 6px;
+    padding: 4px 8px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#orders-panel:empty {
+    display: none;
+}
+
+.order-card {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+
+.order-card:active {
+    transform: scale(0.97);
+}
+
+.order-card.order-active {
+    border-color: rgba(255,215,0,0.5);
+    background: rgba(255,215,0,0.08);
+}
+
+.order-card.order-complete {
+    border-color: rgba(92,184,92,0.4);
+    background: rgba(92,184,92,0.08);
+}
+
+.order-reqs {
+    margin-bottom: 4px;
+}
+
+.order-req {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 1px 0;
+}
+
+.order-req.req-done {
+    color: #5cb85c;
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.order-req-icon {
+    font-size: 12px;
+}
+
+.order-req-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.order-rewards {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+}
+
+.order-gem-reward {
+    color: var(--accent-purple);
+}
+
+.order-star-reward {
+    color: var(--accent-gold);
+}
+
+.order-chain-bonus {
+    color: #88ddaa;
+    font-weight: 600;
+}
+
+.order-claim-btn {
+    display: block;
+    width: 100%;
+    padding: 4px 0;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #5cb85c, #44a844);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.order-claim-btn:active {
+    transform: scale(0.95);
+}
+
+.order-deliver-hint {
+    font-size: 9px;
+    color: rgba(255,255,255,0.25);
+    text-align: center;
+}
+
+.order-active .order-deliver-hint {
+    color: rgba(255,215,0,0.6);
+}
+
+/* Delivery target highlight on board cells */
+.cell.delivery-target {
+    box-shadow: 0 0 0 2px rgba(255,215,0,0.6), 0 0 8px rgba(255,215,0,0.3);
+    animation: delivery-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes delivery-pulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(255,215,0,0.6), 0 0 8px rgba(255,215,0,0.3); }
+    50% { box-shadow: 0 0 0 3px rgba(255,215,0,0.8), 0 0 14px rgba(255,215,0,0.5); }
+}
+
+/* ─── COMPANION BAR ──────────────────────────────────────── */
+
+#companion-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+    flex-shrink: 0;
+}
+
+.companion-slot {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s;
+}
+
+.companion-slot:active {
+    transform: scale(0.92);
+}
+
+.companion-slot.empty {
+    background: rgba(255,255,255,0.05);
+    border: 2px dashed rgba(255,255,255,0.15);
+}
+
+.companion-slot.filled {
+    background: rgba(123,104,238,0.15);
+    border: 2px solid rgba(123,104,238,0.3);
+}
+
+.companion-plus {
+    font-size: 18px;
+    color: rgba(255,255,255,0.2);
+    font-weight: 300;
+}
+
+.companion-emoji {
+    font-size: 22px;
+    z-index: 2;
+    position: relative;
+}
+
+.companion-cooldown {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    width: 44px;
+    height: 44px;
+    z-index: 1;
 }
 
 /* Desktop/wide screens */

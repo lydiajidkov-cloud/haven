@@ -239,3 +239,357 @@ var CreatureData = {
         { id: 'hibernia',    name: 'Hibernia',    species: 'Dream Bear',    emoji: '\u{1F43B}', rarity: 'legendary', biome: 'winter', desc: 'A sleeping bear whose dreams create the winter wonderland.' }
     ]
 };
+
+// ─── CREATURES MODULE ──────────────────────────────────────────────
+// Wraps CreatureData with ability assignments, passive bonuses, and helper functions.
+
+var Creatures = (function() {
+    'use strict';
+
+    var creatures = CreatureData.creatures;
+    var biomes = CreatureData.biomes;
+
+    // Ability distribution cycle (40% gem_bonus, 25% discovery, 20% energy_regen, 10% xp, 5% spawn)
+    var ABILITY_CYCLE = [
+        'gem_bonus', 'discovery_chance', 'gem_bonus', 'energy_regen', 'gem_bonus',
+        'discovery_chance', 'xp_bonus', 'gem_bonus', 'energy_regen', 'discovery_chance',
+        'gem_bonus', 'energy_regen', 'gem_bonus', 'discovery_chance', 'spawn_quality',
+        'gem_bonus', 'energy_regen', 'discovery_chance', 'gem_bonus', 'xp_bonus'
+    ];
+
+    // Per-creature bonus magnitude by rarity
+    var RARITY_BONUS = { common: 0.5, uncommon: 1.5, rare: 3, legendary: 7 };
+
+    // Companion abilities for rare/legendary creatures
+    var RARE_COMPANION_EFFECTS = ['auto_merge', 'free_spawn', 'energy_refund'];
+    var LEGENDARY_COMPANION_EFFECTS = ['upgrade_item', 'double_reward', 'surge_boost'];
+
+    var ABILITY_LABELS = {
+        gem_bonus:        { icon: '\u{1F48E}', label: 'Gem Bonus',      unit: '%' },
+        discovery_chance: { icon: '\u{1F50D}', label: 'Discovery Rate', unit: '%' },
+        energy_regen:     { icon: '\u26A1',     label: 'Energy Regen',   unit: 's' },
+        xp_bonus:         { icon: '\u{1F4CA}', label: 'Pass XP',        unit: '%' },
+        spawn_quality:    { icon: '\u2728',     label: 'Spawn Quality',  unit: '%' }
+    };
+
+    var COMPANION_LABELS = {
+        auto_merge:    { label: 'Auto Merge',    desc: 'Auto-merges a random matching pair',  trigger: 8 },
+        free_spawn:    { label: 'Free Spawn',    desc: 'Spawns a free tier 2 item',           trigger: 8 },
+        energy_refund: { label: 'Energy Refund', desc: 'Refunds 1 energy',                    trigger: 8 },
+        upgrade_item:  { label: 'Upgrade',       desc: 'Upgrades a random item +1 tier',      trigger: 12 },
+        double_reward: { label: 'Double Gems',   desc: 'Next merge gives 2x gems',            trigger: 12 },
+        surge_boost:   { label: 'Surge Boost',   desc: 'Adds +40 to surge meter',             trigger: 12 }
+    };
+
+    // ─── Assign abilities to all creatures on load ──────────────────
+    var rareIdx = 0, legendaryIdx = 0;
+    for (var i = 0; i < creatures.length; i++) {
+        var c = creatures[i];
+        c.ability = ABILITY_CYCLE[i % ABILITY_CYCLE.length];
+        c.abilityValue = RARITY_BONUS[c.rarity];
+
+        if (c.rarity === 'rare') {
+            c.companionAbility = RARE_COMPANION_EFFECTS[rareIdx++ % RARE_COMPANION_EFFECTS.length];
+        } else if (c.rarity === 'legendary') {
+            c.companionAbility = LEGENDARY_COMPANION_EFFECTS[legendaryIdx++ % LEGENDARY_COMPANION_EFFECTS.length];
+        }
+    }
+
+    // ─── Lookup ─────────────────────────────────────────────────────
+    var creatureMap = {};
+    for (var j = 0; j < creatures.length; j++) {
+        creatureMap[creatures[j].id] = creatures[j];
+    }
+
+    function getCreatureById(id) {
+        return creatureMap[id] || null;
+    }
+
+    // ─── Passive Bonuses ────────────────────────────────────────────
+    // Returns cumulative bonuses from all discovered creatures.
+    // gem_bonus/discovery_chance/xp_bonus/spawn_quality = percentage increase
+    // energy_regen = raw points (multiply by 250 to get ms reduction)
+    function calculatePassiveBonuses(discoveredMap) {
+        var bonuses = {
+            gem_bonus: 0,
+            discovery_chance: 0,
+            energy_regen: 0,
+            xp_bonus: 0,
+            spawn_quality: 0
+        };
+        if (!discoveredMap) return bonuses;
+
+        for (var k = 0; k < creatures.length; k++) {
+            var cr = creatures[k];
+            if (discoveredMap[cr.id]) {
+                bonuses[cr.ability] += cr.abilityValue;
+            }
+        }
+        return bonuses;
+    }
+
+    function getAbilityLabel(ability) {
+        return ABILITY_LABELS[ability] || { icon: '', label: ability, unit: '' };
+    }
+
+    function getCompanionLabel(ability) {
+        return COMPANION_LABELS[ability] || { label: ability, desc: '', trigger: 8 };
+    }
+
+    // ─── Format bonus for display ───────────────────────────────────
+    function formatBonus(type, value) {
+        if (type === 'energy_regen') {
+            return '-' + (value * 0.25).toFixed(1) + 's';
+        }
+        return '+' + value.toFixed(1) + '%';
+    }
+
+    // ─── Companion State ────────────────────────────────────────────
+    var companionState = { slot1: null, slot2: null };
+    var doubleRewardActive = false; // flag for double_reward companion effect
+
+    function initCompanions() {
+        var state = Game.getState();
+        if (state.companions) {
+            companionState = state.companions;
+        }
+        if (state.doubleRewardActive) {
+            doubleRewardActive = true;
+        }
+        renderCompanionBar();
+    }
+
+    function saveCompanionState() {
+        var state = Game.getState();
+        state.companions = companionState;
+        state.doubleRewardActive = doubleRewardActive;
+        Game.save();
+    }
+
+    function equipCompanion(slot, creatureId) {
+        companionState[slot] = { creatureId: creatureId, mergeCount: 0 };
+        saveCompanionState();
+        renderCompanionBar();
+    }
+
+    function unequipCompanion(slot) {
+        companionState[slot] = null;
+        saveCompanionState();
+        renderCompanionBar();
+    }
+
+    function getCompanions() {
+        return companionState;
+    }
+
+    function isCreatureCompanion(creatureId) {
+        return (companionState.slot1 && companionState.slot1.creatureId === creatureId) ||
+               (companionState.slot2 && companionState.slot2.creatureId === creatureId);
+    }
+
+    function isDoubleRewardActive() {
+        if (doubleRewardActive) {
+            doubleRewardActive = false;
+            saveCompanionState();
+            return true;
+        }
+        return false;
+    }
+
+    function setDoubleReward() {
+        doubleRewardActive = true;
+        saveCompanionState();
+    }
+
+    // Called by Board after each merge — returns array of triggered effects
+    function onCompanionMerge() {
+        var triggered = [];
+        var slots = ['slot1', 'slot2'];
+
+        for (var s = 0; s < slots.length; s++) {
+            var slot = slots[s];
+            var comp = companionState[slot];
+            if (!comp) continue;
+
+            var creature = getCreatureById(comp.creatureId);
+            if (!creature || !creature.companionAbility) continue;
+
+            var info = COMPANION_LABELS[creature.companionAbility];
+            if (!info) continue;
+
+            comp.mergeCount++;
+
+            if (comp.mergeCount >= info.trigger) {
+                comp.mergeCount = 0;
+                triggered.push({
+                    slot: slot,
+                    effect: creature.companionAbility,
+                    creature: creature
+                });
+            }
+        }
+
+        saveCompanionState();
+        renderCompanionBar();
+        return triggered;
+    }
+
+    function renderCompanionBar() {
+        var bar = document.getElementById('companion-bar');
+        if (!bar) return;
+
+        var hasAny = companionState.slot1 || companionState.slot2;
+        bar.style.display = hasAny ? 'flex' : 'none';
+
+        var slots = ['slot1', 'slot2'];
+        for (var s = 0; s < slots.length; s++) {
+            var slot = slots[s];
+            var slotEl = bar.querySelector('[data-slot="' + slot + '"]');
+            if (!slotEl) continue;
+
+            var comp = companionState[slot];
+            if (comp) {
+                var creature = getCreatureById(comp.creatureId);
+                if (!creature) continue;
+                var info = COMPANION_LABELS[creature.companionAbility] || { trigger: 8 };
+                var pct = Math.min(100, Math.round((comp.mergeCount / info.trigger) * 100));
+                var circum = 2 * Math.PI * 18;
+                var offset = ((100 - pct) / 100) * circum;
+
+                slotEl.innerHTML =
+                    '<span class="companion-emoji">' + creature.emoji + '</span>' +
+                    '<svg class="companion-cooldown" viewBox="0 0 40 40">' +
+                    '<circle cx="20" cy="20" r="18" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>' +
+                    '<circle cx="20" cy="20" r="18" fill="none" ' +
+                    'stroke="' + (pct >= 100 ? '#ffd700' : 'rgba(255,215,0,0.4)') + '" ' +
+                    'stroke-width="2" stroke-linecap="round" ' +
+                    'stroke-dasharray="' + circum.toFixed(1) + '" ' +
+                    'stroke-dashoffset="' + offset.toFixed(1) + '" ' +
+                    'transform="rotate(-90 20 20)"/>' +
+                    '</svg>';
+                slotEl.className = 'companion-slot filled';
+            } else {
+                slotEl.innerHTML = '<span class="companion-plus">+</span>';
+                slotEl.className = 'companion-slot empty';
+            }
+        }
+    }
+
+    function showCompanionModal(slot) {
+        var modal = document.createElement('div');
+        modal.id = 'companion-modal';
+        modal.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;';
+
+        var state = Game.getState();
+        var discoveredMap = (state.hatchery && state.hatchery.discovered) || {};
+        var currentComp = companionState[slot];
+
+        // Get assigned IDs (workers + other companion slot)
+        var workerIds = {};
+        if (typeof Island !== 'undefined' && Island.getAssignedCreatureIds) {
+            workerIds = Island.getAssignedCreatureIds();
+        }
+        var otherSlot = slot === 'slot1' ? 'slot2' : 'slot1';
+        var otherCompId = companionState[otherSlot] ? companionState[otherSlot].creatureId : null;
+
+        // Only rare+ creatures can be companions
+        var available = [];
+        for (var i = 0; i < creatures.length; i++) {
+            var cr = creatures[i];
+            if (!discoveredMap[cr.id]) continue;
+            if (!cr.companionAbility) continue; // only rare/legendary
+            if (workerIds[cr.id]) continue; // not assigned as worker
+            if (otherCompId === cr.id) continue; // not in other slot
+            available.push(cr);
+        }
+
+        var RARITY_COLORS = { common: '#8a9ab0', uncommon: '#5cb85c', rare: '#7b68ee', legendary: '#ffd700' };
+
+        var html = '<div class="island-modal-card" style="max-height:85vh;">';
+        html += '<h3>\u2694\uFE0F Equip Companion</h3>';
+        html += '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:12px;">Only rare & legendary creatures can be companions</p>';
+
+        if (currentComp) {
+            var curr = getCreatureById(currentComp.creatureId);
+            if (curr) {
+                var cl = COMPANION_LABELS[curr.companionAbility] || {};
+                html += '<div style="background:rgba(123,104,238,0.1);border:1px solid rgba(123,104,238,0.2);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">';
+                html += '<span>' + curr.emoji + ' ' + curr.name + ' \u2014 ' + (cl.label || '') + '</span>';
+                html += '<button class="comp-remove-btn" style="background:rgba(255,100,100,0.2);color:#ff6b6b;border:1px solid rgba(255,100,100,0.3);border-radius:12px;padding:3px 10px;font-size:11px;cursor:pointer;">Remove</button>';
+                html += '</div>';
+            }
+        }
+
+        if (available.length === 0) {
+            html += '<p style="text-align:center;color:var(--text-secondary);font-size:12px;padding:20px 0;">No rare/legendary creatures available.</p>';
+        } else {
+            html += '<div style="max-height:40vh;overflow-y:auto;">';
+            for (var j = 0; j < available.length; j++) {
+                var ac = available[j];
+                var cLabel = COMPANION_LABELS[ac.companionAbility] || {};
+                var rarityLabel = ac.rarity.charAt(0).toUpperCase() + ac.rarity.slice(1);
+                var isCurrent = currentComp && currentComp.creatureId === ac.id;
+                html += '<div class="comp-option" data-creature="' + ac.id + '" style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;cursor:pointer;margin-bottom:4px;' +
+                    'background:' + (isCurrent ? 'rgba(123,104,238,0.1)' : 'rgba(255,255,255,0.03)') + ';border:1px solid ' + (isCurrent ? 'rgba(123,104,238,0.2)' : 'rgba(255,255,255,0.06)') + ';">';
+                html += '<span style="font-size:24px;">' + ac.emoji + '</span>';
+                html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + ac.name + '</div>';
+                html += '<div style="font-size:10px;color:' + RARITY_COLORS[ac.rarity] + ';">' + rarityLabel + ' \u2022 ' + (cLabel.label || '') + '</div>';
+                html += '<div style="font-size:9px;color:var(--text-secondary);">' + (cLabel.desc || '') + ' (every ' + (cLabel.trigger || 8) + ' merges)</div></div>';
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        html += '<button class="modal-close-btn" style="margin-top:12px;">Close</button>';
+        html += '</div>';
+
+        modal.innerHTML = html;
+        document.getElementById('app').appendChild(modal);
+
+        // Events
+        modal.querySelector('.modal-close-btn').addEventListener('click', function() { modal.remove(); });
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+
+        var removeBtn = modal.querySelector('.comp-remove-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                unequipCompanion(slot);
+                modal.remove();
+            });
+        }
+
+        var opts = modal.querySelectorAll('.comp-option');
+        for (var k = 0; k < opts.length; k++) {
+            (function(opt) {
+                opt.addEventListener('click', function() {
+                    equipCompanion(slot, opt.getAttribute('data-creature'));
+                    modal.remove();
+                    Sound.playCompanionEquip();
+                });
+            })(opts[k]);
+        }
+    }
+
+    // ─── Public API ─────────────────────────────────────────────────
+    return {
+        getCreatureById: getCreatureById,
+        calculatePassiveBonuses: calculatePassiveBonuses,
+        getAbilityLabel: getAbilityLabel,
+        getCompanionLabel: getCompanionLabel,
+        formatBonus: formatBonus,
+        initCompanions: initCompanions,
+        equipCompanion: equipCompanion,
+        unequipCompanion: unequipCompanion,
+        getCompanions: getCompanions,
+        isCreatureCompanion: isCreatureCompanion,
+        onCompanionMerge: onCompanionMerge,
+        isDoubleRewardActive: isDoubleRewardActive,
+        setDoubleReward: setDoubleReward,
+        renderCompanionBar: renderCompanionBar,
+        showCompanionModal: showCompanionModal,
+        creatures: creatures,
+        biomes: biomes,
+        ABILITY_LABELS: ABILITY_LABELS,
+        COMPANION_LABELS: COMPANION_LABELS
+    };
+})();

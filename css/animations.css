@@ -1,208 +1,912 @@
-/* Haven - Animations, Effects, Transitions */
+/* Haven - Animations, Effects, Transitions
+   ──────────────────────────────────────────────────────────────
+   Performance rules:
+   - Only animate `transform` and `opacity` (GPU-composited)
+   - `filter` used sparingly for glow/brightness (still composited)
+   - `will-change` only on frequently-animated elements
+   - Bounce curve: cubic-bezier(0.34, 1.56, 0.64, 1)
+   - Elastic curve: cubic-bezier(0.22, 1.65, 0.55, 1)
+   ────────────────────────────────────────────────────────────── */
 
-/* ─── MERGE FLASH + SHRINK ────────────────────────────────── */
 
-.cell.merging .item {
-    animation: merge-flash 0.35s ease-out forwards;
-}
-
-@keyframes merge-flash {
-    0%   { filter: brightness(1); transform: scale(1); opacity: 1; }
-    25%  { filter: brightness(2.5); transform: scale(1.15); }
-    60%  { filter: brightness(1.5); transform: scale(0.6); opacity: 0.8; }
-    100% { filter: brightness(0.5); transform: scale(0); opacity: 0; }
-}
-
-/* ─── NEW MERGED ITEM POP ─────────────────────────────────── */
-
-.item.merge-result {
-    animation: merge-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes merge-pop {
-    0%   { transform: scale(0) rotate(-8deg); }
-    55%  { transform: scale(1.2) rotate(2deg); }
-    75%  { transform: scale(0.95); }
-    100% { transform: scale(1) rotate(0); }
-}
-
-/* ─── SPAWN POP ───────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   1. SPAWN-IN — item appears with elastic bounce + rotation wobble
+   ═══════════════════════════════════════════════════════════════ */
 
 .item.spawn-in {
-    animation: spawn-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: spawn-pop 0.38s cubic-bezier(0.22, 1.65, 0.55, 1);
+    will-change: transform, opacity;
 }
 
 @keyframes spawn-pop {
-    0%   { transform: scale(0) rotate(-12deg); opacity: 0; }
-    50%  { transform: scale(1.15) rotate(3deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0); }
+    0% {
+        transform: scale(0) rotate(-15deg);
+        opacity: 0;
+    }
+    40% {
+        transform: scale(1.18) rotate(4deg);
+        opacity: 1;
+    }
+    65% {
+        transform: scale(0.92) rotate(-2deg);
+    }
+    82% {
+        transform: scale(1.05) rotate(1deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
 }
 
-/* ─── SCREEN SHAKE ────────────────────────────────────────── */
 
-.screen-shake {
-    animation: board-shake 0.35s ease-out;
+/* ═══════════════════════════════════════════════════════════════
+   2. MERGING — items consumed: bright pulse → white → shrink to 0
+   ═══════════════════════════════════════════════════════════════ */
+
+.cell.merging .item {
+    animation: merge-flash 0.28s ease-out forwards;
+    will-change: transform, opacity, filter;
 }
 
-@keyframes board-shake {
-    0%, 100% { transform: translate(0, 0); }
-    10%  { transform: translate(-3px, 2px); }
-    20%  { transform: translate(4px, -1px); }
-    30%  { transform: translate(-4px, -2px); }
-    40%  { transform: translate(3px, 2px); }
-    50%  { transform: translate(-2px, 1px); }
-    60%  { transform: translate(2px, -1px); }
-    70%  { transform: translate(-1px, 1px); }
-    80%  { transform: translate(1px, 0); }
+@keyframes merge-flash {
+    0% {
+        filter: brightness(1) saturate(1);
+        transform: scale(1);
+        opacity: 1;
+    }
+    20% {
+        filter: brightness(2.8) saturate(0.3);
+        transform: scale(1.12);
+        opacity: 1;
+    }
+    50% {
+        filter: brightness(2) saturate(0);
+        transform: scale(0.7);
+        opacity: 0.7;
+    }
+    100% {
+        filter: brightness(3) saturate(0);
+        transform: scale(0);
+        opacity: 0;
+    }
 }
 
-/* ─── ENERGY SHAKE (when empty) ───────────────────────────── */
 
-.shake {
-    animation: energy-shake 0.45s ease-out;
+/* ═══════════════════════════════════════════════════════════════
+   3. MERGE-RESULT — new item after merge: dramatic scale + glow burst
+   ═══════════════════════════════════════════════════════════════ */
+
+.item.merge-result {
+    animation: merge-result-pop 0.45s cubic-bezier(0.22, 1.65, 0.55, 1);
+    will-change: transform, filter;
 }
 
-@keyframes energy-shake {
-    0%, 100% { transform: translateX(0); }
-    15%  { transform: translateX(-4px); }
-    30%  { transform: translateX(4px); }
-    45%  { transform: translateX(-3px); }
-    60%  { transform: translateX(3px); }
-    75%  { transform: translateX(-1px); }
-    90%  { transform: translateX(1px); }
+@keyframes merge-result-pop {
+    0% {
+        transform: scale(0) rotate(-10deg);
+        filter: brightness(3) saturate(0.5);
+    }
+    30% {
+        transform: scale(1.32) rotate(3deg);
+        filter: brightness(1.8) saturate(1.3);
+    }
+    50% {
+        transform: scale(0.88) rotate(-1deg);
+        filter: brightness(1.2) saturate(1.1);
+    }
+    70% {
+        transform: scale(1.08) rotate(0.5deg);
+        filter: brightness(1.05);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        filter: brightness(1) saturate(1);
+    }
 }
 
-/* ─── DRAGGING ITEM ───────────────────────────────────────── */
 
-.item.dragging {
-    transform: scale(1.12) !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
-    opacity: 0.92;
-    border-color: rgba(255, 215, 0, 0.4) !important;
+/* ═══════════════════════════════════════════════════════════════
+   4. CHAIN-REACTION — cascade merge: delayed golden flash variant
+   Triggered the same as merge-result but with an extra class when
+   the JS fires a chain reaction. Falls back to merge-result styling
+   if chain-reaction class isn't added — the keyframes here are
+   designed to be distinctive (golden tint + extra overshoot).
+   Since board.js reuses merge-result for chains, we enhance via
+   a CSS selector for depth > 1 chains via the floating-text marker.
+   For now, this uses the same .merge-result trigger but we add a
+   golden tint variant via the surge-active context.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* When merge-result happens during surge (chain reactions often occur in surge) */
+#board.surge-active .item.merge-result {
+    animation: chain-result-pop 0.5s cubic-bezier(0.22, 1.65, 0.55, 1);
 }
 
-/* ─── HIGH TIER GLOW PULSE ────────────────────────────────── */
-
-.item.tier-4 {
-    animation: glow-soft 2.5s ease-in-out infinite;
+@keyframes chain-result-pop {
+    0% {
+        transform: scale(0) rotate(-12deg);
+        filter: brightness(3.5) saturate(0.2);
+    }
+    25% {
+        transform: scale(1.38) rotate(4deg);
+        filter: brightness(2.2) saturate(1.5) hue-rotate(-10deg);
+    }
+    45% {
+        transform: scale(0.85) rotate(-2deg);
+        filter: brightness(1.4) saturate(1.2);
+    }
+    65% {
+        transform: scale(1.12) rotate(1deg);
+        filter: brightness(1.1);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        filter: brightness(1) saturate(1);
+    }
 }
 
-.item.tier-5,
-.item.tier-6 {
-    animation: glow-strong 2s ease-in-out infinite;
-}
 
-@keyframes glow-soft {
-    0%, 100% { filter: brightness(1); }
-    50%      { filter: brightness(1.1); }
-}
+/* ═══════════════════════════════════════════════════════════════
+   5. ITEM-IDLE — gentle slow bob, each cell offset via --bob-delay
+   ═══════════════════════════════════════════════════════════════ */
 
-@keyframes glow-strong {
-    0%, 100% { filter: brightness(1); }
-    50%      { filter: brightness(1.2); }
-}
-
-/* ─── RESOURCE NODE PULSE ─────────────────────────────────── */
-
-.node {
-    animation: node-breathe 3s ease-in-out infinite;
-}
-
-@keyframes node-breathe {
-    0%, 100% { border-color: var(--bg-light); }
-    50%      { border-color: rgba(255, 215, 0, 0.2); }
-}
-
-/* ─── VALID TARGET GLOW ───────────────────────────────────── */
-
-.cell.valid-target {
-    animation: target-pulse 0.7s ease-in-out infinite alternate;
-}
-
-@keyframes target-pulse {
-    0%   { background: rgba(255, 215, 0, 0.1); box-shadow: inset 0 0 6px rgba(255, 215, 0, 0.15); }
-    100% { background: rgba(255, 215, 0, 0.22); box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.3); }
-}
-
-/* ─── FLOATING TEXT ───────────────────────────────────────── */
-
-@keyframes float-up {
-    0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
-    70%  { opacity: 1; }
-    100% { opacity: 0; transform: translateX(-50%) translateY(-60px); }
-}
-
-/* ─── IDLE ITEM BOB (subtle) ──────────────────────────────── */
-
-.cell:not(.merging) .item:not(.drag-source):not(.spawn-in):not(.merge-result) {
-    animation: idle-bob 4s ease-in-out infinite;
+.cell:not(.merging) .item:not(.drag-source):not(.spawn-in):not(.merge-result):not(.item-dissolve):not(.upgrade-pop):not(.sort-slide):not(.shuffle-spin) {
+    animation: idle-bob 3.8s ease-in-out infinite;
     animation-delay: var(--bob-delay, 0s);
 }
 
 @keyframes idle-bob {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-1px); }
+    0%, 100% {
+        transform: translateY(0);
+    }
+    35% {
+        transform: translateY(-1.5px);
+    }
+    65% {
+        transform: translateY(0.5px);
+    }
 }
 
-/* ─── POWER-UP ANIMATIONS ────────────────────────────────── */
 
-/* Activation flash on the whole board */
+/* ═══════════════════════════════════════════════════════════════
+   6. ITEM-SELECTED — cell glow pulse + slight lift
+   ═══════════════════════════════════════════════════════════════ */
+
+.cell.selected .item {
+    animation: selected-pulse 0.9s ease-in-out infinite alternate;
+    will-change: transform;
+}
+
+@keyframes selected-pulse {
+    0% {
+        transform: translateY(0) scale(1);
+        filter: brightness(1);
+    }
+    100% {
+        transform: translateY(-2px) scale(1.03);
+        filter: brightness(1.15);
+    }
+}
+
+/* Enhanced selected cell glow (supplements style.css .cell.selected) */
+.cell.selected {
+    animation: selected-cell-glow 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes selected-cell-glow {
+    0% {
+        box-shadow: 0 0 0 2px var(--accent-gold),
+                    inset 0 0 8px rgba(255, 215, 0, 0.2);
+    }
+    100% {
+        box-shadow: 0 0 0 2px var(--accent-gold),
+                    0 0 12px rgba(255, 215, 0, 0.3),
+                    inset 0 0 12px rgba(255, 215, 0, 0.3);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   7. DRAG-GHOST — dragged item: semi-transparent, enlarged, shadow
+   ═══════════════════════════════════════════════════════════════ */
+
+.item.dragging {
+    transform: scale(1.15) !important;
+    opacity: 0.88 !important;
+    filter: brightness(1.1) drop-shadow(0 8px 20px rgba(0, 0, 0, 0.6));
+    border-color: rgba(255, 215, 0, 0.45) !important;
+    transition: transform 0.08s ease-out, opacity 0.08s !important;
+}
+
+/* Source cell fades back */
+.item.drag-source {
+    opacity: 0.2;
+    transform: scale(0.85);
+    transition: opacity 0.12s, transform 0.12s;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   8 & 9. SCREEN TRANSITIONS — enter from right, exit to left
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Screen enter: slide from right */
+.screen.screen-enter {
+    animation: screen-slide-in 0.2s ease-out both;
+}
+
+@keyframes screen-slide-in {
+    0% {
+        transform: translateX(60px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Screen exit: slide to left */
+.screen.screen-exit {
+    animation: screen-slide-out 0.2s ease-out both;
+}
+
+@keyframes screen-slide-out {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(-60px);
+        opacity: 0;
+    }
+}
+
+/* The active screen gets a subtle fade-in for nav switches */
+.screen.active {
+    animation: screen-fade-in 0.18s ease-out;
+}
+
+@keyframes screen-fade-in {
+    0% {
+        opacity: 0.6;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   10 & 11. MODAL OPEN/CLOSE — fade backdrop + scale card
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Settings modal and island modal open */
+#settings-modal:not(.hidden),
+#island-modal:not(.hidden) {
+    animation: modal-backdrop-in 0.2s ease-out;
+}
+
+@keyframes modal-backdrop-in {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Modal card scale-in */
+#settings-modal:not(.hidden) .settings-card,
+#island-modal:not(.hidden) > div {
+    animation: modal-card-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modal-card-in {
+    0% {
+        transform: scale(0.88);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Tutorial cards also get the scale-in */
+.tut-card {
+    animation: modal-card-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   12. BUTTON-PRESS — quick scale 0.95 on all interactive buttons
+   ═══════════════════════════════════════════════════════════════ */
+
+.nav-btn,
+.node,
+.powerup-btn,
+.order-card,
+.order-claim-btn,
+.tut-btn,
+.settings-close-btn,
+.settings-reset-btn,
+.shop-tab,
+.island-tab,
+.companion-slot {
+    transition: transform 0.1s ease-out;
+}
+
+.nav-btn:active,
+.node:active,
+.powerup-btn:active,
+.order-card:active,
+.order-claim-btn:active,
+.tut-btn:active,
+.settings-close-btn:active,
+.settings-reset-btn:active,
+.shop-tab:active,
+.island-tab:active,
+.companion-slot:active {
+    transform: scale(0.95);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   13. GEM-FLASH — gem counter pulses gold when gems change
+   The JS sets inline transform; we enhance with a transition
+   ═══════════════════════════════════════════════════════════════ */
+
+#gems-display {
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s ease-out;
+}
+
+/* When JS sets transform: scale(1.1), the transition handles the bounce.
+   We also add a gold flash via box-shadow that fades naturally. */
+#gems-display[style*="scale"] {
+    box-shadow: 0 0 12px rgba(155, 136, 255, 0.5),
+                inset 0 0 6px rgba(155, 136, 255, 0.2);
+}
+
+/* Class-based variant for explicit gem flash */
+#gems-display.gem-flash {
+    animation: gem-counter-flash 0.4s ease-out;
+}
+
+@keyframes gem-counter-flash {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(155, 136, 255, 0);
+    }
+    30% {
+        transform: scale(1.12);
+        box-shadow: 0 0 16px rgba(155, 136, 255, 0.6),
+                    inset 0 0 8px rgba(155, 136, 255, 0.3);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(155, 136, 255, 0);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   14. ENERGY-FLASH — energy counter pulses green when changed
+   ═══════════════════════════════════════════════════════════════ */
+
+#energy-display {
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s ease-out;
+}
+
+#energy-display.energy-flash {
+    animation: energy-counter-flash 0.4s ease-out;
+}
+
+@keyframes energy-counter-flash {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+    }
+    30% {
+        transform: scale(1.12);
+        box-shadow: 0 0 16px rgba(255, 215, 0, 0.5),
+                    inset 0 0 8px rgba(255, 215, 0, 0.25);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(255, 215, 0, 0);
+    }
+}
+
+/* Energy shake (when empty) — snappier version */
+.shake {
+    animation: energy-shake 0.4s ease-out;
+}
+
+@keyframes energy-shake {
+    0%, 100% { transform: translateX(0); }
+    12%  { transform: translateX(-5px); }
+    25%  { transform: translateX(5px); }
+    37%  { transform: translateX(-4px); }
+    50%  { transform: translateX(4px); }
+    62%  { transform: translateX(-2px); }
+    75%  { transform: translateX(2px); }
+    87%  { transform: translateX(-1px); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   15 & 16. TOAST ENTER/EXIT — slide up from bottom with fade
+   ═══════════════════════════════════════════════════════════════ */
+
+.toast {
+    transition: opacity 0.25s ease-out, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toast.toast-show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Toast entrance from bottom (alternative position at bottom) */
+.toast.toast-bottom {
+    top: auto;
+    bottom: 80px;
+    transform: translateX(-50%) translateY(20px);
+}
+
+.toast.toast-bottom.toast-show {
+    transform: translateX(-50%) translateY(0);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   17. SURGE-ACTIVE — board glows with animated pulsing border
+   ═══════════════════════════════════════════════════════════════ */
+
+#board.surge-active {
+    animation: surge-board-glow 0.8s ease-in-out infinite alternate;
+    will-change: box-shadow;
+}
+
+@keyframes surge-board-glow {
+    0% {
+        box-shadow: 0 0 15px rgba(249, 115, 22, 0.2),
+                    0 0 30px rgba(249, 115, 22, 0.08),
+                    inset 0 0 10px rgba(249, 115, 22, 0.06),
+                    0 4px 24px rgba(0, 0, 0, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    100% {
+        box-shadow: 0 0 25px rgba(255, 180, 50, 0.35),
+                    0 0 50px rgba(249, 115, 22, 0.15),
+                    inset 0 0 18px rgba(249, 115, 22, 0.1),
+                    0 4px 24px rgba(0, 0, 0, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   18. SCREEN-SHAKE — translate-based shake for high-tier merges
+   ═══════════════════════════════════════════════════════════════ */
+
+.screen-shake {
+    animation: board-shake 0.32s ease-out;
+}
+
+@keyframes board-shake {
+    0%, 100% { transform: translate(0, 0); }
+    8%   { transform: translate(-4px, 2px); }
+    16%  { transform: translate(5px, -2px); }
+    24%  { transform: translate(-5px, -1px); }
+    32%  { transform: translate(4px, 3px); }
+    40%  { transform: translate(-3px, 1px); }
+    50%  { transform: translate(3px, -1px); }
+    60%  { transform: translate(-2px, 2px); }
+    72%  { transform: translate(2px, -1px); }
+    84%  { transform: translate(-1px, 0); }
+    92%  { transform: translate(1px, 0); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   19. DELIVERY-TARGET — cells matching order: golden glow pulse
+   ═══════════════════════════════════════════════════════════════ */
+
+.cell.delivery-target {
+    animation: delivery-glow-pulse 0.7s ease-in-out infinite alternate;
+    will-change: box-shadow;
+}
+
+@keyframes delivery-glow-pulse {
+    0% {
+        box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.5),
+                    0 0 6px rgba(255, 215, 0, 0.2),
+                    inset 0 0 4px rgba(255, 215, 0, 0.1);
+    }
+    100% {
+        box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.8),
+                    0 0 16px rgba(255, 215, 0, 0.4),
+                    inset 0 0 10px rgba(255, 215, 0, 0.2);
+    }
+}
+
+/* Delivery target item gets a gentle bounce to draw attention */
+.cell.delivery-target .item {
+    animation: delivery-item-bounce 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes delivery-item-bounce {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(1.04) translateY(-1px);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   HIGH TIER GLOW PULSE — polished breathing glow on high items
+   ═══════════════════════════════════════════════════════════════ */
+
+.item.tier-4 {
+    animation: glow-soft 2.8s ease-in-out infinite alternate;
+}
+
+.item.tier-5,
+.item.tier-6 {
+    animation: glow-strong 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow-soft {
+    0% {
+        filter: brightness(1) saturate(1);
+    }
+    100% {
+        filter: brightness(1.12) saturate(1.05);
+    }
+}
+
+@keyframes glow-strong {
+    0% {
+        filter: brightness(1) saturate(1);
+    }
+    100% {
+        filter: brightness(1.22) saturate(1.1);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   RESOURCE NODE PULSE — subtle breathing border
+   ═══════════════════════════════════════════════════════════════ */
+
+.node {
+    animation: node-breathe 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes node-breathe {
+    0% {
+        border-color: var(--bg-light);
+    }
+    100% {
+        border-color: rgba(255, 215, 0, 0.22);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   VALID TARGET GLOW — pulsing highlight on merge targets
+   ═══════════════════════════════════════════════════════════════ */
+
+.cell.valid-target {
+    animation: target-pulse 0.65s ease-in-out infinite alternate;
+}
+
+@keyframes target-pulse {
+    0% {
+        background: rgba(255, 215, 0, 0.08);
+        box-shadow: inset 0 0 5px rgba(255, 215, 0, 0.12);
+    }
+    100% {
+        background: rgba(255, 215, 0, 0.22);
+        box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.28),
+                    0 0 6px rgba(255, 215, 0, 0.12);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   FLOATING TEXT — float up and fade out
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes float-up {
+    0% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
+    15% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-8px) scale(1.05);
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-65px) scale(0.9);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   POWER-UP ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Board activation flash */
 .powerup-activate {
-    animation: powerup-flash 0.4s ease-out;
+    animation: powerup-flash 0.35s ease-out;
 }
 
 @keyframes powerup-flash {
     0%   { filter: brightness(1); }
-    30%  { filter: brightness(1.8); }
+    25%  { filter: brightness(1.6); }
     100% { filter: brightness(1); }
 }
 
-/* Item dissolve (Lightning: scale-to-0 + fade) */
+/* Item dissolve (Lightning clear) */
 .item-dissolve {
-    animation: item-dissolve 0.4s ease-out forwards;
+    animation: item-dissolve 0.35s ease-out forwards;
 }
 
 @keyframes item-dissolve {
-    0%   { transform: scale(1); opacity: 1; filter: brightness(1); }
-    30%  { transform: scale(1.1); opacity: 0.9; filter: brightness(2); }
-    100% { transform: scale(0); opacity: 0; filter: brightness(0.5); }
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        filter: brightness(1);
+    }
+    25% {
+        transform: scale(1.12);
+        opacity: 0.9;
+        filter: brightness(2.5);
+    }
+    100% {
+        transform: scale(0) rotate(15deg);
+        opacity: 0;
+        filter: brightness(0.5);
+    }
 }
 
-/* Wand sparkle (gold box-shadow pulse) */
+/* Wand sparkle (gold box-shadow pulse on active power-up button) */
 @keyframes wand-sparkle {
-    0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.3); }
-    50%      { box-shadow: 0 0 16px rgba(255,215,0,0.7), 0 0 24px rgba(255,215,0,0.3); }
+    0%, 100% {
+        box-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 16px rgba(255, 215, 0, 0.7),
+                    0 0 28px rgba(255, 215, 0, 0.25);
+    }
 }
 
-/* Sort sweep: items sliding into position */
+/* Sort sweep: items sliding into position with polish */
 .sort-slide {
-    animation: sort-slide-in 0.3s ease-out;
+    animation: sort-slide-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes sort-slide-in {
-    0%   { transform: scale(0.6); opacity: 0; }
-    60%  { transform: scale(1.05); opacity: 1; }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(0.5) translateY(4px);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.06) translateY(-1px);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+    }
 }
 
-/* Shuffle spin */
+/* Shuffle spin — full rotation with bounce */
 .shuffle-spin {
-    animation: shuffle-spin 0.35s ease-out;
+    animation: shuffle-spin 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes shuffle-spin {
-    0%   { transform: rotate(0deg) scale(0.8); opacity: 0.5; }
-    50%  { transform: rotate(180deg) scale(1.1); opacity: 1; }
-    100% { transform: rotate(360deg) scale(1); }
+    0% {
+        transform: rotate(0deg) scale(0.75);
+        opacity: 0.4;
+    }
+    50% {
+        transform: rotate(200deg) scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
 }
 
-/* Upgrade pop (gold tint) */
+/* Upgrade pop (gold tint burst) */
 .upgrade-pop {
-    animation: upgrade-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: upgrade-pop 0.45s cubic-bezier(0.22, 1.65, 0.55, 1);
 }
 
 @keyframes upgrade-pop {
-    0%   { transform: scale(0.5); filter: brightness(2.5) saturate(0); }
-    50%  { transform: scale(1.3); filter: brightness(1.5) saturate(1.2); }
-    100% { transform: scale(1); filter: brightness(1) saturate(1); }
+    0% {
+        transform: scale(0.4);
+        filter: brightness(3) saturate(0);
+    }
+    35% {
+        transform: scale(1.35);
+        filter: brightness(1.8) saturate(1.3);
+    }
+    60% {
+        transform: scale(0.92);
+        filter: brightness(1.15) saturate(1.05);
+    }
+    100% {
+        transform: scale(1);
+        filter: brightness(1) saturate(1);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SWIPE-ACTIVE — cells in swipe chain get a quick highlight
+   ═══════════════════════════════════════════════════════════════ */
+
+.cell.swipe-active {
+    animation: swipe-cell-pop 0.15s ease-out;
+}
+
+@keyframes swipe-cell-pop {
+    0% {
+        transform: scale(0.95);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   GOLDEN NODE GLOW — golden glow on resource nodes (Golden Spawn)
+   ═══════════════════════════════════════════════════════════════ */
+
+.node.golden-glow {
+    border-color: var(--accent-gold) !important;
+    animation: golden-node-pulse 1s ease-in-out infinite alternate !important;
+}
+
+@keyframes golden-node-pulse {
+    0% {
+        box-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6),
+                    0 0 8px rgba(255, 215, 0, 0.3);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   BOARD HINT PULSE — gentle attention-drawing
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes hint-pulse {
+    0%   { opacity: 0.65; }
+    100% { opacity: 1; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   SURGE BAR FLOW — animated gradient during surge
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes surge-flow {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   TUTORIAL ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Tutorial pulse glow */
+@keyframes tut-pulse {
+    0% {
+        box-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.7),
+                    0 0 36px rgba(255, 215, 0, 0.3);
+    }
+}
+
+/* Tutorial tooltip pop */
+@keyframes tut-tooltip-pop {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(8px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+/* Tutorial story card entrance */
+.tut-story-enter {
+    animation: tut-story-slide-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes tut-story-slide-in {
+    0% {
+        transform: translateY(20px) scale(0.95);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   DRAG-OVER CELL — subtle scale when hovering during drag
+   ═══════════════════════════════════════════════════════════════ */
+
+.cell.drag-over {
+    animation: drag-over-pulse 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes drag-over-pulse {
+    0% {
+        box-shadow: inset 0 0 8px rgba(255, 215, 0, 0.2);
+    }
+    100% {
+        box-shadow: inset 0 0 14px rgba(255, 215, 0, 0.35);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   RECIPE TARGET — purple glow for cross-chain merge targets
+   ═══════════════════════════════════════════════════════════════ */
+
+.cell.recipe-target {
+    animation: recipe-target-pulse 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes recipe-target-pulse {
+    0% {
+        box-shadow: 0 0 0 1px rgba(180, 100, 255, 0.3),
+                    inset 0 0 4px rgba(180, 100, 255, 0.1);
+    }
+    100% {
+        box-shadow: 0 0 0 1px rgba(180, 100, 255, 0.5),
+                    0 0 8px rgba(180, 100, 255, 0.2),
+                    inset 0 0 8px rgba(180, 100, 255, 0.2);
+    }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   REDUCED MOTION — respect user preferences
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

@@ -43,15 +43,15 @@ const Shop = (() => {
           } },
 
         // Biome Eggs
-        { id: 'egg_meadow',    name: 'Meadow Egg',     desc: 'Discover a Meadow creature',    price: 80,   icon: '\u{1F33E}', category: 'biome_eggs',
+        { id: 'egg_meadow',    name: 'Meadow Egg',     desc: 'Discover a Meadow creature',    price: 250,  icon: '\u{1F33E}', category: 'biome_eggs',
           action: function() { discoverBiomeCreature('meadow'); } },
-        { id: 'egg_forest',    name: 'Forest Egg',     desc: 'Discover a Forest creature',    price: 80,   icon: '\u{1F332}', category: 'biome_eggs',
+        { id: 'egg_forest',    name: 'Forest Egg',     desc: 'Discover a Forest creature',    price: 250,  icon: '\u{1F332}', category: 'biome_eggs',
           action: function() { discoverBiomeCreature('forest'); } },
-        { id: 'egg_ocean',     name: 'Ocean Egg',      desc: 'Discover an Ocean creature',    price: 100,  icon: '\u{1F30A}', category: 'biome_eggs',
+        { id: 'egg_ocean',     name: 'Ocean Egg',      desc: 'Discover an Ocean creature',    price: 350,  icon: '\u{1F30A}', category: 'biome_eggs',
           action: function() { discoverBiomeCreature('ocean'); } },
-        { id: 'egg_enchanted', name: 'Enchanted Egg',  desc: 'Discover an Enchanted creature', price: 200, icon: '\u2728', category: 'biome_eggs',
+        { id: 'egg_enchanted', name: 'Enchanted Egg',  desc: 'Discover an Enchanted creature', price: 600, icon: '\u2728', category: 'biome_eggs',
           action: function() { discoverBiomeCreature('enchanted'); } },
-        { id: 'egg_celestial', name: 'Celestial Egg',  desc: 'Discover a Celestial creature',  price: 300, icon: '\u{1F4AB}', category: 'biome_eggs',
+        { id: 'egg_celestial', name: 'Celestial Egg',  desc: 'Discover a Celestial creature',  price: 900, icon: '\u{1F4AB}', category: 'biome_eggs',
           action: function() { discoverBiomeCreature('celestial'); } },
 
         // Gem bundles (simulated IAP)
@@ -106,7 +106,7 @@ const Shop = (() => {
             }
             Game.addGems(-item.price);
             if (item.action) item.action();
-            Sound.playCelebration();
+            Sound.playPurchase();
             showShopToast(item.name + ' purchased!');
         } else {
             // Simulated real money purchase
@@ -123,7 +123,7 @@ const Shop = (() => {
             if (item.gems) {
                 Game.addGems(item.gems);
             }
-            Sound.playCelebration();
+            Sound.playPurchase();
             Game.vibrate([15, 30, 15]);
             showShopToast(item.name + ' — ' + (item.gems || 0) + ' gems added!');
         }
@@ -144,7 +144,7 @@ const Shop = (() => {
             state.shop = state.shop || {};
             state.shop.starterBought = true;
             Game.save();
-            Sound.playCelebration();
+            Sound.playPurchase();
             showShopToast('Starter Pack activated!');
             renderShop();
         }
@@ -158,7 +158,7 @@ const Shop = (() => {
         var confirmed = confirm('DEMO: Unlock piggy bank with ' + piggyGems + ' gems for $2.99?\n(This is a prototype — no real charge)');
         if (confirmed) {
             Game.addGems(piggyGems);
-            Sound.playCelebration();
+            Sound.playPurchase();
             showShopToast(piggyGems + ' gems collected from piggy bank!');
             piggyGems = 0;
             saveShopState();
@@ -200,7 +200,7 @@ const Shop = (() => {
         Game.save();
         Game.emit('creatureDiscovered', { creature: picked.id, rarity: picked.rarity, biome: picked.biome });
         showShopToast(picked.emoji + ' Discovered ' + picked.name + '!');
-        Sound.playCelebration();
+        Sound.playCreatureDiscover();
     }
 
     function spawnEgg(tier) {

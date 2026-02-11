@@ -1,0 +1,295 @@
+/* Haven - 7-Day Login Calendar Styles */
+
+/* ─── STREAK BANNER ──────────────────────────────────────── */
+
+.cal-streak-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, rgba(255, 99, 71, 0.12), rgba(255, 165, 0, 0.10));
+    border: 1px solid rgba(255, 140, 0, 0.25);
+    border-radius: var(--radius-sm);
+}
+
+.cal-streak-fire {
+    font-size: 18px;
+    animation: streak-fire-bounce 1s ease-in-out infinite alternate;
+}
+
+@keyframes streak-fire-bounce {
+    0%   { transform: scale(1) translateY(0); }
+    100% { transform: scale(1.15) translateY(-2px); }
+}
+
+.cal-streak-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    letter-spacing: 0.3px;
+}
+
+/* ─── CALENDAR SECTION ───────────────────────────────────── */
+
+.cal-section {
+    margin-bottom: 16px;
+}
+
+.cal-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    margin-bottom: 10px;
+}
+
+/* ─── 7-BOX CALENDAR GRID ───────────────────────────────── */
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.cal-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 2px 8px;
+    background: var(--bg-medium);
+    border: 1.5px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-xs);
+    position: relative;
+    text-align: center;
+    min-height: 80px;
+    transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+
+/* ── Day number label ── */
+
+.cal-box-day {
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+}
+
+/* ── Reward icon (large emoji) ── */
+
+.cal-box-icon {
+    font-size: 16px;
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+
+/* ── Reward label text ── */
+
+.cal-box-label {
+    font-size: 8px;
+    color: var(--text-secondary);
+    line-height: 1.2;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+/* ─── BOX STATES ─────────────────────────────────────────── */
+
+/* Past (claimed) */
+.cal-box-past {
+    opacity: 0.55;
+    background: rgba(92, 184, 92, 0.06);
+    border-color: rgba(92, 184, 92, 0.2);
+}
+
+.cal-box-past .cal-box-icon {
+    filter: grayscale(0.3);
+}
+
+/* Checkmark overlay for claimed days */
+.cal-box-check {
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--accent-green);
+    text-shadow: 0 0 4px rgba(92, 184, 92, 0.5);
+}
+
+/* Current (claimable) */
+.cal-box-current {
+    border-color: rgba(255, 215, 0, 0.5);
+    background: linear-gradient(145deg, rgba(255, 215, 0, 0.12), rgba(255, 165, 0, 0.06));
+    animation: cal-current-glow 1.5s ease-in-out infinite alternate;
+    z-index: 1;
+    transform: scale(1.04);
+}
+
+@keyframes cal-current-glow {
+    0%   { box-shadow: 0 0 6px rgba(255, 215, 0, 0.2), inset 0 0 4px rgba(255, 215, 0, 0.05); }
+    100% { box-shadow: 0 0 14px rgba(255, 215, 0, 0.4), inset 0 0 8px rgba(255, 215, 0, 0.1); }
+}
+
+.cal-box-current .cal-box-day {
+    color: var(--accent-gold);
+}
+
+.cal-box-current .cal-box-label {
+    color: var(--text-primary);
+}
+
+/* Future (locked) */
+.cal-box-future {
+    opacity: 0.45;
+}
+
+.cal-box-future .cal-box-icon {
+    filter: grayscale(0.5) brightness(0.8);
+}
+
+/* Lock icon */
+.cal-box-lock {
+    font-size: 10px;
+    margin-top: 2px;
+    opacity: 0.4;
+}
+
+/* ─── JACKPOT DAY (Day 7) ───────────────────────────────── */
+
+.cal-box-jackpot {
+    border-color: rgba(123, 104, 238, 0.3);
+}
+
+.cal-box-jackpot .cal-box-day {
+    color: var(--accent-purple);
+    font-size: 7px;
+}
+
+.cal-box-jackpot.cal-box-current {
+    border-color: rgba(255, 215, 0, 0.5);
+    background: linear-gradient(145deg, rgba(255, 215, 0, 0.15), rgba(123, 104, 238, 0.1));
+    animation: cal-jackpot-glow 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes cal-jackpot-glow {
+    0%   { box-shadow: 0 0 8px rgba(255, 215, 0, 0.3), 0 0 16px rgba(123, 104, 238, 0.15); }
+    100% { box-shadow: 0 0 16px rgba(255, 215, 0, 0.5), 0 0 24px rgba(123, 104, 238, 0.25); }
+}
+
+/* Jackpot when still future/locked gets a subtle purple hint */
+.cal-box-jackpot.cal-box-future {
+    opacity: 0.55;
+    border-color: rgba(123, 104, 238, 0.2);
+    background: linear-gradient(145deg, rgba(123, 104, 238, 0.04), var(--bg-medium));
+}
+
+/* ─── CLAIM BUTTON ───────────────────────────────────────── */
+
+.cal-claim-btn {
+    margin-top: 3px;
+    padding: 3px 6px;
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    animation: claim-btn-pulse 1s ease-in-out infinite alternate;
+    white-space: nowrap;
+}
+
+@keyframes claim-btn-pulse {
+    0%   { transform: scale(1); box-shadow: 0 0 4px rgba(255, 215, 0, 0.3); }
+    100% { transform: scale(1.06); box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+}
+
+.cal-claim-btn:active {
+    transform: scale(0.92) !important;
+}
+
+/* ─── CLAIM ANIMATION ────────────────────────────────────── */
+
+.cal-box-claimed-anim {
+    animation: cal-box-burst 0.6s ease-out forwards !important;
+}
+
+@keyframes cal-box-burst {
+    0%   { transform: scale(1.04); }
+    30%  { transform: scale(1.25); border-color: rgba(255, 215, 0, 0.8); box-shadow: 0 0 24px rgba(255, 215, 0, 0.6); }
+    60%  { transform: scale(0.95); }
+    100% { transform: scale(1); opacity: 0.55; border-color: rgba(92, 184, 92, 0.2); }
+}
+
+/* Flying reward particle */
+.cal-reward-fly {
+    position: absolute;
+    font-size: 22px;
+    z-index: 200;
+    pointer-events: none;
+    animation: cal-fly-up 0.8s ease-in forwards;
+}
+
+@keyframes cal-fly-up {
+    0%   {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+    }
+    40%  {
+        opacity: 1;
+        transform: translate(calc(var(--fly-x, 0px) * 0.3), -30px) scale(1.3);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--fly-x, 0px), var(--fly-y, -80px)) scale(0.4);
+    }
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+
+/* Slightly larger boxes on wider screens */
+@media (min-width: 380px) {
+    .cal-box {
+        min-height: 88px;
+        padding: 7px 3px 10px;
+    }
+    .cal-box-icon {
+        font-size: 18px;
+    }
+    .cal-box-label {
+        font-size: 9px;
+    }
+    .cal-claim-btn {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+}
+
+/* Very narrow screens - ensure grid doesn't overflow */
+@media (max-width: 320px) {
+    .cal-grid {
+        gap: 2px;
+    }
+    .cal-box {
+        min-height: 70px;
+        padding: 4px 1px 6px;
+    }
+    .cal-box-day {
+        font-size: 7px;
+    }
+    .cal-box-icon {
+        font-size: 14px;
+    }
+    .cal-box-label {
+        font-size: 7px;
+    }
+    .cal-claim-btn {
+        font-size: 8px;
+        padding: 2px 4px;
+    }
+}

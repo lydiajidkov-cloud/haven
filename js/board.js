@@ -17,12 +17,12 @@ const Board = (() => {
     var surgeActive = false;
     var surgeDecayTimer = null;
     var surgeMergeCount = 0;      // merges during current surge
-    var SURGE_ACTIVATE = 40;      // level to activate
-    var SURGE_DEACTIVATE = 10;    // level to deactivate
-    var SURGE_PER_MERGE = 30;     // added per merge
-    var SURGE_DECAY_RATE = 12;    // lost per second
-    var SURGE_ANIM_FAST = 180;    // ms merge animation during surge
-    var SURGE_ANIM_NORMAL = 320;  // ms merge animation normally
+    var SURGE_ACTIVATE = 30;      // level to activate (was 40 — easier to trigger)
+    var SURGE_DEACTIVATE = 5;     // level to deactivate (was 10 — stays active longer)
+    var SURGE_PER_MERGE = 35;     // added per merge (was 30 — one merge nearly triggers)
+    var SURGE_DECAY_RATE = 8;     // lost per second (was 12 — wider window)
+    var SURGE_ANIM_FAST = 140;    // ms merge animation during surge (was 180)
+    var SURGE_ANIM_NORMAL = 250;  // ms merge animation normally (was 320)
 
     // Tutorial overrides
     var forcedSpawnTier = null;
@@ -156,6 +156,20 @@ const Board = (() => {
         if (isCellLocked(r, c)) return;
 
         e.preventDefault();
+
+        // Order delivery mode: intercept tap to deliver items
+        if (typeof Orders !== 'undefined' && Orders.getDeliveryMode()) {
+            if (items[r][c] && Orders.canDeliverItem(items[r][c])) {
+                Orders.deliverItem(items[r][c]);
+                items[r][c] = null;
+                renderCell(r, c);
+                emitParticlesAtCell(r, c, 'spawn', { color: '#ffd700' });
+                syncToGameState();
+            } else {
+                Orders.exitDeliveryMode();
+            }
+            return;
+        }
 
         // Power-up target mode: intercept tap for Upgrade Wand
         if (typeof PowerUps !== 'undefined' && PowerUps.getActivePowerUp()) {
@@ -590,7 +604,9 @@ const Board = (() => {
         surgeActive = true;
         surgeMergeCount = 0;
         boardEl.classList.add('surge-active');
-        Game.vibrate([10, 20, 10]);
+        Game.vibrate([15, 30, 20, 30, 15]);
+        Sound.playCelebration();
+        showToast('\u26A1 SURGE MODE!');
         Game.emit('surgeActivated');
     }
 
@@ -601,7 +617,7 @@ const Board = (() => {
 
         // End-of-surge bonus
         if (surgeMergeCount >= 3) {
-            var bonus = surgeMergeCount * 2;
+            var bonus = Math.floor(surgeMergeCount * 1.5) + 2;
             Game.addGems(bonus);
             showFloatingText(3, 2, 'Surge! +' + bonus + ' \u{1F48E}');
             showToast('\u26A1 Surge ended! ' + surgeMergeCount + ' merges \u2192 +' + bonus + ' gems');
@@ -639,12 +655,19 @@ const Board = (() => {
 
         if (surgeActive) {
             bar.classList.add('surge-on');
+            bar.classList.remove('surge-almost');
             if (label) label.textContent = 'SURGE!';
+        } else if (!surgeActive && surgeLevel >= SURGE_ACTIVATE * 0.7) {
+            bar.classList.remove('surge-on');
+            bar.classList.add('surge-almost');
+            if (label) label.textContent = 'Almost...';
         } else if (surgeLevel > 0) {
             bar.classList.remove('surge-on');
+            bar.classList.remove('surge-almost');
             if (label) label.textContent = '';
         } else {
             bar.classList.remove('surge-on');
+            bar.classList.remove('surge-almost');
             if (label) label.textContent = '';
         }
 
@@ -768,14 +791,24 @@ const Board = (() => {
                 return;
             }
 
+            // Critical merge: 4% chance of +2 tier jump
+            var actualTier = nextTier;
+            if (Math.random() < 0.04 && Items.hasNextTier(chain, nextTier)) {
+                actualTier = nextTier + 1;
+                showFloatingText(targetRow, targetCol, '\u2728 CRITICAL!');
+                Sound.playCelebration();
+                Game.vibrate([20, 40, 30, 40, 20]);
+                emitParticlesAtCell(targetRow, targetCol, 'legendary');
+            }
+
             // Create merged item at target
-            var newItem = Items.createItem(chain, nextTier);
+            var newItem = Items.createItem(chain, actualTier);
             items[targetRow][targetCol] = newItem;
             unlockCell(targetRow, targetCol);
             renderCell(targetRow, targetCol);
 
             // Emit event for quest tracking
-            Game.emit('itemProduced', { chain: chain, tier: nextTier });
+            Game.emit('itemProduced', { chain: chain, tier: actualTier });
 
             // Pop animation
             var newEl = grid[targetRow][targetCol].querySelector('.item');
@@ -820,10 +853,38 @@ const Board = (() => {
                 setTimeout(function() { boardEl.classList.remove('screen-shake'); }, 250);
             }
 
-            // Gem rewards for high tiers
-            if (nextTier >= 4) {
-                Game.addGems(nextTier - 3);
-                showFloatingText(targetRow, targetCol, '+' + (nextTier - 3) + ' \u{1F48E}');
+            // Gem rewards — exponential scaling, starts at tier 3
+            if (nextTier >= 3) {
+                var gemReward = Math.max(1, Math.floor(Math.pow(1.8, nextTier - 3)));
+                // Random multiplier — variable ratio reinforcement
+                var roll = Math.random();
+                var gemMultiplier = 1;
+                if (roll < 0.05) { gemMultiplier = 3; }
+                else if (roll < 0.20) { gemMultiplier = 2; }
+                if (gemMultiplier > 1) {
+                    gemReward *= gemMultiplier;
+                }
+                // Companion double reward check
+                if (typeof Creatures !== 'undefined' && Creatures.isDoubleRewardActive()) {
+                    gemReward *= 2;
+                }
+                // Show appropriate floating text
+                if (gemMultiplier > 1) {
+                    showFloatingText(targetRow, targetCol, gemMultiplier + 'x BONUS! +' + gemReward + ' \u{1F48E}');
+                    Sound.playCelebration();
+                } else {
+                    showFloatingText(targetRow, targetCol, '+' + gemReward + ' \u{1F48E}');
+                }
+                Game.addGems(gemReward);
+            }
+
+            // Trigger companion effects
+            if (typeof Creatures !== 'undefined' && Creatures.onCompanionMerge) {
+                var companionTriggers = Creatures.onCompanionMerge();
+                for (var ct = 0; ct < companionTriggers.length; ct++) {
+                    executeCompanionEffect(companionTriggers[ct]);
+                    Sound.playCompanionTrigger();
+                }
             }
 
             // Check chain reactions after a short delay
@@ -844,8 +905,8 @@ const Board = (() => {
 
         var connected = findConnected(row, col, item.chain, item.tier);
         if (connected.length >= MIN_MERGE) {
-            // Chain reaction bonus — escalating rewards!
-            var chainGems = depth * 5;
+            // Chain reaction bonus — exponential scaling for jackpot feel!
+            var chainGems = Math.floor(depth * depth * 2);
             var chainEnergy = Math.min(depth, 3);
             Game.addGems(chainGems);
             Game.addEnergy(chainEnergy);
@@ -855,6 +916,11 @@ const Board = (() => {
             Sound.playChain(depth);
             Game.updateStat('chainRecord', function(v) { return Math.max(v || 0, depth); });
             executeMerge(connected, item.chain, item.tier, row, col, connected.length);
+        } else if (connected.length === MIN_MERGE - 1) {
+            // Near-miss! One more match would have chained
+            showFloatingText(row, col, 'Almost chain...');
+            Game.vibrate([5]);
+            syncToGameState();
         } else {
             syncToGameState();
         }
@@ -961,6 +1027,19 @@ const Board = (() => {
             PowerUps.consumeGoldenSpawn();
         } else {
             item = Items.spawnRandomItem(chain);
+            // Apply spawn quality bonus — chance to upgrade tier
+            if (typeof Creatures !== 'undefined') {
+                var gs = Game.getState();
+                if (gs.hatchery && gs.hatchery.discovered) {
+                    var bonuses = Creatures.calculatePassiveBonuses(gs.hatchery.discovered);
+                    if (bonuses.spawn_quality > 0 && Math.random() * 100 < bonuses.spawn_quality) {
+                        var mTier = Items.getMaxTier(chain);
+                        if (item.tier < mTier) {
+                            item.tier++;
+                        }
+                    }
+                }
+            }
         }
         items[empty.row][empty.col] = item;
         renderCell(empty.row, empty.col);
@@ -973,6 +1052,7 @@ const Board = (() => {
         }
 
         Sound.playSpawn();
+        Game.vibrate([5]); // Tiny tap on every spawn — no dead interactions
         var def = Items.getItemDef(chain, item.tier);
         emitParticlesAtCell(empty.row, empty.col, 'spawn', {
             color: def ? def.glow : '#FFD700'
@@ -995,18 +1075,41 @@ const Board = (() => {
                 executeMerge(connected, item.chain, item.tier, empty.row, empty.col, connected.length);
             }, 400);
         } else {
+            // Near-miss: spawned item is adjacent to exactly 1 matching item
+            var nearMatch = findConnected(empty.row, empty.col, item.chain, item.tier);
+            if (nearMatch.length === 1) {
+                var adjCell = grid[nearMatch[0].row][nearMatch[0].col];
+                var adjEl = adjCell ? adjCell.querySelector('.item') : null;
+                if (adjEl) {
+                    adjEl.classList.add('near-match-pulse');
+                    setTimeout(function() { adjEl.classList.remove('near-match-pulse'); }, 600);
+                }
+            }
             syncToGameState();
         }
     }
 
-    // First play: place a few starter items
+    // First play: place starter items designed for the tutorial flow
+    // Layout is carefully designed so that:
+    // 1. Two wood twigs are obviously adjacent (row 3) -- first merge target
+    // 2. A third wood twig is adjacent to where the merge result lands (row 4)
+    //    so spawning one more wood item creates a chain reaction
+    // 3. Flora pair is visible but separate -- breadcrumb for freeplay step
+    // 4. A stone pebble sits alone -- shows variety exists
     function spawnStarterItems() {
         var starters = [
+            // Two twigs side by side -- the FIRST merge (obvious pair)
             { chain: 'wood', tier: 0, row: 3, col: 2 },
             { chain: 'wood', tier: 0, row: 3, col: 3 },
+            // Third twig below -- after merging the pair above, this twig + result
+            // will be adjacent, setting up a chain when another wood is spawned
             { chain: 'wood', tier: 0, row: 4, col: 3 },
+            // Another twig nearby -- ensures chain reaction happens after first merge
+            { chain: 'wood', tier: 0, row: 4, col: 2 },
+            // Flora pair -- visible reward for exploring the freeplay step
             { chain: 'flora', tier: 0, row: 5, col: 1 },
             { chain: 'flora', tier: 0, row: 5, col: 2 },
+            // Lone stone -- shows variety, not yet mergeable (curiosity hook)
             { chain: 'stone', tier: 0, row: 2, col: 4 }
         ];
 
@@ -1044,7 +1147,7 @@ const Board = (() => {
         if (!def) return;
 
         var el = document.createElement('div');
-        el.className = 'item ' + item.chain + ' tier-' + item.tier;
+        el.className = 'item ' + item.chain + ' tier-' + item.tier + ' item-' + item.chain + ' item-tier-' + item.tier;
         el.style.background = 'radial-gradient(circle at 35% 35%, ' + def.bg[0] + ', ' + def.bg[1] + ')';
 
         if (item.tier >= 4) {
@@ -1247,9 +1350,8 @@ const Board = (() => {
         boardEl.classList.add('powerup-activate');
         setTimeout(function() { boardEl.classList.remove('powerup-activate'); }, 400);
 
-        // After placing, scan for auto-merges
+        // Sort organizes — player still merges manually (strategic depth)
         setTimeout(function() {
-            scanForAutoMerges();
             syncToGameState();
         }, cellIdx * 15 + 200);
     }
@@ -1405,6 +1507,98 @@ const Board = (() => {
         }
     }
 
+    // ─── COMPANION EFFECT EXECUTION ─────────────────────────────
+
+    function findRandomMatchingPair() {
+        // Find any two adjacent matching items
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (!items[r][c] || isCellLocked(r, c)) continue;
+                var it = items[r][c];
+                var cluster = findConnected(r, c, it.chain, it.tier);
+                if (cluster.length >= MIN_MERGE) {
+                    return { from: cluster[0], to: cluster[1] };
+                }
+            }
+        }
+        return null;
+    }
+
+    function executeCompanionEffect(trigger) {
+        var effect = trigger.effect;
+        var creature = trigger.creature;
+        var label = Creatures.getCompanionLabel(effect);
+
+        showToast(creature.emoji + ' ' + creature.name + ': ' + label.label + '!');
+
+        switch (effect) {
+            case 'auto_merge':
+                var pair = findRandomMatchingPair();
+                if (pair) {
+                    setTimeout(function() {
+                        if (items[pair.from.row] && items[pair.from.row][pair.from.col]) {
+                            attemptMerge(pair.from.row, pair.from.col, pair.to.row, pair.to.col);
+                        }
+                    }, 300);
+                }
+                break;
+
+            case 'free_spawn':
+                var freeEmpty = getRandomEmptyCell();
+                if (freeEmpty) {
+                    var chains = ['wood', 'stone', 'flora', 'crystal', 'creature'];
+                    var rChain = chains[Math.floor(Math.random() * chains.length)];
+                    var freeItem = Items.createItem(rChain, 2);
+                    items[freeEmpty.row][freeEmpty.col] = freeItem;
+                    renderCell(freeEmpty.row, freeEmpty.col);
+                    var freeEl = grid[freeEmpty.row][freeEmpty.col].querySelector('.item');
+                    if (freeEl) {
+                        freeEl.classList.add('spawn-in');
+                        setTimeout(function() { freeEl.classList.remove('spawn-in'); }, 300);
+                    }
+                    emitParticlesAtCell(freeEmpty.row, freeEmpty.col, 'spawn', { color: '#7b68ee' });
+                }
+                break;
+
+            case 'energy_refund':
+                Game.addEnergy(1);
+                break;
+
+            case 'upgrade_item':
+                var upgTargets = [];
+                for (var r2 = 0; r2 < ROWS; r2++) {
+                    for (var c2 = 0; c2 < COLS; c2++) {
+                        if (items[r2][c2] && !isCellLocked(r2, c2)) {
+                            var mxT = Items.getMaxTier(items[r2][c2].chain);
+                            if (items[r2][c2].tier < mxT) {
+                                upgTargets.push({ row: r2, col: c2 });
+                            }
+                        }
+                    }
+                }
+                if (upgTargets.length > 0) {
+                    var pick = upgTargets[Math.floor(Math.random() * upgTargets.length)];
+                    upgradeItem(pick.row, pick.col);
+                }
+                break;
+
+            case 'double_reward':
+                Creatures.setDoubleReward();
+                break;
+
+            case 'surge_boost':
+                surgeLevel = Math.min(100, surgeLevel + 40);
+                if (!surgeActive && surgeLevel >= SURGE_ACTIVATE) {
+                    activateSurge();
+                }
+                renderSurgeBar();
+                startSurgeDecay();
+                break;
+        }
+
+        syncToGameState();
+    }
+
     return {
         init: init,
         spawnItem: spawnItem,
@@ -1416,6 +1610,7 @@ const Board = (() => {
         sortBoard: sortBoard,
         shuffleBoard: shuffleBoard,
         upgradeItem: upgradeItem,
-        clearTierZero: clearTierZero
+        clearTierZero: clearTierZero,
+        getItemAt: function(r, c) { return items[r] ? items[r][c] : null; }
     };
 })();

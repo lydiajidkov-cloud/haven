@@ -78,6 +78,14 @@ var Hatchery = (function() {
 
         var tier = data.tier;
         var chance = DISCOVERY_CHANCE[tier] || 0;
+        // Apply creature passive discovery chance bonus
+        if (typeof Creatures !== 'undefined') {
+            var gs = Game.getState();
+            if (gs.hatchery && gs.hatchery.discovered) {
+                var bonuses = Creatures.calculatePassiveBonuses(gs.hatchery.discovered);
+                chance = Math.min(1, chance * (1 + bonuses.discovery_chance / 100));
+            }
+        }
         if (Math.random() > chance) return;
 
         // Get available biomes for this tier
@@ -173,7 +181,7 @@ var Hatchery = (function() {
             '</div>';
 
         modal.classList.remove('hidden');
-        Sound.playCelebration();
+        Sound.playCreatureDiscover();
         Game.vibrate([20, 40, 30, 40, 20]);
 
         modal.querySelector('.modal-close-btn').addEventListener('click', function() {
@@ -215,6 +223,22 @@ var Hatchery = (function() {
         progressBar.className = 'hatchery-progress';
         progressBar.innerHTML = '<div class="hatchery-progress-fill" style="width:' + pct + '%;"></div>';
         containerEl.appendChild(progressBar);
+
+        // Passive bonuses summary
+        if (typeof Creatures !== 'undefined' && Object.keys(discovered).length > 0) {
+            var bonuses = Creatures.calculatePassiveBonuses(discovered);
+            var summaryEl = document.createElement('div');
+            summaryEl.className = 'hatchery-bonuses';
+            summaryEl.style.cssText = 'background:rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;text-align:center;';
+            var parts = [];
+            if (bonuses.gem_bonus > 0) parts.push('+' + bonuses.gem_bonus.toFixed(1) + '% \u{1F48E}');
+            if (bonuses.discovery_chance > 0) parts.push('+' + bonuses.discovery_chance.toFixed(1) + '% \u{1F50D}');
+            if (bonuses.energy_regen > 0) parts.push('-' + (bonuses.energy_regen * 0.25).toFixed(1) + 's \u26A1');
+            if (bonuses.xp_bonus > 0) parts.push('+' + bonuses.xp_bonus.toFixed(1) + '% XP');
+            if (bonuses.spawn_quality > 0) parts.push('+' + bonuses.spawn_quality.toFixed(1) + '% \u2728');
+            summaryEl.innerHTML = '<span style="color:var(--text-secondary);">Your creatures give:</span> ' + parts.join(' \u00B7 ');
+            containerEl.appendChild(summaryEl);
+        }
 
         // Render each biome section
         for (var b = 0; b < biomes.length; b++) {
@@ -342,6 +366,20 @@ var Hatchery = (function() {
                 '<p class="modal-species" style="color:' + colors.label + ';">' + creature.species + ' \u2022 ' + rarityLabel + '</p>' +
                 '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">' + biomeInfo.icon + ' ' + biomeInfo.name + ' Biome</p>' +
                 '<p class="modal-desc">' + creature.desc + '</p>' +
+                (function() {
+                    if (typeof Creatures === 'undefined') return '';
+                    var al = Creatures.getAbilityLabel(creature.ability);
+                    var val = Creatures.formatBonus(creature.ability, creature.abilityValue);
+                    var html = '<p style="font-size:11px;margin-top:8px;color:' + colors.label + ';">' +
+                        al.icon + ' ' + al.label + ': ' + val + '</p>';
+                    if (creature.companionAbility) {
+                        var cl = Creatures.getCompanionLabel(creature.companionAbility);
+                        html += '<p style="font-size:10px;color:var(--text-secondary);margin-top:4px;">' +
+                            '\u2694\uFE0F Companion: ' + cl.label + ' \u2014 ' + cl.desc +
+                            ' (every ' + cl.trigger + ' merges)</p>';
+                    }
+                    return html;
+                })() +
                 '<button class="modal-close-btn">Close</button>' +
             '</div>';
 

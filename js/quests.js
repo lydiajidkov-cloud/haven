@@ -102,6 +102,11 @@ const Quests = (() => {
         while (activeQuests.length < MAX_ACTIVE) {
             var next = pickNextQuest();
             if (!next) break;
+            // Endowed progress: pre-fill based on current stats (makes quests feel achievable)
+            var startProgress = 0;
+            if (next.type === 'merge_count' || next.type === 'spawn_count') {
+                startProgress = Math.min(Math.floor(next.target * 0.2), next.target - 1);
+            }
             activeQuests.push({
                 id: next.id,
                 desc: next.desc,
@@ -109,7 +114,7 @@ const Quests = (() => {
                 chain: next.chain || null,
                 tier: next.tier || 0,
                 target: next.target,
-                current: 0,
+                current: startProgress,
                 reward: next.reward,
                 completed: false,
                 claimed: false
@@ -242,7 +247,7 @@ const Quests = (() => {
                 if (q.reward.stars) Game.addStars(q.reward.stars);
                 if (q.reward.gems) Game.addGems(q.reward.gems);
 
-                Sound.playCelebration();
+                Sound.playAchievement();
                 Game.vibrate([15, 30, 15]);
 
                 // Remove claimed quest and fill slot

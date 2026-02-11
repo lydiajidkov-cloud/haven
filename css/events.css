@@ -1,0 +1,406 @@
+/* Haven - Weekly Events: Banner, Challenge Modal, Countdown Timer */
+
+/* ─── EVENT BANNER (compact bar above the board) ─────────── */
+
+.event-banner {
+    margin: 0 8px 4px;
+    padding: 6px 10px;
+    background: linear-gradient(135deg, rgba(123,104,238,0.15), rgba(255,215,0,0.1));
+    border: 1px solid rgba(123,104,238,0.25);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.event-banner:active {
+    transform: scale(0.98);
+}
+
+.event-banner-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.event-banner-icon {
+    font-size: 20px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.event-banner-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+    min-width: 0;
+}
+
+.event-banner-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-banner-timer {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Mini progress bar inside the banner */
+.event-banner-progress-wrap {
+    width: 50px;
+    height: 6px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.event-banner-progress-wrap .event-banner-progress {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-purple), var(--accent-gold));
+    border-radius: 3px;
+    transition: width 0.3s ease-out;
+}
+
+.event-banner-progress-wrap .event-banner-progress.event-progress-complete {
+    background: linear-gradient(90deg, var(--accent-green), #8ddb8d);
+}
+
+/* Pulse animation when a tier is completed */
+.event-banner-pulse {
+    animation: event-banner-glow 0.6s ease-out;
+}
+
+@keyframes event-banner-glow {
+    0%   { box-shadow: 0 0 0 0 rgba(255,215,0,0.4); border-color: rgba(255,215,0,0.6); }
+    50%  { box-shadow: 0 0 16px rgba(255,215,0,0.3); border-color: rgba(255,215,0,0.6); }
+    100% { box-shadow: none; border-color: rgba(123,104,238,0.25); }
+}
+
+/* Subtle shimmer across the banner */
+.event-banner::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255,255,255,0.04) 50%,
+        transparent 100%
+    );
+    animation: banner-shimmer 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes banner-shimmer {
+    0%   { left: -100%; }
+    100% { left: 200%; }
+}
+
+
+/* ─── EVENT MODAL (challenge details overlay) ────────────── */
+
+.event-modal {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 55;
+    padding: 16px;
+    animation: event-modal-fadein 0.2s ease-out;
+}
+
+.event-modal.hidden {
+    display: none !important;
+}
+
+@keyframes event-modal-fadein {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.event-modal-card {
+    background: linear-gradient(145deg, #1e3048, #152436);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius);
+    padding: 20px 16px;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    animation: event-modal-slide 0.25s ease-out;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+@keyframes event-modal-slide {
+    0%   { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+.event-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.event-modal-icon {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.event-modal-title-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.event-modal-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0 0 2px;
+    background: linear-gradient(135deg, var(--accent-gold), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.event-modal-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.3;
+}
+
+/* Timer bar */
+.event-modal-timer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 12px;
+    margin-bottom: 14px;
+    background: rgba(0,0,0,0.25);
+    border-radius: var(--radius-xs);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.event-timer-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.event-timer-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* ─── CHALLENGE CARDS ────────────────────────────────────── */
+
+.event-challenges {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.event-challenge-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-left: 3px solid var(--tier-color, rgba(255,255,255,0.2));
+    border-radius: var(--radius-xs);
+    padding: 10px 12px;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.event-challenge-card.challenge-complete {
+    background: rgba(255,215,0,0.06);
+    border-color: rgba(255,215,0,0.2);
+    border-left-color: var(--tier-color);
+}
+
+.event-challenge-card.challenge-claimed {
+    opacity: 0.5;
+    background: rgba(92,184,92,0.05);
+    border-color: rgba(92,184,92,0.15);
+    border-left-color: rgba(92,184,92,0.4);
+}
+
+.challenge-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.challenge-tier-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.challenge-tier-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.challenge-desc {
+    font-size: 13px;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+    line-height: 1.3;
+}
+
+/* Progress bar */
+.challenge-progress-bar {
+    height: 6px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.challenge-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease-out;
+}
+
+.challenge-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.challenge-count {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.challenge-reward {
+    font-size: 11px;
+    color: var(--accent-gold);
+    font-weight: 600;
+}
+
+/* Claim button */
+.challenge-claim-btn {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 0;
+    border: none;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    transition: transform 0.12s;
+}
+
+.challenge-claim-btn:active {
+    transform: scale(0.95);
+}
+
+/* Claimed badge */
+.challenge-claimed-badge {
+    text-align: center;
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-green);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Close button */
+.event-modal-close {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-light);
+    color: var(--text-primary);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.12s;
+}
+
+.event-modal-close:active {
+    transform: scale(0.95);
+}
+
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+
+@media (max-height: 750px) {
+    .event-banner {
+        margin: 0 8px 2px;
+        padding: 4px 8px;
+    }
+    .event-banner-icon {
+        font-size: 16px;
+    }
+    .event-banner-name {
+        font-size: 11px;
+    }
+    .event-banner-timer {
+        font-size: 9px;
+    }
+    .event-banner-progress-wrap {
+        width: 40px;
+        height: 5px;
+    }
+}
+
+@media (max-height: 600px) {
+    .event-banner {
+        margin: 0 6px 2px;
+        padding: 3px 6px;
+    }
+    .event-banner-icon {
+        font-size: 14px;
+    }
+    .event-banner-name {
+        font-size: 10px;
+    }
+    .event-modal-card {
+        padding: 14px 12px;
+    }
+    .event-modal-icon {
+        font-size: 24px;
+    }
+    .event-modal-title {
+        font-size: 16px;
+    }
+}

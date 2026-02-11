@@ -35,6 +35,16 @@ const Game = (() => {
                 playCount: 0
             },
             firstPlay: true,
+            tutorialCompletedAt: null,
+            uiUnlocks: {
+                // Progressive disclosure: track which UI elements have been revealed
+                crystalNode: false,
+                creatureNode: false,
+                shopTab: false,
+                achievementsBtn: false,
+                surgeBar: false,
+                powerupBar: false
+            },
             soundEnabled: true,
             vibrationEnabled: true
         };
@@ -103,20 +113,27 @@ const Game = (() => {
             return;
         }
 
+        // Apply creature passive energy regen bonus (each point = 250ms faster)
+        var regenMs = ENERGY_REGEN_MS;
+        if (typeof Creatures !== 'undefined' && state.hatchery && state.hatchery.discovered) {
+            var bonuses = Creatures.calculatePassiveBonuses(state.hatchery.discovered);
+            regenMs = Math.max(60000, ENERGY_REGEN_MS - Math.round(bonuses.energy_regen * 250));
+        }
+
         const now = Date.now();
         const elapsed = now - state.lastEnergyTime;
-        const gained = Math.floor(elapsed / ENERGY_REGEN_MS);
+        const gained = Math.floor(elapsed / regenMs);
 
         if (gained > 0) {
             state.energy = Math.min(state.maxEnergy, state.energy + gained);
-            state.lastEnergyTime = now - (elapsed % ENERGY_REGEN_MS);
+            state.lastEnergyTime = now - (elapsed % regenMs);
             emit('energyChanged', state.energy);
             save();
         }
 
         // Emit timer for UI
         if (state.energy < state.maxEnergy) {
-            const msLeft = ENERGY_REGEN_MS - (now - state.lastEnergyTime);
+            const msLeft = regenMs - (now - state.lastEnergyTime);
             emit('energyTimer', msLeft);
         } else {
             emit('energyTimer', null);
@@ -134,6 +151,10 @@ const Game = (() => {
             state.lastEnergyTime = Date.now();
         }
         emit('energyChanged', state.energy);
+        emit('energyUsed', {});
+        if (state.energy === 10) {
+            emit('energyLow');
+        }
         save();
         return true;
     }
@@ -145,6 +166,13 @@ const Game = (() => {
     }
 
     function addGems(n) {
+        // Apply creature passive gem bonus
+        if (n > 0 && typeof Creatures !== 'undefined' && state.hatchery && state.hatchery.discovered) {
+            var bonuses = Creatures.calculatePassiveBonuses(state.hatchery.discovered);
+            if (bonuses.gem_bonus > 0) {
+                n = Math.round(n * (1 + bonuses.gem_bonus / 100));
+            }
+        }
         state.gems = (state.gems || 0) + n;
         emit('gemsChanged', state.gems);
         save();
@@ -202,6 +230,58 @@ const Game = (() => {
         emit('gemsChanged', state.gems);
     }
 
+    // ─── EXIT HOOK: "Come back" message when player leaves ──────
+    // This is the single most impactful retention feature for Day 1.
+    // When the player backgrounds the app or closes the tab, show them
+    // a reason to return. Uses the Page Visibility API.
+
+    function initExitHook() {
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                showExitHookIfNeeded();
+            }
+        });
+    }
+
+    function showExitHookIfNeeded() {
+        if (!state) return;
+        // Only show for players who have completed the tutorial
+        if (state.firstPlay) return;
+        // Don't show if player just started (< 60s in session)
+        if (state.tutorialCompletedAt && (Date.now() - state.tutorialCompletedAt < 60000)) return;
+
+        // Calculate what they will gain by returning
+        var energyDeficit = state.maxEnergy - state.energy;
+        if (energyDeficit <= 0) return; // No reason to show if energy is full
+
+        var minutesToFull = Math.ceil(energyDeficit * (ENERGY_REGEN_MS / 60000));
+        var hoursToFull = Math.floor(minutesToFull / 60);
+        var minsRemaining = minutesToFull % 60;
+
+        var timeStr = '';
+        if (hoursToFull > 0) {
+            timeStr = hoursToFull + 'h ' + minsRemaining + 'm';
+        } else {
+            timeStr = minsRemaining + ' min';
+        }
+
+        // Use the document title as a lightweight "notification"
+        // This shows in the browser tab and in recent apps on mobile
+        document.title = 'Haven - Energy full in ' + timeStr + '!';
+
+        // Restore title when they come back
+        var restoreTitle = function() {
+            document.title = 'Haven';
+            document.removeEventListener('visibilitychange', restoreTitle);
+        };
+        document.addEventListener('visibilitychange', function handler() {
+            if (document.visibilityState === 'visible') {
+                restoreTitle();
+                document.removeEventListener('visibilitychange', handler);
+            }
+        });
+    }
+
     return {
         init: init,
         save: save,
@@ -220,6 +300,7 @@ const Game = (() => {
         getMaxEnergy: getMaxEnergy,
         getGems: getGems,
         getStars: getStars,
+        initExitHook: initExitHook,
         ROWS: ROWS,
         COLS: COLS,
         MAX_ENERGY: MAX_ENERGY,
