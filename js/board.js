@@ -11,6 +11,10 @@ const Board = (() => {
     let items = [];  // Item data [row][col] or null
     let animating = false;
 
+    // Tutorial overrides
+    var forcedSpawnTier = null;
+    var autoMergeSuppressed = false;
+
     // Drag state
     let dragItem = null;
     let dragFrom = null;
@@ -411,7 +415,9 @@ const Board = (() => {
             return;
         }
 
-        var item = Items.spawnRandomItem(chain);
+        var item = (forcedSpawnTier !== null)
+            ? Items.createItem(chain, forcedSpawnTier)
+            : Items.spawnRandomItem(chain);
         items[empty.row][empty.col] = item;
         renderCell(empty.row, empty.col);
 
@@ -432,7 +438,7 @@ const Board = (() => {
         Game.emit('itemSpawned', { chain: chain, tier: item.tier });
 
         // Check if spawn created an auto-merge
-        var connected = findConnected(empty.row, empty.col, item.chain, item.tier);
+        var connected = autoMergeSuppressed ? [] : findConnected(empty.row, empty.col, item.chain, item.tier);
         if (connected.length >= MIN_MERGE) {
             setTimeout(function() {
                 executeMerge(connected, item.chain, item.tier, empty.row, empty.col, connected.length);
@@ -591,6 +597,9 @@ const Board = (() => {
     return {
         init: init,
         spawnItem: spawnItem,
-        spawnStarterItems: spawnStarterItems
+        spawnStarterItems: spawnStarterItems,
+        setForcedSpawnTier: function(t) { forcedSpawnTier = t; },
+        clearForcedSpawnTier: function() { forcedSpawnTier = null; },
+        setAutoMergeSuppressed: function(v) { autoMergeSuppressed = v; }
     };
 })();

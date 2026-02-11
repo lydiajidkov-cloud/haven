@@ -5,8 +5,8 @@ const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const ROWS = 8;
     const COLS = 6;
-    const MAX_ENERGY = 5;
-    const ENERGY_REGEN_MS = 25 * 60 * 1000; // 25 minutes
+    const MAX_ENERGY = 100;
+    const ENERGY_REGEN_MS = 2 * 60 * 1000; // 2 minutes
 
     let state = null;
     let listeners = {};

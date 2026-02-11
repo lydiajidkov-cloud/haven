@@ -19,7 +19,7 @@
         <header id="top-bar">
             <div id="energy-display">
                 <span class="energy-icon">⚡</span>
-                <span id="energy-count">5</span>/<span id="energy-max">5</span>
+                <span id="energy-count">100</span>/<span id="energy-max">100</span>
                 <span id="energy-timer" class="hidden"></span>
             </div>
             <h1 id="game-title">Haven</h1>
@@ -128,35 +128,6 @@
             </button>
         </nav>
 
-        <!-- Tutorial Overlay (multi-step) -->
-        <div id="tutorial-overlay" class="hidden">
-            <div class="tutorial-card" id="tutorial-step-1">
-                <h2>Welcome to Haven!</h2>
-                <p>Rebuild a magical island by merging resources and discovering creatures.</p>
-                <p class="tutorial-hint">Let me show you how it works...</p>
-                <button class="tutorial-btn" data-next="2">Next →</button>
-            </div>
-            <div class="tutorial-card hidden" id="tutorial-step-2">
-                <div class="tutorial-arrow tutorial-arrow-down"></div>
-                <h2>⚡ Spawn Items</h2>
-                <p>Tap a <strong>resource node</strong> at the bottom of the screen. Each tap costs 1 energy and spawns an item on the board.</p>
-                <p class="tutorial-hint">Try tapping "🌲 Wood" a few times!</p>
-                <button class="tutorial-btn" data-next="3">Next →</button>
-            </div>
-            <div class="tutorial-card hidden" id="tutorial-step-3">
-                <h2>🔀 Merge Items</h2>
-                <p><strong>Drag</strong> one item onto a matching item (same type and tier). Two or more identical items merge into a higher-tier item!</p>
-                <p class="tutorial-hint">Matching items glow gold when you drag over them.</p>
-                <button class="tutorial-btn" data-next="4">Next →</button>
-            </div>
-            <div class="tutorial-card hidden" id="tutorial-step-4">
-                <h2>⭐ Complete Quests</h2>
-                <p>Check the <strong>Quests</strong> tab for goals like "Produce 3 Branches". Completing quests earns stars to unlock island areas.</p>
-                <p class="tutorial-hint">Merge 5+ items at once for bonus rewards! ✨</p>
-                <button class="tutorial-btn" id="tutorial-dismiss">Let's Play!</button>
-            </div>
-        </div>
-
         <!-- Settings Modal -->
         <div id="settings-modal" class="hidden">
             <div class="settings-card">
@@ -196,6 +167,7 @@
     <script src="js/shop.js"></script>
     <script src="js/pass.js"></script>
     <script src="js/daily.js"></script>
+    <script src="js/tutorial.js"></script>
 
     <script>
     // ─── INITIALIZATION ──────────────────────────────────────
@@ -294,33 +266,7 @@
 
         // ─── TUTORIAL / FIRST PLAY ───────────────────────────
 
-        var state = Game.getState();
-        if (state.firstPlay) {
-            document.getElementById('tutorial-overlay').classList.remove('hidden');
-
-            // Multi-step tutorial navigation
-            document.querySelectorAll('.tutorial-btn[data-next]').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    Sound.init();
-                    Sound.playTap();
-                    // Hide current step
-                    btn.closest('.tutorial-card').classList.add('hidden');
-                    // Show next step
-                    var nextStep = document.getElementById('tutorial-step-' + btn.dataset.next);
-                    if (nextStep) nextStep.classList.remove('hidden');
-                });
-            });
-
-            // Final dismiss button
-            document.getElementById('tutorial-dismiss').addEventListener('click', function() {
-                document.getElementById('tutorial-overlay').classList.add('hidden');
-                Sound.init();
-                Sound.playTap();
-                state.firstPlay = false;
-                Game.save();
-                Board.spawnStarterItems();
-            });
-        }
+        Tutorial.start();
 
         // ─── SHOP TABS ───────────────────────────────────────
         var shopTabs = document.querySelectorAll('.shop-tab');
