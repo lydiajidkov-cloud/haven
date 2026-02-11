@@ -15,7 +15,7 @@ const Board = (() => {
     var forcedSpawnTier = null;
     var autoMergeSuppressed = false;
 
-    // Interaction state (tap-to-select + drag fallback)
+    // Interaction state (tap-to-select + drag fallback + swipe-merge)
     var selectedPos = null;  // {row, col} of selected item
     var dragItem = null;
     var dragFrom = null;
@@ -26,6 +26,11 @@ const Board = (() => {
     var dragStartY = 0;
     var dragStarted = false;
     var DRAG_THRESHOLD = 12; // px before a touch becomes a drag
+
+    // Swipe-merge state
+    var swipeChain = [];     // [{row, col}, ...] cells in swipe path
+    var swipeActive = false; // true when swiping across matching tiles
+    var lastSwipeCell = null; // last cell entered during swipe
 
     function init() {
         containerEl = document.getElementById('board-container');
@@ -105,31 +110,85 @@ const Board = (() => {
     function onPointerMove(e) {
         if (!dragFrom || !dragItem) return;
 
-        // Check if we've moved enough to start a drag
-        if (!dragStarted) {
+        // Check if we've moved enough to start a drag/swipe
+        if (!dragStarted && !swipeActive) {
             var dx = e.clientX - dragStartX;
             var dy = e.clientY - dragStartY;
             if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
             dragStarted = true;
             clearSelection();
-            startDragVisual(e);
+
+            // Check if we should start swipe mode
+            var firstTarget = getCellAtPoint(e.clientX, e.clientY);
+            if (firstTarget && isAdjacent(dragFrom, firstTarget) &&
+                items[firstTarget.row] && items[firstTarget.row][firstTarget.col] &&
+                Items.canMerge(dragItem, items[firstTarget.row][firstTarget.col])) {
+                // Start swipe-merge mode!
+                startSwipe(dragFrom.row, dragFrom.col);
+                addToSwipe(firstTarget.row, firstTarget.col);
+            } else {
+                startDragVisual(e);
+            }
         }
 
         e.preventDefault();
-        dragEl.style.left = (e.clientX - dragOffsetX) + 'px';
-        dragEl.style.top = (e.clientY - dragOffsetY) + 'px';
 
-        // Highlight cell under pointer
-        clearHighlight('drag-over');
-        var target = getCellAtPoint(e.clientX, e.clientY);
-        if (target && !(target.row === dragFrom.row && target.col === dragFrom.col)) {
-            grid[target.row][target.col].classList.add('drag-over');
+        // Swipe mode: track finger across cells
+        if (swipeActive) {
+            var target = getCellAtPoint(e.clientX, e.clientY);
+            if (target && !isCellInSwipe(target.row, target.col)) {
+                // Must be adjacent to the last cell in the chain
+                var last = swipeChain[swipeChain.length - 1];
+                if (isAdjacent(last, target) &&
+                    items[target.row] && items[target.row][target.col] &&
+                    Items.canMerge(dragItem, items[target.row][target.col])) {
+                    addToSwipe(target.row, target.col);
+                }
+            }
+            // Allow un-doing: if finger moves back to previous cell, pop the last one
+            if (target && swipeChain.length >= 2) {
+                var prev = swipeChain[swipeChain.length - 2];
+                if (target.row === prev.row && target.col === prev.col) {
+                    removeLastFromSwipe();
+                }
+            }
+            return;
+        }
+
+        // Regular drag mode
+        if (dragEl) {
+            dragEl.style.left = (e.clientX - dragOffsetX) + 'px';
+            dragEl.style.top = (e.clientY - dragOffsetY) + 'px';
+
+            // Highlight cell under pointer
+            clearHighlight('drag-over');
+            var dragTarget = getCellAtPoint(e.clientX, e.clientY);
+            if (dragTarget && !(dragTarget.row === dragFrom.row && dragTarget.col === dragFrom.col)) {
+                grid[dragTarget.row][dragTarget.col].classList.add('drag-over');
+            }
         }
     }
 
     function onPointerUp(e) {
         if (!dragFrom) return;
         e.preventDefault();
+
+        // Swipe-merge completion
+        if (swipeActive) {
+            var chain = swipeChain.slice(); // copy
+            endSwipe();
+
+            if (chain.length >= MIN_MERGE) {
+                // Execute the swipe merge — sound/haptic handled by executeMerge
+                var firstCell = chain[0];
+                var item = items[firstCell.row][firstCell.col];
+                executeMerge(chain, item.chain, item.tier, chain[chain.length - 1].row, chain[chain.length - 1].col, chain.length);
+            }
+
+            dragItem = null;
+            dragFrom = null;
+            return;
+        }
 
         if (!dragStarted) {
             // It was a TAP — select the item
@@ -300,6 +359,98 @@ const Board = (() => {
         for (var i = 0; i < els.length; i++) {
             els[i].classList.remove(cls);
         }
+    }
+
+    // ─── SWIPE-MERGE HELPERS ────────────────────────────────────────
+
+    function isAdjacent(a, b) {
+        if (!a || !b) return false;
+        var dr = Math.abs(a.row - b.row);
+        var dc = Math.abs(a.col - b.col);
+        return (dr + dc) === 1; // orthogonal only
+    }
+
+    function startSwipe(r, c) {
+        swipeActive = true;
+        swipeChain = [{ row: r, col: c }];
+        grid[r][c].classList.add('swipe-active');
+        lastSwipeCell = { row: r, col: c };
+        Sound.playTap();
+    }
+
+    function addToSwipe(r, c) {
+        swipeChain.push({ row: r, col: c });
+        grid[r][c].classList.add('swipe-active');
+        lastSwipeCell = { row: r, col: c };
+
+        // Draw connector line between last two cells
+        if (swipeChain.length >= 2) {
+            var prev = swipeChain[swipeChain.length - 2];
+            drawSwipeConnector(prev, { row: r, col: c });
+        }
+
+        Sound.playTap();
+    }
+
+    function removeLastFromSwipe() {
+        if (swipeChain.length <= 1) return;
+        var removed = swipeChain.pop();
+        grid[removed.row][removed.col].classList.remove('swipe-active');
+        lastSwipeCell = swipeChain[swipeChain.length - 1];
+
+        // Remove the last connector
+        var connectors = boardEl.querySelectorAll('.swipe-connector');
+        if (connectors.length > 0) {
+            connectors[connectors.length - 1].remove();
+        }
+    }
+
+    function isCellInSwipe(r, c) {
+        for (var i = 0; i < swipeChain.length; i++) {
+            if (swipeChain[i].row === r && swipeChain[i].col === c) return true;
+        }
+        return false;
+    }
+
+    function drawSwipeConnector(from, to) {
+        var fromRect = grid[from.row][from.col].getBoundingClientRect();
+        var toRect = grid[to.row][to.col].getBoundingClientRect();
+        var boardRect = boardEl.getBoundingClientRect();
+
+        var fx = fromRect.left - boardRect.left + fromRect.width / 2;
+        var fy = fromRect.top - boardRect.top + fromRect.height / 2;
+        var tx = toRect.left - boardRect.left + toRect.width / 2;
+        var ty = toRect.top - boardRect.top + toRect.height / 2;
+
+        var dx = tx - fx;
+        var dy = ty - fy;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+        var conn = document.createElement('div');
+        conn.className = 'swipe-connector';
+        conn.style.cssText =
+            'position:absolute;height:4px;border-radius:2px;' +
+            'background:rgba(255,215,0,0.5);pointer-events:none;z-index:5;' +
+            'left:' + fx + 'px;top:' + (fy - 2) + 'px;' +
+            'width:' + len + 'px;' +
+            'transform-origin:0 50%;' +
+            'transform:rotate(' + angle + 'deg);';
+
+        boardEl.appendChild(conn);
+    }
+
+    function endSwipe() {
+        swipeActive = false;
+        clearHighlight('swipe-active');
+        // Remove all connectors
+        var connectors = boardEl.querySelectorAll('.swipe-connector');
+        for (var i = 0; i < connectors.length; i++) {
+            connectors[i].remove();
+        }
+        swipeChain = [];
+        lastSwipeCell = null;
+        dragStarted = false;
     }
 
     // ─── MERGE LOGIC ─────────────────────────────────────────────

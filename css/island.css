@@ -411,3 +411,154 @@
     color: #1a1a2e;
     border: none;
 }
+
+/* ─── HATCHERY ───────────────────────────────────────────── */
+
+#hatchery-container {
+    padding: 12px;
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+.hatchery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.hatchery-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.hatchery-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-gold);
+    background: rgba(255,215,0,0.1);
+    padding: 3px 10px;
+    border-radius: 12px;
+}
+
+.hatchery-progress {
+    height: 6px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+.hatchery-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-gold), #f0a030);
+    border-radius: 3px;
+    transition: width 0.4s ease-out;
+}
+
+.hatchery-section {
+    margin-bottom: 12px;
+}
+
+.hatchery-section-header {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    padding-left: 2px;
+}
+
+.hatchery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.hatchery-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 6px 8px;
+    background: var(--bg-medium);
+    border: 1.5px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.2s;
+    gap: 3px;
+}
+
+.hatchery-card.discovered:active {
+    transform: scale(0.95);
+}
+
+.hatchery-card.undiscovered {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.hatchery-emoji {
+    font-size: 28px;
+    line-height: 1.2;
+}
+
+.hatchery-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.2;
+}
+
+.hatchery-hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 12px 8px 4px;
+    font-style: italic;
+}
+
+/* Hatchery tab button on island screen */
+.island-tab-bar {
+    display: flex;
+    gap: 0;
+    padding: 0 12px;
+    flex-shrink: 0;
+}
+
+.island-tab {
+    flex: 1;
+    padding: 8px 0;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.island-tab.active {
+    color: var(--accent-gold);
+    border-bottom-color: var(--accent-gold);
+}
+
+.island-tab:active {
+    opacity: 0.8;
+}
+
+.island-tab-content {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.island-tab-content.active {
+    display: flex;
+    flex-direction: column;
+}

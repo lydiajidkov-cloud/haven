@@ -210,6 +210,11 @@ body {
     box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.25);
 }
 
+.cell.swipe-active {
+    background: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 0 0 2px var(--accent-gold), inset 0 0 10px rgba(255, 215, 0, 0.25);
+}
+
 /* ─── ITEMS ───────────────────────────────────────────────── */
 
 .item {

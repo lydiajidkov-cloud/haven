@@ -83,8 +83,17 @@
             <!-- Island Screen -->
             <div id="island-screen" class="screen">
                 <div id="island-stats"></div>
-                <div id="island-map-wrapper">
-                    <div id="island-map"></div>
+                <div class="island-tab-bar">
+                    <button class="island-tab active" data-island-tab="map">🏝️ Map</button>
+                    <button class="island-tab" data-island-tab="hatchery">🥚 Hatchery</button>
+                </div>
+                <div id="island-tab-map" class="island-tab-content active">
+                    <div id="island-map-wrapper">
+                        <div id="island-map"></div>
+                    </div>
+                </div>
+                <div id="island-tab-hatchery" class="island-tab-content">
+                    <div id="hatchery-container"></div>
                 </div>
                 <div id="island-modal" class="hidden"></div>
             </div>
@@ -164,6 +173,7 @@
     <script src="js/board.js"></script>
     <script src="js/quests.js"></script>
     <script src="js/island.js"></script>
+    <script src="js/hatchery.js"></script>
     <script src="js/shop.js"></script>
     <script src="js/pass.js"></script>
     <script src="js/daily.js"></script>
@@ -179,6 +189,7 @@
         Board.init();
         Quests.init();
         Island.init();
+        Hatchery.init();
         Shop.init();
         Pass.init();
         Daily.init();
@@ -284,6 +295,25 @@
                 if (tabName === 'shop') Shop.renderShop();
                 if (tabName === 'pass') Pass.renderPass();
                 if (tabName === 'daily') Daily.renderDaily();
+            });
+        }
+
+        // ─── ISLAND TABS ────────────────────────────────────────
+        var islandTabs = document.querySelectorAll('.island-tab');
+        for (var it = 0; it < islandTabs.length; it++) {
+            islandTabs[it].addEventListener('click', function() {
+                var tabName = this.dataset.islandTab;
+                for (var j = 0; j < islandTabs.length; j++) islandTabs[j].classList.remove('active');
+                this.classList.add('active');
+                document.querySelectorAll('.island-tab-content').forEach(function(c) { c.classList.remove('active'); });
+                var target = document.getElementById('island-tab-' + tabName);
+                if (target) target.classList.add('active');
+                Sound.playTap();
+
+                // Render hatchery when switching to it
+                if (tabName === 'hatchery') {
+                    Hatchery.renderCollection(document.getElementById('hatchery-container'));
+                }
             });
         }
 
