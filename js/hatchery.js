@@ -1,39 +1,10 @@
-// Haven - Hatchery: Creature Collection & Discovery System
+// Haven - Hatchery: Creature Collection & Discovery System (Biome Edition)
 'use strict';
 
 var Hatchery = (function() {
 
-    // ─── CREATURE POOL ──────────────────────────────────────────
-    // Each creature has: id, name, species, emoji, desc, rarity
-    // Rarities: common (60%), uncommon (25%), rare (12%), legendary (3%)
-
-    var creatures = [
-        // Common
-        { id: 'sparky',   name: 'Sparky',   species: 'Firefly',     emoji: '\u{1F41B}', rarity: 'common',    desc: 'A tiny firefly whose light flickers with excitement. She loves to dance around freshly merged items.' },
-        { id: 'nibbles',  name: 'Nibbles',  species: 'Rabbit',      emoji: '\u{1F430}', rarity: 'common',    desc: 'A fluffy rabbit who collects tiny crystals in her burrow. She claims they sing to her at night.' },
-        { id: 'puddles',  name: 'Puddles',  species: 'Frog',        emoji: '\u{1F438}', rarity: 'common',    desc: 'A cheerful frog who splashes in magical puddles. Each splash creates tiny rainbows.' },
-        { id: 'dusty',    name: 'Dusty',    species: 'Mouse',       emoji: '\u{1F42D}', rarity: 'common',    desc: 'A curious mouse who maps the island\'s hidden tunnels. His whiskers twitch near magic.' },
-        { id: 'chirp',    name: 'Chirp',    species: 'Cricket',     emoji: '\u{1F997}', rarity: 'common',    desc: 'A musical cricket whose songs make flowers bloom faster. He performs nightly concerts.' },
-        { id: 'wisp',     name: 'Wisp',     species: 'Moth',        emoji: '\u{1FAB6}', rarity: 'common',    desc: 'A gentle moth drawn to magical light. Her wings shimmer with stardust patterns.' },
-
-        // Uncommon
-        { id: 'ember',    name: 'Ember',    species: 'Salamander',  emoji: '\u{1F98E}', rarity: 'uncommon',  desc: 'A warm salamander who keeps the island cozy. Her tail glows like a tiny campfire.' },
-        { id: 'frost',    name: 'Frost',    species: 'Snow Owl',    emoji: '\u{1F989}', rarity: 'uncommon',  desc: 'A wise owl with feathers like fresh snow. She sees magic invisible to others.' },
-        { id: 'ripple',   name: 'Ripple',   species: 'Otter',       emoji: '\u{1F9A6}', rarity: 'uncommon',  desc: 'A playful otter who juggles crystals for fun. He can hold his breath for hours exploring underwater caves.' },
-        { id: 'thistle',  name: 'Thistle',  species: 'Hedgehog',    emoji: '\u{1F994}', rarity: 'uncommon',  desc: 'A gentle hedgehog whose spines glow at dusk. She tends the island\'s mushroom gardens.' },
-        { id: 'breeze',   name: 'Breeze',   species: 'Hummingbird', emoji: '\u{1F426}', rarity: 'uncommon',  desc: 'A swift hummingbird who carries messages on the wind. Her wings hum ancient melodies.' },
-
-        // Rare
-        { id: 'storm',    name: 'Storm',    species: 'Wolf',        emoji: '\u{1F43A}', rarity: 'rare',      desc: 'A silver wolf who commands the weather. Lightning dances between his ears when he howls.' },
-        { id: 'dusk',     name: 'Dusk',     species: 'Panther',     emoji: '\u{1F408}\u200D\u2B1B', rarity: 'rare', desc: 'A shadow panther who walks between worlds. She guards the island\'s deepest secrets.' },
-        { id: 'tide',     name: 'Tide',     species: 'Dolphin',     emoji: '\u{1F42C}', rarity: 'rare',      desc: 'A luminous dolphin who navigates by starlight. His songs can calm the fiercest storms.' },
-        { id: 'sage',     name: 'Sage',     species: 'Tortoise',    emoji: '\u{1F422}', rarity: 'rare',      desc: 'An ancient tortoise whose shell is a living garden. She remembers the island\'s first sunrise.' },
-
-        // Legendary
-        { id: 'solaris',  name: 'Solaris',  species: 'Griffin',     emoji: '\u{1F985}', rarity: 'legendary', desc: 'A golden griffin born from sunlight and stone. His wings scatter golden dust that makes plants grow.' },
-        { id: 'nebula',   name: 'Nebula',   species: 'Cosmic Cat',  emoji: '\u{1F431}', rarity: 'legendary', desc: 'A mysterious cat with fur like the night sky. Stars swirl in her eyes and she purrs in constellations.' },
-        { id: 'tempest',  name: 'Tempest',  species: 'Thunder Horse', emoji: '\u{1F40E}', rarity: 'legendary', desc: 'A magnificent horse wreathed in lightning. Her hooves crack with thunder and she runs on clouds.' }
-    ];
+    var creatures = CreatureData.creatures;
+    var biomes = CreatureData.biomes;
 
     var RARITY_WEIGHTS = {
         common:    60,
@@ -49,11 +20,7 @@ var Hatchery = (function() {
         legendary: { border: '#ffd700', bg: 'rgba(255,215,0,0.15)',   label: '#ffd700' }
     };
 
-    // Tier thresholds: which rarities are available at each creature merge tier
-    // Tier 1 (Hatchling): common only
-    // Tier 2 (Fledgling): common + uncommon
-    // Tier 3 (Juvenile):  common + uncommon + rare
-    // Tier 4+ (Adult+):   all rarities
+    // Tier thresholds for rarity access
     var TIER_RARITY_ACCESS = {
         0: ['common'],
         1: ['common'],
@@ -65,19 +32,31 @@ var Hatchery = (function() {
         7: ['common', 'uncommon', 'rare', 'legendary']
     };
 
-    // Discovery chance per tier (higher tier = higher chance)
-    var DISCOVERY_CHANCE = {
-        0: 0.0,   // Egg — no discovery
-        1: 0.30,  // Hatchling — 30%
-        2: 0.40,  // Fledgling — 40%
-        3: 0.50,  // Juvenile — 50%
-        4: 0.60,  // Adult — 60%
-        5: 0.70,  // Elder — 70%
-        6: 0.80,  // Mythic — 80%
-        7: 1.00   // Dragon — guaranteed
+    // Biome gating by creature tier — higher tiers unlock exotic biomes
+    var TIER_BIOME_ACCESS = {
+        0: [],
+        1: ['meadow', 'forest', 'ocean', 'garden'],
+        2: ['meadow', 'forest', 'ocean', 'garden', 'mountain', 'sky', 'swamp'],
+        3: ['meadow', 'forest', 'ocean', 'garden', 'mountain', 'sky', 'swamp', 'desert', 'jungle', 'spring', 'summer'],
+        4: ['meadow', 'forest', 'ocean', 'garden', 'mountain', 'sky', 'swamp', 'desert', 'jungle', 'spring', 'summer', 'autumn', 'winter', 'arctic'],
+        5: ['meadow', 'forest', 'ocean', 'garden', 'mountain', 'sky', 'swamp', 'desert', 'jungle', 'spring', 'summer', 'autumn', 'winter', 'arctic', 'enchanted', 'celestial'],
+        6: ['meadow', 'forest', 'ocean', 'garden', 'mountain', 'sky', 'swamp', 'desert', 'jungle', 'spring', 'summer', 'autumn', 'winter', 'arctic', 'enchanted', 'celestial'],
+        7: ['meadow', 'forest', 'ocean', 'garden', 'mountain', 'sky', 'swamp', 'desert', 'jungle', 'spring', 'summer', 'autumn', 'winter', 'arctic', 'enchanted', 'celestial']
     };
 
-    var discovered = {};  // { creatureId: { discoveredAt, tier } }
+    var DISCOVERY_CHANCE = {
+        0: 0.0,
+        1: 0.30,
+        2: 0.40,
+        3: 0.50,
+        4: 0.60,
+        5: 0.70,
+        6: 0.80,
+        7: 1.00
+    };
+
+    var discovered = {};
+    var collapsedBiomes = {}; // track collapsed state per biome
 
     // ─── INIT ───────────────────────────────────────────────────
 
@@ -89,7 +68,6 @@ var Hatchery = (function() {
             discovered = {};
         }
 
-        // Listen for creature chain productions
         Game.on('itemProduced', onItemProduced);
     }
 
@@ -102,38 +80,39 @@ var Hatchery = (function() {
         var chance = DISCOVERY_CHANCE[tier] || 0;
         if (Math.random() > chance) return;
 
-        // Roll for rarity based on tier
+        // Get available biomes for this tier
+        var availableBiomes = TIER_BIOME_ACCESS[Math.min(tier, 7)] || [];
+        if (availableBiomes.length === 0) return;
+
+        // Roll for rarity
         var availableRarities = TIER_RARITY_ACCESS[Math.min(tier, 7)] || ['common'];
         var rarity = rollRarity(availableRarities);
 
-        // Pick an undiscovered creature of that rarity
-        var candidate = pickUndiscovered(rarity);
+        // Pick undiscovered creature of that rarity from available biomes
+        var candidate = pickUndiscovered(rarity, availableBiomes);
 
-        // If all of that rarity are found, try other available rarities
+        // Fallback to other rarities
         if (!candidate) {
             for (var i = 0; i < availableRarities.length; i++) {
-                candidate = pickUndiscovered(availableRarities[i]);
+                candidate = pickUndiscovered(availableRarities[i], availableBiomes);
                 if (candidate) break;
             }
         }
 
-        // All creatures discovered!
         if (!candidate) return;
 
-        // Discover it
         discovered[candidate.id] = {
             discoveredAt: Date.now(),
             tier: tier
         };
         saveState();
 
-        // Show discovery modal
         showDiscoveryModal(candidate);
 
-        // Emit event for quests
         Game.emit('creatureDiscovered', {
             creature: candidate.id,
             rarity: candidate.rarity,
+            biome: candidate.biome,
             total: Object.keys(discovered).length
         });
     }
@@ -143,7 +122,6 @@ var Hatchery = (function() {
         for (var i = 0; i < available.length; i++) {
             totalWeight += RARITY_WEIGHTS[available[i]];
         }
-
         var roll = Math.random() * totalWeight;
         for (var j = 0; j < available.length; j++) {
             roll -= RARITY_WEIGHTS[available[j]];
@@ -152,11 +130,12 @@ var Hatchery = (function() {
         return available[0];
     }
 
-    function pickUndiscovered(rarity) {
+    function pickUndiscovered(rarity, availableBiomes) {
         var pool = [];
         for (var i = 0; i < creatures.length; i++) {
-            if (creatures[i].rarity === rarity && !discovered[creatures[i].id]) {
-                pool.push(creatures[i]);
+            var c = creatures[i];
+            if (c.rarity === rarity && !discovered[c.id] && availableBiomes.indexOf(c.biome) !== -1) {
+                pool.push(c);
             }
         }
         if (pool.length === 0) return null;
@@ -167,10 +146,10 @@ var Hatchery = (function() {
 
     function showDiscoveryModal(creature) {
         var colors = RARITY_COLORS[creature.rarity];
+        var biomeInfo = getBiomeInfo(creature.biome);
 
         var modal = document.getElementById('island-modal');
         if (!modal) {
-            // Create a floating modal if island modal isn't available
             modal = document.createElement('div');
             modal.id = 'hatchery-modal';
             modal.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px;';
@@ -185,6 +164,7 @@ var Hatchery = (function() {
                 '<div class="modal-creature-emoji reveal-creature" style="font-size:56px;">' + creature.emoji + '</div>' +
                 '<h3>' + creature.name + '</h3>' +
                 '<p class="modal-species" style="color:' + colors.label + ';">' + creature.species + ' \u2022 ' + rarityLabel + '</p>' +
+                '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">' + biomeInfo.icon + ' ' + biomeInfo.name + ' Biome</p>' +
                 '<p class="modal-desc">' + creature.desc + '</p>' +
                 '<p style="font-size:12px;color:var(--text-secondary);margin-top:8px;">' +
                     Object.keys(discovered).length + '/' + creatures.length + ' creatures discovered' +
@@ -193,35 +173,35 @@ var Hatchery = (function() {
             '</div>';
 
         modal.classList.remove('hidden');
-
         Sound.playCelebration();
         Game.vibrate([20, 40, 30, 40, 20]);
 
         modal.querySelector('.modal-close-btn').addEventListener('click', function() {
             modal.classList.add('hidden');
-            // Clean up floating modal if we created one
-            if (modal.id === 'hatchery-modal') {
-                modal.remove();
-            }
+            if (modal.id === 'hatchery-modal') modal.remove();
         });
         modal.addEventListener('click', function(e) {
             if (e.target === modal) {
                 modal.classList.add('hidden');
-                if (modal.id === 'hatchery-modal') {
-                    modal.remove();
-                }
+                if (modal.id === 'hatchery-modal') modal.remove();
             }
         });
+    }
+
+    function getBiomeInfo(biomeId) {
+        for (var i = 0; i < biomes.length; i++) {
+            if (biomes[i].id === biomeId) return biomes[i];
+        }
+        return { id: biomeId, name: biomeId, icon: '' };
     }
 
     // ─── COLLECTION RENDERING ───────────────────────────────────
 
     function renderCollection(containerEl) {
         if (!containerEl) return;
-
         containerEl.innerHTML = '';
 
-        // Header with count
+        // Header with total count
         var header = document.createElement('div');
         header.className = 'hatchery-header';
         header.innerHTML =
@@ -229,87 +209,128 @@ var Hatchery = (function() {
             '<span class="hatchery-count">' + Object.keys(discovered).length + '/' + creatures.length + '</span>';
         containerEl.appendChild(header);
 
-        // Progress bar
+        // Overall progress bar
         var pct = Math.round((Object.keys(discovered).length / creatures.length) * 100);
         var progressBar = document.createElement('div');
         progressBar.className = 'hatchery-progress';
         progressBar.innerHTML = '<div class="hatchery-progress-fill" style="width:' + pct + '%;"></div>';
         containerEl.appendChild(progressBar);
 
-        // Group by rarity
-        var groups = ['legendary', 'rare', 'uncommon', 'common'];
-        for (var g = 0; g < groups.length; g++) {
-            var rarity = groups[g];
-            var group = creatures.filter(function(c) { return c.rarity === rarity; });
-            if (group.length === 0) continue;
+        // Render each biome section
+        for (var b = 0; b < biomes.length; b++) {
+            var biome = biomes[b];
+            var biomeCreatures = getCreaturesByBiome(biome.id);
+            if (biomeCreatures.length === 0) continue;
 
-            var colors = RARITY_COLORS[rarity];
-            var label = rarity.charAt(0).toUpperCase() + rarity.slice(1);
+            var discoveredInBiome = countDiscoveredInBiome(biome.id);
+            var isCollapsed = !!collapsedBiomes[biome.id];
 
             var section = document.createElement('div');
-            section.className = 'hatchery-section';
+            section.className = 'hatchery-biome-section';
 
-            var sectionHeader = document.createElement('div');
-            sectionHeader.className = 'hatchery-section-header';
-            sectionHeader.innerHTML = '<span style="color:' + colors.label + ';">' + label + '</span>';
-            section.appendChild(sectionHeader);
+            // Biome header (clickable to toggle)
+            var biomeHeader = document.createElement('div');
+            biomeHeader.className = 'hatchery-biome-header';
+            biomeHeader.innerHTML =
+                '<div class="biome-header-left">' +
+                    '<span class="biome-toggle">' + (isCollapsed ? '\u25B6' : '\u25BC') + '</span>' +
+                    '<span class="biome-icon">' + biome.icon + '</span>' +
+                    '<span class="biome-name">' + biome.name + '</span>' +
+                '</div>' +
+                '<span class="biome-count">' + discoveredInBiome + '/' + biomeCreatures.length + '</span>';
 
-            var grid = document.createElement('div');
-            grid.className = 'hatchery-grid';
+            // Biome progress mini-bar
+            var biomePct = biomeCreatures.length > 0 ? Math.round((discoveredInBiome / biomeCreatures.length) * 100) : 0;
+            var biomeProg = document.createElement('div');
+            biomeProg.className = 'hatchery-biome-progress';
+            biomeProg.innerHTML = '<div class="hatchery-biome-progress-fill" style="width:' + biomePct + '%;"></div>';
 
-            for (var i = 0; i < group.length; i++) {
-                var c = group[i];
-                var isFound = !!discovered[c.id];
+            (function(biomeId, sectionEl) {
+                biomeHeader.addEventListener('click', function() {
+                    collapsedBiomes[biomeId] = !collapsedBiomes[biomeId];
+                    renderCollection(containerEl);
+                    Sound.playTap();
+                });
+            })(biome.id, section);
 
-                var card = document.createElement('div');
-                card.className = 'hatchery-card' + (isFound ? ' discovered' : ' undiscovered');
-                card.style.borderColor = isFound ? colors.border : 'rgba(255,255,255,0.06)';
-                if (isFound) {
-                    card.style.background = colors.bg;
+            section.appendChild(biomeHeader);
+            section.appendChild(biomeProg);
+
+            // Grid of creatures (hidden if collapsed)
+            if (!isCollapsed) {
+                var grid = document.createElement('div');
+                grid.className = 'hatchery-grid';
+
+                for (var i = 0; i < biomeCreatures.length; i++) {
+                    var c = biomeCreatures[i];
+                    var isFound = !!discovered[c.id];
+                    var colors = RARITY_COLORS[c.rarity];
+
+                    var card = document.createElement('div');
+                    card.className = 'hatchery-card' + (isFound ? ' discovered' : ' undiscovered');
+                    card.style.borderColor = isFound ? colors.border : 'rgba(255,255,255,0.06)';
+                    if (isFound) card.style.background = colors.bg;
+
+                    var emoji = document.createElement('div');
+                    emoji.className = 'hatchery-emoji';
+                    emoji.textContent = isFound ? c.emoji : '?';
+                    if (!isFound) {
+                        emoji.style.opacity = '0.3';
+                        emoji.style.filter = 'grayscale(1)';
+                    }
+
+                    var name = document.createElement('div');
+                    name.className = 'hatchery-name';
+                    name.textContent = isFound ? c.name : '???';
+                    if (!isFound) name.style.color = 'var(--text-secondary)';
+
+                    card.appendChild(emoji);
+                    card.appendChild(name);
+
+                    if (isFound) {
+                        (function(creature) {
+                            card.addEventListener('click', function() {
+                                showCreatureDetail(creature);
+                            });
+                        })(c);
+                    }
+
+                    grid.appendChild(card);
                 }
 
-                var emoji = document.createElement('div');
-                emoji.className = 'hatchery-emoji';
-                emoji.textContent = isFound ? c.emoji : '?';
-                if (!isFound) {
-                    emoji.style.opacity = '0.3';
-                    emoji.style.filter = 'grayscale(1)';
-                }
-
-                var name = document.createElement('div');
-                name.className = 'hatchery-name';
-                name.textContent = isFound ? c.name : '???';
-                if (!isFound) name.style.color = 'var(--text-secondary)';
-
-                card.appendChild(emoji);
-                card.appendChild(name);
-
-                // Click to see details if discovered
-                if (isFound) {
-                    (function(creature) {
-                        card.addEventListener('click', function() {
-                            showCreatureDetail(creature);
-                        });
-                    })(c);
-                }
-
-                grid.appendChild(card);
+                section.appendChild(grid);
             }
 
-            section.appendChild(grid);
             containerEl.appendChild(section);
         }
 
         // Hint text
         var hint = document.createElement('p');
         hint.className = 'hatchery-hint';
-        hint.textContent = 'Merge creature eggs to discover new friends! Higher tiers reveal rarer creatures.';
+        hint.textContent = 'Merge creature eggs to discover new friends! Higher tiers unlock rarer creatures and exotic biomes.';
         containerEl.appendChild(hint);
+    }
+
+    function getCreaturesByBiome(biomeId) {
+        var result = [];
+        for (var i = 0; i < creatures.length; i++) {
+            if (creatures[i].biome === biomeId) result.push(creatures[i]);
+        }
+        return result;
+    }
+
+    function countDiscoveredInBiome(biomeId) {
+        var count = 0;
+        for (var i = 0; i < creatures.length; i++) {
+            if (creatures[i].biome === biomeId && discovered[creatures[i].id]) count++;
+        }
+        return count;
     }
 
     function showCreatureDetail(creature) {
         var colors = RARITY_COLORS[creature.rarity];
         var rarityLabel = creature.rarity.charAt(0).toUpperCase() + creature.rarity.slice(1);
+        var biomeInfo = getBiomeInfo(creature.biome);
 
         var modal = document.getElementById('island-modal');
         if (!modal) return;
@@ -319,6 +340,7 @@ var Hatchery = (function() {
                 '<div class="modal-creature-emoji" style="font-size:48px;">' + creature.emoji + '</div>' +
                 '<h3>' + creature.name + '</h3>' +
                 '<p class="modal-species" style="color:' + colors.label + ';">' + creature.species + ' \u2022 ' + rarityLabel + '</p>' +
+                '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">' + biomeInfo.icon + ' ' + biomeInfo.name + ' Biome</p>' +
                 '<p class="modal-desc">' + creature.desc + '</p>' +
                 '<button class="modal-close-btn">Close</button>' +
             '</div>';
@@ -338,9 +360,7 @@ var Hatchery = (function() {
 
     function saveState() {
         var state = Game.getState();
-        state.hatchery = {
-            discovered: discovered
-        };
+        state.hatchery = { discovered: discovered };
         Game.save();
     }
 

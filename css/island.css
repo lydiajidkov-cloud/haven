@@ -520,6 +520,74 @@
     font-style: italic;
 }
 
+/* ─── BIOME SECTIONS ─────────────────────────────────────── */
+
+.hatchery-biome-section {
+    margin-bottom: 10px;
+}
+
+.hatchery-biome-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 4px;
+}
+
+.hatchery-biome-header:active {
+    background: rgba(0,0,0,0.35);
+}
+
+.biome-header-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.biome-toggle {
+    font-size: 10px;
+    color: var(--text-secondary);
+    width: 12px;
+}
+
+.biome-icon {
+    font-size: 16px;
+}
+
+.biome-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.biome-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-gold);
+    background: rgba(255,215,0,0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.hatchery-biome-progress {
+    height: 3px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
+
+.hatchery-biome-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-green), var(--accent-gold));
+    border-radius: 2px;
+    transition: width 0.4s ease-out;
+}
+
 /* Hatchery tab button on island screen */
 .island-tab-bar {
     display: flex;
