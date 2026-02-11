@@ -9,7 +9,20 @@ const Board = (() => {
     let boardEl, containerEl;
     let grid = [];   // DOM elements [row][col]
     let items = [];  // Item data [row][col] or null
-    let animating = false;
+    // Per-cell locking replaces global `animating` — allows rapid tapping
+    var lockedCells = {};  // "row,col" → true for cells in mid-animation
+
+    // ─── SURGE MOMENTUM SYSTEM ──────────────────────────────────────
+    var surgeLevel = 0;           // 0–100
+    var surgeActive = false;
+    var surgeDecayTimer = null;
+    var surgeMergeCount = 0;      // merges during current surge
+    var SURGE_ACTIVATE = 40;      // level to activate
+    var SURGE_DEACTIVATE = 10;    // level to deactivate
+    var SURGE_PER_MERGE = 30;     // added per merge
+    var SURGE_DECAY_RATE = 12;    // lost per second
+    var SURGE_ANIM_FAST = 180;    // ms merge animation during surge
+    var SURGE_ANIM_NORMAL = 320;  // ms merge animation normally
 
     // Tutorial overrides
     var forcedSpawnTier = null;
@@ -130,8 +143,6 @@ const Board = (() => {
     }
 
     function onPointerDown(e) {
-        if (animating) return;
-
         // Reject second finger / additional pointers
         if (activePointerId !== null) return;
 
@@ -140,6 +151,10 @@ const Board = (() => {
 
         var r = parseInt(cell.dataset.row);
         var c = parseInt(cell.dataset.col);
+
+        // Skip if this specific cell is mid-animation
+        if (isCellLocked(r, c)) return;
+
         e.preventDefault();
 
         // Lock to this pointer
@@ -535,6 +550,104 @@ const Board = (() => {
         dragStarted = false;
     }
 
+    // ─── CELL LOCKING (replaces global animating flag) ────────────
+
+    function lockCell(r, c) { lockedCells[r + ',' + c] = true; }
+    function unlockCell(r, c) { delete lockedCells[r + ',' + c]; }
+    function isCellLocked(r, c) { return !!lockedCells[r + ',' + c]; }
+    function hasAnyLock() { return Object.keys(lockedCells).length > 0; }
+
+    function getMergeDelay() {
+        return surgeActive ? SURGE_ANIM_FAST : SURGE_ANIM_NORMAL;
+    }
+
+    // ─── SURGE FUNCTIONS ────────────────────────────────────────────
+
+    function feedSurge() {
+        surgeLevel = Math.min(100, surgeLevel + SURGE_PER_MERGE);
+
+        if (!surgeActive && surgeLevel >= SURGE_ACTIVATE) {
+            activateSurge();
+        }
+
+        if (surgeActive) {
+            surgeMergeCount++;
+        }
+
+        renderSurgeBar();
+        startSurgeDecay();
+    }
+
+    function activateSurge() {
+        surgeActive = true;
+        surgeMergeCount = 0;
+        boardEl.classList.add('surge-active');
+        Game.vibrate([10, 20, 10]);
+        Game.emit('surgeActivated');
+    }
+
+    function deactivateSurge() {
+        if (!surgeActive) return;
+        surgeActive = false;
+        boardEl.classList.remove('surge-active');
+
+        // End-of-surge bonus
+        if (surgeMergeCount >= 3) {
+            var bonus = surgeMergeCount * 2;
+            Game.addGems(bonus);
+            showFloatingText(3, 2, 'Surge! +' + bonus + ' \u{1F48E}');
+            showToast('\u26A1 Surge ended! ' + surgeMergeCount + ' merges \u2192 +' + bonus + ' gems');
+        }
+
+        surgeMergeCount = 0;
+        Game.emit('surgeEnded');
+    }
+
+    function startSurgeDecay() {
+        if (surgeDecayTimer) return; // already running
+        surgeDecayTimer = setInterval(function() {
+            surgeLevel = Math.max(0, surgeLevel - SURGE_DECAY_RATE * 0.1);
+
+            if (surgeActive && surgeLevel < SURGE_DEACTIVATE) {
+                deactivateSurge();
+            }
+
+            renderSurgeBar();
+
+            if (surgeLevel <= 0) {
+                clearInterval(surgeDecayTimer);
+                surgeDecayTimer = null;
+            }
+        }, 100);
+    }
+
+    function renderSurgeBar() {
+        var bar = document.getElementById('surge-bar');
+        var fill = document.getElementById('surge-fill');
+        var label = document.getElementById('surge-label');
+        if (!bar || !fill) return;
+
+        fill.style.width = surgeLevel + '%';
+
+        if (surgeActive) {
+            bar.classList.add('surge-on');
+            if (label) label.textContent = 'SURGE!';
+        } else if (surgeLevel > 0) {
+            bar.classList.remove('surge-on');
+            if (label) label.textContent = '';
+        } else {
+            bar.classList.remove('surge-on');
+            if (label) label.textContent = '';
+        }
+
+        // Show/hide bar
+        if (surgeLevel > 0) {
+            bar.classList.remove('hidden');
+        } else {
+            bar.classList.add('hidden');
+        }
+    }
+
     // ─── MERGE LOGIC ─────────────────────────────────────────────
 
     function attemptMerge(fromRow, fromCol, toRow, toCol) {
@@ -577,6 +690,7 @@ const Board = (() => {
 
             if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
             if (!items[r][c]) continue;
+            if (isCellLocked(r, c)) continue;  // skip cells mid-animation
             if (items[r][c].chain !== chain || items[r][c].tier !== tier) continue;
 
             result.push({ row: r, col: c });
@@ -591,11 +705,23 @@ const Board = (() => {
     }
 
     function executeMerge(cells, chain, tier, targetRow, targetCol, totalCount) {
-        animating = true;
-        const nextTier = tier + 1;
-        const isMaxTier = !Items.hasNextTier(chain, tier);
-        const isBigMerge = totalCount >= 5;
-        const nextDef = Items.getItemDef(chain, isMaxTier ? tier : nextTier);
+        var delay = getMergeDelay();
+        var nextTier = tier + 1;
+        var isMaxTier = !Items.hasNextTier(chain, tier);
+        var isBigMerge = totalCount >= 5;
+        var nextDef = Items.getItemDef(chain, isMaxTier ? tier : nextTier);
+
+        // Lock all involved cells
+        cells.forEach(function(pos) { lockCell(pos.row, pos.col); });
+        lockCell(targetRow, targetCol);
+
+        // Feed the surge meter
+        feedSurge();
+
+        // Surge bonus: extra gems per merge while active
+        if (surgeActive) {
+            Game.addGems(1);
+        }
 
         // Stats + events
         Game.updateStat('totalMerges', function(v) { return (v || 0) + 1; });
@@ -615,35 +741,36 @@ const Board = (() => {
 
         // After flash, execute
         setTimeout(function() {
-            // Remove all merging items
+            // Remove all merging items and unlock cells
             cells.forEach(function(pos) {
                 items[pos.row][pos.col] = null;
                 grid[pos.row][pos.col].classList.remove('merging');
+                unlockCell(pos.row, pos.col);
                 renderCell(pos.row, pos.col);
             });
 
             if (isMaxTier) {
-                // Already at max tier — special celebration, give rewards
                 Sound.playCelebration();
                 Game.vibrate([20, 40, 30, 40, 20]);
                 emitParticlesAtCell(targetRow, targetCol, 'legendary');
                 Game.addGems(10);
                 Game.addStars(1);
-                animating = false;
+                unlockCell(targetRow, targetCol);
                 syncToGameState();
                 return;
             }
 
             // Create merged item at target
-            const newItem = Items.createItem(chain, nextTier);
+            var newItem = Items.createItem(chain, nextTier);
             items[targetRow][targetCol] = newItem;
+            unlockCell(targetRow, targetCol);
             renderCell(targetRow, targetCol);
 
             // Emit event for quest tracking
             Game.emit('itemProduced', { chain: chain, tier: nextTier });
 
             // Pop animation
-            const newEl = grid[targetRow][targetCol].querySelector('.item');
+            var newEl = grid[targetRow][targetCol].querySelector('.item');
             if (newEl) {
                 newEl.classList.add('merge-result');
                 setTimeout(function() { newEl.classList.remove('merge-result'); }, 400);
@@ -657,12 +784,12 @@ const Board = (() => {
 
             // Big merge bonus: extra item
             if (isBigMerge) {
-                const empty = getRandomEmptyCell();
+                var empty = getRandomEmptyCell();
                 if (empty) {
-                    const bonus = Items.createItem(chain, nextTier);
+                    var bonus = Items.createItem(chain, nextTier);
                     items[empty.row][empty.col] = bonus;
                     renderCell(empty.row, empty.col);
-                    const bonusEl = grid[empty.row][empty.col].querySelector('.item');
+                    var bonusEl = grid[empty.row][empty.col].querySelector('.item');
                     if (bonusEl) {
                         bonusEl.classList.add('spawn-in');
                         setTimeout(function() { bonusEl.classList.remove('spawn-in'); }, 300);
@@ -694,19 +821,20 @@ const Board = (() => {
             // Check chain reactions after a short delay
             setTimeout(function() {
                 checkChainReaction(targetRow, targetCol, 1);
-            }, 250);
-        }, 350);
+            }, Math.min(delay, 200));
+
+            syncToGameState();
+        }, delay);
     }
 
     function checkChainReaction(row, col, depth) {
-        const item = items[row][col];
+        var item = items[row][col];
         if (!item) {
-            animating = false;
             syncToGameState();
             return;
         }
 
-        const connected = findConnected(row, col, item.chain, item.tier);
+        var connected = findConnected(row, col, item.chain, item.tier);
         if (connected.length >= MIN_MERGE) {
             // Chain reaction bonus — escalating rewards!
             var chainGems = depth * 5;
@@ -720,7 +848,6 @@ const Board = (() => {
             Game.updateStat('chainRecord', function(v) { return Math.max(v || 0, depth); });
             executeMerge(connected, item.chain, item.tier, row, col, connected.length);
         } else {
-            animating = false;
             syncToGameState();
         }
     }
@@ -728,7 +855,15 @@ const Board = (() => {
     // ─── CROSS-CHAIN MERGE ───────────────────────────────────────
 
     function executeCrossChainMerge(fromRow, fromCol, toRow, toCol, recipe) {
-        animating = true;
+        var delay = getMergeDelay();
+
+        // Lock both cells
+        lockCell(fromRow, fromCol);
+        lockCell(toRow, toCol);
+
+        // Feed surge meter
+        feedSurge();
+        if (surgeActive) Game.addGems(1);
 
         // Flash both cells
         grid[fromRow][fromCol].classList.add('merging');
@@ -746,11 +881,13 @@ const Board = (() => {
             items[toRow][toCol] = null;
             grid[fromRow][fromCol].classList.remove('merging');
             grid[toRow][toCol].classList.remove('merging');
+            unlockCell(fromRow, fromCol);
             renderCell(fromRow, fromCol);
 
             // Place hybrid result
             var newItem = Items.createItem(recipe.chain, recipe.tier);
             items[toRow][toCol] = newItem;
+            unlockCell(toRow, toCol);
             renderCell(toRow, toCol);
 
             Game.emit('itemProduced', { chain: recipe.chain, tier: recipe.tier });
@@ -772,9 +909,8 @@ const Board = (() => {
             boardEl.classList.add('screen-shake');
             setTimeout(function() { boardEl.classList.remove('screen-shake'); }, 300);
 
-            animating = false;
             syncToGameState();
-        }, 350);
+        }, delay);
     }
 
     // ─── RESOURCE NODES ──────────────────────────────────────────
@@ -791,8 +927,6 @@ const Board = (() => {
     }
 
     function spawnItem(chain) {
-        if (animating) return;
-
         if (!Game.useEnergy()) {
             Sound.playEnergyEmpty();
             var energyEl = document.getElementById('energy-display');

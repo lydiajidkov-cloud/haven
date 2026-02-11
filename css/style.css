@@ -408,6 +408,64 @@ body {
     display: none !important;
 }
 
+/* ─── SURGE BAR ──────────────────────────────────────────── */
+
+#surge-bar {
+    position: relative;
+    height: 18px;
+    margin: 0 12px 4px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 9px;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: opacity 0.3s;
+}
+
+#surge-bar.hidden {
+    height: 0;
+    margin: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+#surge-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #f59e0b, #f97316);
+    border-radius: 9px;
+    transition: width 0.15s ease-out;
+}
+
+#surge-bar.surge-on #surge-fill {
+    background: linear-gradient(90deg, #fbbf24, #ef4444, #fbbf24);
+    background-size: 200% 100%;
+    animation: surge-flow 0.8s linear infinite;
+}
+
+@keyframes surge-flow {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+#surge-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    letter-spacing: 1.5px;
+    pointer-events: none;
+}
+
+#board.surge-active {
+    box-shadow: 0 0 20px rgba(249,115,22,0.25),
+                inset 0 0 15px rgba(249,115,22,0.08);
+}
+
 /* ─── TOAST ───────────────────────────────────────────────── */
 
 .toast {
