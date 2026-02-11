@@ -258,11 +258,12 @@ const Board = (() => {
         const isBigMerge = totalCount >= 5;
         const nextDef = Items.getItemDef(chain, isMaxTier ? tier : nextTier);
 
-        // Stats
+        // Stats + events
         Game.updateStat('totalMerges', function(v) { return (v || 0) + 1; });
         if (nextTier > (Game.getState().stats.highestTier || 0)) {
             Game.updateStat('highestTier', nextTier);
         }
+        Game.emit('mergeCompleted', { chain: chain, tier: tier, count: totalCount });
 
         // Flash all merging cells
         cells.forEach(function(pos) {
@@ -298,6 +299,9 @@ const Board = (() => {
             const newItem = Items.createItem(chain, nextTier);
             items[targetRow][targetCol] = newItem;
             renderCell(targetRow, targetCol);
+
+            // Emit event for quest tracking
+            Game.emit('itemProduced', { chain: chain, tier: nextTier });
 
             // Pop animation
             const newEl = grid[targetRow][targetCol].querySelector('.item');
@@ -425,6 +429,7 @@ const Board = (() => {
         });
 
         Game.updateStat('totalSpawns', function(v) { return (v || 0) + 1; });
+        Game.emit('itemSpawned', { chain: chain, tier: item.tier });
 
         // Check if spawn created an auto-merge
         var connected = findConnected(empty.row, empty.col, item.chain, item.tier);

@@ -9,6 +9,7 @@
     <title>Haven</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/island.css">
 </head>
 <body>
     <div id="app">
@@ -62,18 +63,22 @@
                 </div>
             </div>
 
-            <!-- Quest Screen (Phase 2) -->
+            <!-- Quest Screen -->
             <div id="quest-screen" class="screen">
-                <div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-secondary);">
-                    <p>Quests coming soon...</p>
+                <div class="quest-header-bar">
+                    <h2>Quests</h2>
+                    <p class="quest-subtitle">Complete quests to earn stars and restore the island</p>
                 </div>
+                <div id="quest-list"></div>
             </div>
 
-            <!-- Island Screen (Phase 2) -->
+            <!-- Island Screen -->
             <div id="island-screen" class="screen">
-                <div style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-secondary);">
-                    <p>Island map coming soon...</p>
+                <div id="island-stats"></div>
+                <div id="island-map-wrapper">
+                    <div id="island-map"></div>
                 </div>
+                <div id="island-modal" class="hidden"></div>
             </div>
 
             <!-- Shop Screen (Phase 3) -->
@@ -122,6 +127,8 @@
     <script src="js/particles.js"></script>
     <script src="js/game.js"></script>
     <script src="js/board.js"></script>
+    <script src="js/quests.js"></script>
+    <script src="js/island.js"></script>
 
     <script>
     // ─── INITIALIZATION ──────────────────────────────────────
@@ -131,6 +138,8 @@
         // Init core systems
         Game.init();
         Board.init();
+        Quests.init();
+        Island.init();
 
         // Init audio on first user interaction
         document.addEventListener('pointerdown', function() {
@@ -164,6 +173,13 @@
             var el = document.getElementById('gems-display');
             el.style.transform = 'scale(1.1)';
             setTimeout(function() { el.style.transform = ''; }, 150);
+        });
+
+        // Stars display
+        Game.on('starsChanged', function(stars) {
+            // Re-render quest and island panels when stars change
+            Quests.renderQuestPanel();
+            Island.renderIslandMap();
         });
 
         // Set initial values
