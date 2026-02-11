@@ -157,6 +157,14 @@ const Board = (() => {
 
         e.preventDefault();
 
+        // Power-up target mode: intercept tap for Upgrade Wand
+        if (typeof PowerUps !== 'undefined' && PowerUps.getActivePowerUp()) {
+            if (items[r][c]) {
+                PowerUps.onTargetCellTapped(r, c);
+            }
+            return;
+        }
+
         // Lock to this pointer
         activePointerId = e.pointerId;
 
@@ -943,9 +951,17 @@ const Board = (() => {
             return;
         }
 
-        var item = (forcedSpawnTier !== null)
-            ? Items.createItem(chain, forcedSpawnTier)
-            : Items.spawnRandomItem(chain);
+        var item;
+        if (forcedSpawnTier !== null) {
+            item = Items.createItem(chain, forcedSpawnTier);
+        } else if (typeof PowerUps !== 'undefined' && PowerUps.isGoldenSpawnActive()) {
+            // Golden Spawn: force tier 2-3
+            var gsTier = Math.random() < 0.5 ? 2 : 3;
+            item = Items.createItem(chain, gsTier);
+            PowerUps.consumeGoldenSpawn();
+        } else {
+            item = Items.spawnRandomItem(chain);
+        }
         items[empty.row][empty.col] = item;
         renderCell(empty.row, empty.col);
 
@@ -1129,12 +1145,277 @@ const Board = (() => {
         }, 2000);
     }
 
+    // ─── POWER-UP METHODS ─────────────────────────────────────────
+
+    function executeMassMatch() {
+        // Group all items by chain+tier, find connected groups, merge them
+        var groups = {};
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (!items[r][c] || isCellLocked(r, c)) continue;
+                var key = items[r][c].chain + ':' + items[r][c].tier;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push({ row: r, col: c });
+            }
+        }
+
+        var mergeDelay = 0;
+        var anyMerged = false;
+
+        Object.keys(groups).forEach(function(key) {
+            var cells = groups[key];
+            if (cells.length < MIN_MERGE) return;
+
+            // Find connected clusters within this group
+            var visited = {};
+            cells.forEach(function(pos) {
+                var k = pos.row + ',' + pos.col;
+                if (visited[k]) return;
+
+                var item = items[pos.row][pos.col];
+                if (!item) return;
+                var cluster = findConnected(pos.row, pos.col, item.chain, item.tier);
+                cluster.forEach(function(cp) { visited[cp.row + ',' + cp.col] = true; });
+
+                if (cluster.length >= MIN_MERGE) {
+                    anyMerged = true;
+                    var target = cluster[cluster.length - 1];
+                    setTimeout(function() {
+                        executeMerge(cluster, item.chain, item.tier, target.row, target.col, cluster.length);
+                    }, mergeDelay);
+                    mergeDelay += 100;
+                }
+            });
+        });
+
+        if (anyMerged) {
+            boardEl.classList.add('powerup-activate');
+            setTimeout(function() { boardEl.classList.remove('powerup-activate'); }, 400);
+        }
+    }
+
+    function sortBoard() {
+        // Collect all items, sort by chain then tier, place back
+        var allItems = [];
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (items[r][c] && !isCellLocked(r, c)) {
+                    allItems.push(items[r][c]);
+                    items[r][c] = null;
+                    renderCell(r, c);
+                }
+            }
+        }
+
+        // Sort: by chain name, then tier descending
+        allItems.sort(function(a, b) {
+            if (a.chain < b.chain) return -1;
+            if (a.chain > b.chain) return 1;
+            return b.tier - a.tier;
+        });
+
+        // Place back left-to-right, top-to-bottom
+        var idx = 0;
+        for (var r2 = 0; r2 < ROWS; r2++) {
+            for (var c2 = 0; c2 < COLS; c2++) {
+                if (idx < allItems.length) {
+                    items[r2][c2] = allItems[idx++];
+                }
+            }
+        }
+
+        // Re-render with staggered animation
+        var cellIdx = 0;
+        for (var r3 = 0; r3 < ROWS; r3++) {
+            for (var c3 = 0; c3 < COLS; c3++) {
+                if (items[r3][c3]) {
+                    (function(row, col, delay) {
+                        setTimeout(function() {
+                            renderCell(row, col);
+                            var el = grid[row][col].querySelector('.item');
+                            if (el) {
+                                el.classList.add('sort-slide');
+                                setTimeout(function() { el.classList.remove('sort-slide'); }, 300);
+                            }
+                        }, delay);
+                    })(r3, c3, cellIdx * 15);
+                    cellIdx++;
+                }
+            }
+        }
+
+        boardEl.classList.add('powerup-activate');
+        setTimeout(function() { boardEl.classList.remove('powerup-activate'); }, 400);
+
+        // After placing, scan for auto-merges
+        setTimeout(function() {
+            scanForAutoMerges();
+            syncToGameState();
+        }, cellIdx * 15 + 200);
+    }
+
+    function shuffleBoard() {
+        // Fisher-Yates shuffle of all non-null items
+        var positions = [];
+        var itemList = [];
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (items[r][c] && !isCellLocked(r, c)) {
+                    positions.push({ row: r, col: c });
+                    itemList.push(items[r][c]);
+                    items[r][c] = null;
+                }
+            }
+        }
+
+        // Fisher-Yates
+        for (var i = itemList.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = itemList[i];
+            itemList[i] = itemList[j];
+            itemList[j] = temp;
+        }
+
+        // Place back
+        for (var k = 0; k < positions.length; k++) {
+            items[positions[k].row][positions[k].col] = itemList[k];
+        }
+
+        // Re-render with spin animation
+        for (var p = 0; p < positions.length; p++) {
+            (function(pos) {
+                renderCell(pos.row, pos.col);
+                var el = grid[pos.row][pos.col].querySelector('.item');
+                if (el) {
+                    el.classList.add('shuffle-spin');
+                    setTimeout(function() { el.classList.remove('shuffle-spin'); }, 350);
+                }
+            })(positions[p]);
+        }
+
+        boardEl.classList.add('powerup-activate');
+        setTimeout(function() { boardEl.classList.remove('powerup-activate'); }, 400);
+
+        // Check for auto-merges after shuffle
+        setTimeout(function() {
+            scanForAutoMerges();
+            syncToGameState();
+        }, 400);
+    }
+
+    function upgradeItem(row, col) {
+        var item = items[row][col];
+        if (!item) return;
+
+        var maxTier = Items.getMaxTier(item.chain);
+        if (item.tier >= maxTier) {
+            // Already max — celebrate instead
+            Sound.playCelebration();
+            Game.addGems(10);
+            Game.addStars(1);
+            showFloatingText(row, col, 'Max tier! +10\u{1F48E} +1\u2B50');
+            return;
+        }
+
+        item.tier++;
+        renderCell(row, col);
+
+        // Upgrade animation
+        var el = grid[row][col].querySelector('.item');
+        if (el) {
+            el.classList.add('upgrade-pop');
+            setTimeout(function() { el.classList.remove('upgrade-pop'); }, 450);
+        }
+
+        var def = Items.getItemDef(item.chain, item.tier);
+        emitParticlesAtCell(row, col, 'merge', {
+            color: def ? def.glow : '#FFD700',
+            count: 20
+        });
+
+        Game.emit('itemProduced', { chain: item.chain, tier: item.tier });
+        syncToGameState();
+    }
+
+    function clearTierZero() {
+        var destroyed = 0;
+        var cellsToDestroy = [];
+
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (items[r][c] && items[r][c].tier === 0 && !isCellLocked(r, c)) {
+                    cellsToDestroy.push({ row: r, col: c });
+                }
+            }
+        }
+
+        if (cellsToDestroy.length === 0) return;
+
+        boardEl.classList.add('powerup-activate');
+        setTimeout(function() { boardEl.classList.remove('powerup-activate'); }, 400);
+
+        cellsToDestroy.forEach(function(pos, i) {
+            setTimeout(function() {
+                var el = grid[pos.row][pos.col].querySelector('.item');
+                if (el) {
+                    el.classList.add('item-dissolve');
+                }
+                setTimeout(function() {
+                    items[pos.row][pos.col] = null;
+                    renderCell(pos.row, pos.col);
+                    destroyed++;
+
+                    if (destroyed === cellsToDestroy.length) {
+                        Game.addGems(destroyed);
+                        showFloatingText(
+                            cellsToDestroy[0].row,
+                            cellsToDestroy[0].col,
+                            '\u26A1 +' + destroyed + '\u{1F48E}'
+                        );
+                        syncToGameState();
+                    }
+                }, 400);
+            }, i * 40);
+        });
+    }
+
+    // Helper: scan entire board for auto-mergeable groups after sort/shuffle
+    function scanForAutoMerges() {
+        var visited = {};
+        var mergeDelay = 0;
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                var key = r + ',' + c;
+                if (visited[key] || !items[r][c] || isCellLocked(r, c)) continue;
+
+                var item = items[r][c];
+                var cluster = findConnected(r, c, item.chain, item.tier);
+                cluster.forEach(function(cp) { visited[cp.row + ',' + cp.col] = true; });
+
+                if (cluster.length >= MIN_MERGE) {
+                    var target = cluster[cluster.length - 1];
+                    (function(cl, ch, ti, tr, tc, cnt, delay) {
+                        setTimeout(function() {
+                            executeMerge(cl, ch, ti, tr, tc, cnt);
+                        }, delay);
+                    })(cluster, item.chain, item.tier, target.row, target.col, cluster.length, mergeDelay);
+                    mergeDelay += 150;
+                }
+            }
+        }
+    }
+
     return {
         init: init,
         spawnItem: spawnItem,
         spawnStarterItems: spawnStarterItems,
         setForcedSpawnTier: function(t) { forcedSpawnTier = t; },
         clearForcedSpawnTier: function() { forcedSpawnTier = null; },
-        setAutoMergeSuppressed: function(v) { autoMergeSuppressed = v; }
+        setAutoMergeSuppressed: function(v) { autoMergeSuppressed = v; },
+        executeMassMatch: executeMassMatch,
+        sortBoard: sortBoard,
+        shuffleBoard: shuffleBoard,
+        upgradeItem: upgradeItem,
+        clearTierZero: clearTierZero
     };
 })();

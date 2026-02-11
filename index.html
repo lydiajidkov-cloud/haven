@@ -43,6 +43,7 @@
                     <div id="surge-fill"></div>
                     <span id="surge-label"></span>
                 </div>
+                <div id="powerup-bar"></div>
                 <div id="board-wrapper">
                     <div id="board-container">
                         <canvas id="particle-canvas"></canvas>
@@ -174,6 +175,7 @@
     <script src="js/audio.js"></script>
     <script src="js/particles.js"></script>
     <script src="js/game.js"></script>
+    <script src="js/powerups.js"></script>
     <script src="js/board.js"></script>
     <script src="js/quests.js"></script>
     <script src="js/island.js"></script>
@@ -191,6 +193,7 @@
         // Init core systems
         Game.init();
         Board.init();
+        PowerUps.init();
         Quests.init();
         Island.init();
         Hatchery.init();

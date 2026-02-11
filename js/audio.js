@@ -246,6 +246,60 @@ const Sound = (() => {
         playTone(220, 0.25, 'triangle', 0.08, 0.12);
     }
 
+    function playPowerUp(type) {
+        if (!enabled) return;
+        switch (type) {
+            case 'mass_match':
+                // Dramatic rising burst
+                playTone(440, 0.15, 'sine', 0.2);
+                playTone(660, 0.12, 'sine', 0.18, 0.05);
+                playTone(880, 0.1, 'sine', 0.15, 0.1);
+                playTone(1100, 0.15, 'sine', 0.12, 0.15);
+                playNoise(0.08, 0.05, 0.1);
+                break;
+            case 'sort_sweep':
+                // Ascending sweep — quick clean notes
+                playTone(300, 0.08, 'triangle', 0.15);
+                playTone(400, 0.08, 'triangle', 0.14, 0.06);
+                playTone(500, 0.08, 'triangle', 0.13, 0.12);
+                playTone(600, 0.08, 'triangle', 0.12, 0.18);
+                playTone(750, 0.12, 'sine', 0.1, 0.24);
+                break;
+            case 'shuffle':
+                // Quick rattling shuffle sound
+                playNoise(0.06, 0.08, 0);
+                playTone(350, 0.05, 'square', 0.1, 0.02);
+                playNoise(0.06, 0.07, 0.06);
+                playTone(450, 0.05, 'square', 0.1, 0.08);
+                playNoise(0.06, 0.06, 0.12);
+                playTone(550, 0.08, 'sine', 0.12, 0.16);
+                break;
+            case 'upgrade_wand':
+                // Magical sparkle — high shimmery
+                playTone(800, 0.2, 'sine', 0.12);
+                playTone(1200, 0.15, 'sine', 0.1, 0.03);
+                playTone(1600, 0.12, 'sine', 0.08, 0.06);
+                playTone(2000, 0.1, 'sine', 0.06, 0.1);
+                playNoise(0.05, 0.03, 0.08);
+                break;
+            case 'lightning':
+                // Sharp crack + rumble
+                playNoise(0.1, 0.12, 0);
+                playTone(100, 0.25, 'sawtooth', 0.1, 0.02);
+                playTone(1200, 0.04, 'square', 0.15, 0);
+                playTone(80, 0.3, 'triangle', 0.08, 0.1);
+                break;
+            case 'golden_spawn':
+                // Warm chime — heavenly
+                playTone(523, 0.25, 'sine', 0.15);
+                playTone(659, 0.22, 'sine', 0.12, 0.05);
+                playTone(784, 0.2, 'sine', 0.1, 0.1);
+                playTone(1047, 0.25, 'sine', 0.08, 0.15);
+                playNoise(0.08, 0.02, 0.15);
+                break;
+        }
+    }
+
     function setEnabled(val) {
         enabled = val;
     }
@@ -263,6 +317,7 @@ const Sound = (() => {
         playTap,
         playError,
         playEnergyEmpty,
+        playPowerUp,
         setEnabled,
         isEnabled
     };

@@ -466,6 +466,111 @@ body {
                 inset 0 0 15px rgba(249,115,22,0.08);
 }
 
+/* ─── POWER-UP BAR ───────────────────────────────────────── */
+
+#powerup-bar {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 10px 2px;
+    flex-shrink: 0;
+}
+
+#powerup-bar:empty {
+    display: none;
+}
+
+.powerup-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.12);
+    background: var(--bg-medium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.powerup-btn:active {
+    transform: scale(0.9);
+    background: var(--bg-light);
+}
+
+.powerup-btn.powerup-active-btn {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 10px rgba(255,215,0,0.4);
+    animation: wand-sparkle 1s ease-in-out infinite;
+}
+
+.powerup-btn.powerup-effect-active {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 8px rgba(255,215,0,0.3);
+}
+
+.powerup-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.powerup-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    background: var(--accent-green);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    line-height: 1;
+}
+
+.powerup-badge-active {
+    background: var(--accent-gold);
+    color: #1a1a2e;
+}
+
+.powerup-cost {
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    color: var(--gems-color);
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+/* Target mode cursor */
+#board.target-mode .cell {
+    cursor: crosshair;
+}
+
+#board.target-mode .cell:hover {
+    box-shadow: 0 0 0 2px var(--accent-gold), inset 0 0 8px rgba(255,215,0,0.2);
+}
+
+/* Golden glow on resource nodes */
+.node.golden-glow {
+    border-color: var(--accent-gold) !important;
+    box-shadow: 0 0 12px rgba(255,215,0,0.4);
+    animation: golden-node-pulse 1.2s ease-in-out infinite alternate !important;
+}
+
+@keyframes golden-node-pulse {
+    0%   { box-shadow: 0 0 6px rgba(255,215,0,0.3); }
+    100% { box-shadow: 0 0 18px rgba(255,215,0,0.6); }
+}
+
 /* ─── TOAST ───────────────────────────────────────────────── */
 
 .toast {
