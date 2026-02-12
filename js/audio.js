@@ -605,6 +605,19 @@ const Sound = (() => {
         }
     }
 
+    function playItemDiscovery() {
+        // Bright discovery chime — ascending sparkle, shorter than creature discover
+        // "Ding-ding-ding!" micro-dopamine hit for new item tier found
+        if (!enabled) return;
+        // Quick bright ascending triad — C6 E6 G6
+        playTone(1047, 0.12, 'sine', 0.1);
+        playTone(1319, 0.12, 'sine', 0.1, 0.06);
+        playTone(1568, 0.15, 'sine', 0.1, 0.12);
+        // Sparkle shimmer at the top
+        playTone(2093, 0.08, 'sine', 0.05, 0.18);
+        playNoise(0.04, 0.02, 0.16);
+    }
+
     function playNearMiss() {
         // Quick two-note descending chime — "so close" sigh
         if (!enabled) return;
@@ -659,6 +672,7 @@ const Sound = (() => {
         playAchievement,
         playOrderClaim,
         playStreakMilestone,
+        playItemDiscovery,
         playNearMiss,
         playSurgeEnd,
         playBoardFull,

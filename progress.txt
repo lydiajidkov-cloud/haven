@@ -174,3 +174,42 @@
     - When Celebration is unavailable, falls back to existing Sound/vibrate calls.
     - celebration.js loads after particles.js (for Particles.emit access at call time)
       and before game.js. No load-time dependencies on other modules.
+
+2026-02-12 — Task 6: Item discovery rewards
+  Award gems for every NEW item tier a player discovers for the first time. Creates constant
+  micro-dopamine hits throughout early and mid-game (competitive gap: Travel Town's most
+  addictive feature).
+
+  Files modified: js/board.js, js/audio.js, js/game.js
+
+  Gem rewards by rarity bracket (PRD spec):
+    - Common (tiers 0-2): 5 gems
+    - Uncommon (tiers 3-4): 10 gems
+    - Rare (tiers 5-6): 25 gems
+    - Legendary (tiers 7+): 50 gems
+    (Previous implementation awarded only 1/2/3 gems — far too low for dopamine hit)
+
+  Distinct chime sound (audio.js):
+    - Added playItemDiscovery(): bright ascending C6-E6-G6 triad with sparkle shimmer.
+    - Shorter and lighter than playCreatureDiscover() — appropriate for frequent micro-rewards.
+    - Exported from Sound module, called via typeof guard for safety.
+
+  Floating text:
+    - Shows "+X NEW!" at the cell where the item was produced (not generic board center).
+    - Toast shows "New Discovery: [Item Name] ([Chain]) +X gems" with magnifying glass icon.
+
+  Discovery tracking (save state):
+    - discoveredItems{} added to Game.defaultState() for new saves.
+    - Existing saves get discoveredItems initialized lazily (null-guard in checkItemDiscovery).
+    - Key format: "chain_tier" → timestamp. Persists across sessions.
+    - itemsDiscovered stat tracked for future achievement integration.
+
+  All item production paths now trigger discovery check:
+    - Regular merge result (executeMerge → checkItemDiscovery)
+    - Max-tier merge (executeMerge isMaxTier path — previously returned early before check)
+    - Cross-chain merge result (executeCrossChainMerge)
+    - Upgrade Wand power-up (upgradeItem)
+    - Companion free_spawn effect (executeCompanionEffect)
+    - Resource node spawns (spawnItem)
+    - Starter items (spawnStarterItems — first-play tutorial items)
+    Discovery only fires once per chain+tier combo; duplicate calls are no-ops.

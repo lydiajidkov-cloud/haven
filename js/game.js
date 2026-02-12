@@ -52,6 +52,7 @@ const Game = (() => {
                 surgeBar: false,
                 powerupBar: false
             },
+            discoveredItems: {},
             soundEnabled: true,
             vibrationEnabled: true
         };

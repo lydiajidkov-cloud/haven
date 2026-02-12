@@ -838,6 +838,8 @@ const Board = (() => {
                 showFloatingText(targetRow, targetCol, '+' + maxTierGems + ' \u{1F48E}');
                 Game.addGems(maxTierGems);
                 Game.addStars(1);
+                // Item discovery reward for reaching max tier
+                checkItemDiscovery(chain, tier, targetRow, targetCol);
                 // Celebration overlay for max-tier merge
                 if (typeof Celebration !== 'undefined') {
                     var maxDef = Items.getItemDef(chain, tier);
@@ -873,7 +875,7 @@ const Board = (() => {
             Game.emit('itemProduced', { chain: chain, tier: actualTier });
 
             // Item discovery reward — first time reaching any chain+tier
-            checkItemDiscovery(chain, actualTier);
+            checkItemDiscovery(chain, actualTier, targetRow, targetCol);
 
             // Pop animation
             var newEl = grid[targetRow][targetCol].querySelector('.item');
@@ -1081,6 +1083,9 @@ const Board = (() => {
             Game.emit('itemProduced', { chain: recipe.chain, tier: recipe.tier });
             Game.emit('crossChainMerge', { chain: recipe.chain, tier: recipe.tier });
 
+            // Item discovery reward for cross-chain results
+            checkItemDiscovery(recipe.chain, recipe.tier, toRow, toCol);
+
             // Cross-chain gem reward (base: tier-scaled)
             var crossGems = Math.max(2, Math.floor(Math.pow(1.5, recipe.tier)));
             // Event modifier: crosschain_reward_multiplier (e.g., Chain Master 3x)
@@ -1287,6 +1292,9 @@ const Board = (() => {
         Game.updateStat('totalSpawns', function(v) { return (v || 0) + 1; });
         Game.emit('itemSpawned', { chain: chain, tier: item.tier });
 
+        // Item discovery reward for spawned items (first encounter of each chain+tier)
+        checkItemDiscovery(chain, item.tier, empty.row, empty.col);
+
         // Check if spawn created an auto-merge
         var connected = autoMergeSuppressed ? [] : findConnected(empty.row, empty.col, item.chain, item.tier);
         if (connected.length >= getEffectiveMinMerge()) {
@@ -1355,6 +1363,7 @@ const Board = (() => {
                         setTimeout(function() { el.classList.remove('spawn-in'); }, 300);
                     }
                     Sound.playSpawn();
+                    checkItemDiscovery(s.chain, s.tier, s.row, s.col);
                 }
             }, i * 150);
         });
@@ -1457,7 +1466,7 @@ const Board = (() => {
     // Award gems the first time any chain+tier combo is produced (Travel Town mechanic).
     // Creates constant micro-dopamine hits: "New Discovery! Mossy Log (Wood Tier 3) +2 gems"
 
-    function checkItemDiscovery(chain, tier) {
+    function checkItemDiscovery(chain, tier, targetRow, targetCol) {
         var state = Game.getState();
         if (!state.discoveredItems) state.discoveredItems = {};
         var key = chain + '_' + tier;
@@ -1467,8 +1476,13 @@ const Board = (() => {
         state.discoveredItems[key] = Date.now();
         Game.save();
 
-        // Gem reward scales with tier
-        var gemReward = tier <= 2 ? 1 : (tier <= 5 ? 2 : 3);
+        // Gem reward by rarity bracket (PRD Task 6)
+        // Common (tiers 0-2): 5 gems, Uncommon (3-4): 10, Rare (5-6): 25, Legendary (7+): 50
+        var gemReward;
+        if (tier <= 2) { gemReward = 5; }
+        else if (tier <= 4) { gemReward = 10; }
+        else if (tier <= 6) { gemReward = 25; }
+        else { gemReward = 50; }
         Game.addGems(gemReward);
 
         // Get item name for the toast
@@ -1476,9 +1490,16 @@ const Board = (() => {
         var itemName = def ? def.name : ('Tier ' + tier);
         var chainName = def ? def.chainName : chain;
 
-        // Show discovery toast + floating text
-        showFloatingText(0, 3, 'NEW! +' + gemReward + ' \u{1F48E}');
-        showToast('\u{1F50D} New Discovery: ' + itemName + ' (' + chainName + ')');
+        // Show floating "+X NEW!" text at the merge target cell (or board center as fallback)
+        var floatRow = (targetRow !== undefined) ? targetRow : 0;
+        var floatCol = (targetCol !== undefined) ? targetCol : 3;
+        showFloatingText(floatRow, floatCol, '+' + gemReward + ' NEW!');
+        showToast('\u{1F50D} New Discovery: ' + itemName + ' (' + chainName + ') +' + gemReward + ' \u{1F48E}');
+
+        // Distinct discovery chime sound
+        if (typeof Sound !== 'undefined' && Sound.playItemDiscovery) {
+            Sound.playItemDiscovery();
+        }
 
         // Track stat for achievements
         var totalDiscovered = Object.keys(state.discoveredItems).length;
@@ -1686,6 +1707,9 @@ const Board = (() => {
         item.tier++;
         renderCell(row, col);
 
+        // Item discovery reward for upgraded tier
+        checkItemDiscovery(item.chain, item.tier, row, col);
+
         // Upgrade animation
         var el = grid[row][col].querySelector('.item');
         if (el) {
@@ -1822,6 +1846,7 @@ const Board = (() => {
                         setTimeout(function() { freeEl.classList.remove('spawn-in'); }, 300);
                     }
                     emitParticlesAtCell(freeEmpty.row, freeEmpty.col, 'spawn', { color: '#7b68ee' });
+                    checkItemDiscovery(rChain, 2, freeEmpty.row, freeEmpty.col);
                 }
                 break;
 
