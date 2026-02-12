@@ -456,3 +456,53 @@
     background: linear-gradient(135deg, #f97316, #ea580c) !important;
     color: white !important;
 }
+
+/* ─── FIRST-PURCHASE BONUS BANNER ────────────────────────── */
+
+.first-purchase-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 180, 0, 0.06));
+    border: 1px solid rgba(255, 215, 0, 0.25);
+    border-radius: var(--radius-sm);
+    animation: first-purchase-glow 2.5s ease-in-out infinite;
+}
+
+.first-purchase-card.first-purchase-active {
+    background: rgba(76, 175, 80, 0.08);
+    border-color: rgba(76, 175, 80, 0.25);
+    animation: none;
+}
+
+.first-purchase-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.first-purchase-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.first-purchase-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.first-purchase-active .first-purchase-title {
+    color: #6fcf70;
+}
+
+.first-purchase-desc {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+@keyframes first-purchase-glow {
+    0%, 100% { border-color: rgba(255, 215, 0, 0.15); }
+    50% { border-color: rgba(255, 215, 0, 0.4); }
+}

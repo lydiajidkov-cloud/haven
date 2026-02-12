@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 6;
+    const SAVE_VERSION = 7;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const DEFAULT_ROWS = 8;
@@ -75,6 +75,7 @@ const Game = (() => {
             evolvedCreatures: {},
             boardTheme: null,
             ownedThemes: {},
+            firstPurchaseMade: false,
             soundEnabled: true,
             vibrationEnabled: true
         };
@@ -228,6 +229,11 @@ const Game = (() => {
             }
             data._saveVersion = 6;
         }
+        // v6 → v7: First-purchase bonus (permanent +10% gem income)
+        if (data._saveVersion < 7) {
+            if (typeof data.firstPurchaseMade === 'undefined') data.firstPurchaseMade = false;
+            data._saveVersion = 7;
+        }
         return data;
     }
 
@@ -342,9 +348,25 @@ const Game = (() => {
                 n = Math.round(n * (1 + bonuses.gem_bonus / 100));
             }
         }
+        // First-purchase bonus: permanent +10% gem income
+        if (n > 0 && state.firstPurchaseMade) {
+            n = Math.round(n * 1.1);
+        }
         state.gems = (state.gems || 0) + n;
         emit('gemsChanged', state.gems);
         save();
+    }
+
+    function markFirstPurchase() {
+        if (state.firstPurchaseMade) return false;
+        state.firstPurchaseMade = true;
+        save();
+        emit('firstPurchaseMade');
+        return true;
+    }
+
+    function hasFirstPurchaseBonus() {
+        return state ? !!state.firstPurchaseMade : false;
     }
 
     function addStars(n) {
@@ -562,7 +584,9 @@ const Game = (() => {
         purchaseBoardTheme: purchaseBoardTheme,
         setBoardTheme: setBoardTheme,
         getBoardTheme: getBoardTheme,
-        getOwnedThemes: getOwnedThemes
+        getOwnedThemes: getOwnedThemes,
+        markFirstPurchase: markFirstPurchase,
+        hasFirstPurchaseBonus: hasFirstPurchaseBonus
     };
 
     // ROWS and COLS are dynamic (change on board expansion), so use getters

@@ -1102,6 +1102,16 @@ const Board = (() => {
                     showFloatingText(targetRow, targetCol, '+' + gemReward + ' \u{1F48E}');
                 }
                 Game.addGems(gemReward);
+
+                // Double-reward ad prompt: 20% chance after tier 4+ gem reward
+                // Shows AFTER merge animation (delayed) — don't interrupt flow
+                (function(gr, tr, tc) {
+                    setTimeout(function() {
+                        if (typeof AdAdapter !== 'undefined' && AdAdapter.maybeShowDoubleReward) {
+                            AdAdapter.maybeShowDoubleReward(gr, tr, tc);
+                        }
+                    }, 600);
+                })(gemReward, targetRow, targetCol);
             }
 
             // Trigger companion effects
@@ -2284,6 +2294,7 @@ const Board = (() => {
         countTierZero: countTierZero,
         CLUTTER_THRESHOLD: CLUTTER_THRESHOLD,
         showToast: showToast,
+        showFloatingText: showFloatingText,
         TOAST_PRIORITY: TOAST_PRIORITY
     };
 })();

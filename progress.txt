@@ -663,3 +663,60 @@
     - ad-adapter.js loaded after game.js (dependency) and before board.js/shop.js.
     - css/ad-adapter.css linked in head alongside other feature CSS files.
     - AdAdapter.init() called after Shop.init() in initialization sequence.
+
+2026-02-12 — Task 16: Double-reward ad + first purchase bonus
+  Two monetization features: a probabilistic double-reward ad after gem-awarding
+  merges, and a permanent +10% gem income bonus on first real-money purchase.
+
+  Files modified: js/ad-adapter.js, js/board.js, js/shop.js, js/game.js,
+                  css/ad-adapter.css, css/shop.css
+
+  (a) Double-reward ad prompt (ad-adapter.js + board.js):
+    - After a tier 4+ merge awards gems, 20% chance to show "Double your gems?"
+      prompt. DOUBLE_REWARD_CHANCE = 0.20.
+    - Prompt appears 600ms after merge animation completes (doesn't interrupt
+      the merge flow, shows AFTER gem floating text and celebration effects).
+    - Compact card UI: sparkle icon, "Double Your Gems?" title, shows original
+      reward and doubled amount (e.g., "+5 -> +10"), green "Watch Ad" button
+      with remaining ad count, "No thanks" skip button.
+    - 5-second auto-dismiss timer with visual countdown bar that drains from
+      full to empty. After 5 seconds, prompt dismisses automatically.
+    - On Watch Ad: plays simulated ad via AdAdapter.show(REWARDED_DOUBLE),
+      then awards the original gem amount again via Game.addGems(), shows
+      "2x!" floating text at the merge cell, HIGH priority toast, celebration
+      sound, haptic feedback.
+    - Respects the 5/day rewarded ad cap from Task 15. Won't show if no ads
+      remaining. Won't show if another prompt is already visible (DOM ID check).
+    - Dismissible by tapping "No thanks", tapping backdrop, or waiting 5 seconds.
+    - CSS: centered card with gold border accent, scale+fade entrance animation,
+      green gradient watch button, countdown timer bar in gold. Respects
+      prefers-reduced-motion media query.
+    - Board.showFloatingText() exported from Board module for AdAdapter to use.
+    - maybeShowDoubleReward(gemReward, row, col) exported from AdAdapter.
+
+  (b) First-purchase bonus (game.js + shop.js):
+    - ANY first real-money purchase permanently unlocks +10% gem income.
+    - firstPurchaseMade boolean added to Game.defaultState() and save state.
+    - Game.addGems(): when n > 0 and firstPurchaseMade is true, multiplies
+      gems by 1.1 (applied after creature passive gem bonus).
+    - Game.markFirstPurchase(): sets firstPurchaseMade to true, saves, emits
+      'firstPurchaseMade' event. Returns true if this was the first time.
+    - Game.hasFirstPurchaseBonus(): query function for UI display.
+    - Three purchase paths trigger markFirstPurchase():
+      (1) simulatePurchase() — gem bundle IAP ($0.99-$19.99)
+      (2) purchaseStarterPack() — starter pack ($1.99)
+      (3) breakPiggyBank() — piggy bank unlock ($2.99)
+    - Each path shows "+10% gem bonus unlocked permanently!" toast on first
+      purchase, then normal toast on subsequent purchases.
+    - Shop banner: prominent card at top of Gem Bundles section.
+      Before first purchase: gold-bordered card with pulsing glow animation,
+      star icon, "First Purchase Bonus" title, "ANY purchase permanently
+      unlocks +10% gem income!" description.
+      After first purchase: green-bordered card with checkmark icon,
+      "+10% Gem Bonus Active" title, "All gem income permanently boosted!"
+      description (no animation).
+    - Shop re-renders on 'firstPurchaseMade' event to update banner state.
+
+  (c) Save version bump (game.js):
+    - SAVE_VERSION raised from 6 to 7.
+    - migrateState() v6->v7: adds firstPurchaseMade: false if missing.

@@ -174,10 +174,11 @@ const Shop = (() => {
             renderShop();
         });
 
-        // Re-render shop when a creature is evolved, theme changes, or creature discovered
+        // Re-render shop when a creature is evolved, theme changes, creature discovered, or first purchase
         Game.on('creatureEvolved', function() { renderShop(); });
         Game.on('boardThemeChanged', function() { renderShop(); });
         Game.on('creatureDiscovered', function() { renderShop(); });
+        Game.on('firstPurchaseMade', function() { renderShop(); });
 
         renderShop();
     }
@@ -209,12 +210,19 @@ const Shop = (() => {
         // Simulate IAP with a confirmation dialog
         var confirmed = confirm('DEMO: Purchase ' + item.name + ' for ' + item.priceLabel + '?\n(This is a prototype — no real charge)');
         if (confirmed) {
+            // Mark first purchase for permanent +10% gem bonus
+            var wasFirst = Game.markFirstPurchase();
             if (item.gems) {
                 Game.addGems(item.gems);
             }
             Sound.playPurchase();
             Game.vibrate([15, 30, 15]);
-            showShopToast(item.name + ' — ' + (item.gems || 0) + ' gems added!');
+            if (wasFirst) {
+                showShopToast('+10% gem bonus unlocked permanently!');
+            } else {
+                showShopToast(item.name + ' — ' + (item.gems || 0) + ' gems added!');
+            }
+            renderShop();
         }
     }
 
@@ -226,6 +234,8 @@ const Shop = (() => {
         }
         var confirmed = confirm('DEMO: Purchase Starter Pack for ' + starterPack.priceLabel + '?\n(This is a prototype — no real charge)');
         if (confirmed) {
+            // Mark first purchase for permanent +10% gem bonus
+            var wasFirst = Game.markFirstPurchase();
             Game.addGems(starterPack.gems);
             Game.addEnergy(30);
             // Spawn a rare egg on the board
@@ -234,7 +244,11 @@ const Shop = (() => {
             state.shop.starterBought = true;
             Game.save();
             Sound.playPurchase();
-            showShopToast('Starter Pack activated!');
+            if (wasFirst) {
+                showShopToast('Starter Pack activated! +10% gem bonus unlocked!');
+            } else {
+                showShopToast('Starter Pack activated!');
+            }
             renderShop();
         }
     }
@@ -246,9 +260,15 @@ const Shop = (() => {
         }
         var confirmed = confirm('DEMO: Unlock piggy bank with ' + piggyGems + ' gems for $2.99?\n(This is a prototype — no real charge)');
         if (confirmed) {
+            // Mark first purchase for permanent +10% gem bonus
+            var wasFirst = Game.markFirstPurchase();
             Game.addGems(piggyGems);
             Sound.playPurchase();
-            showShopToast(piggyGems + ' gems collected from piggy bank!');
+            if (wasFirst) {
+                showShopToast(piggyGems + ' gems collected! +10% gem bonus unlocked!');
+            } else {
+                showShopToast(piggyGems + ' gems collected from piggy bank!');
+            }
             piggyGems = 0;
             saveShopState();
             renderShop();
@@ -599,6 +619,25 @@ const Shop = (() => {
             html += '<p style="font-size:10px;color:var(--text-secondary);padding:0 12px 8px;">Guaranteed new creature you haven\'t found yet!</p>';
             html += undiscoveredEggHtml;
             html += '</div>';
+        }
+
+        // First-Purchase Bonus banner
+        if (!Game.hasFirstPurchaseBonus()) {
+            html += '<div class="shop-section first-purchase-banner">';
+            html += '<div class="first-purchase-card">';
+            html += '<span class="first-purchase-icon">\u{1F31F}</span>';
+            html += '<div class="first-purchase-text">';
+            html += '<span class="first-purchase-title">First Purchase Bonus</span>';
+            html += '<span class="first-purchase-desc">ANY purchase permanently unlocks +10% gem income!</span>';
+            html += '</div></div></div>';
+        } else {
+            html += '<div class="shop-section first-purchase-banner">';
+            html += '<div class="first-purchase-card first-purchase-active">';
+            html += '<span class="first-purchase-icon">\u2705</span>';
+            html += '<div class="first-purchase-text">';
+            html += '<span class="first-purchase-title">+10% Gem Bonus Active</span>';
+            html += '<span class="first-purchase-desc">All gem income permanently boosted!</span>';
+            html += '</div></div></div>';
         }
 
         // Gem Bundles

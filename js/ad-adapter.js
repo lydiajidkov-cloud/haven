@@ -290,6 +290,116 @@ const AdAdapter = (() => {
         });
     }
 
+    // ─── DOUBLE-REWARD PROMPT ────────────────────────────────
+    // After a tier 4+ merge awards gems, 20% chance to offer doubling via ad.
+    // Auto-dismisses after 5 seconds. Shows AFTER merge animation completes.
+
+    var DOUBLE_REWARD_CHANCE = 0.20;
+    var DOUBLE_REWARD_DISMISS_MS = 5000;
+
+    function maybeShowDoubleReward(gemReward, row, col) {
+        // Only show if rewarded ads are available
+        if (!canShowRewarded()) return;
+        // 20% chance
+        if (Math.random() >= DOUBLE_REWARD_CHANCE) return;
+        // Don't show if another prompt is already visible
+        if (document.getElementById('double-reward-prompt')) return;
+
+        showDoubleRewardPrompt(gemReward, row, col);
+    }
+
+    function showDoubleRewardPrompt(gemReward, row, col) {
+        var backdrop = document.createElement('div');
+        backdrop.id = 'double-reward-prompt';
+        backdrop.className = 'double-reward-backdrop';
+
+        var card = document.createElement('div');
+        card.className = 'double-reward-card';
+
+        var icon = document.createElement('div');
+        icon.className = 'double-reward-icon';
+        icon.textContent = '\u2728';
+
+        var title = document.createElement('div');
+        title.className = 'double-reward-title';
+        title.textContent = 'Double Your Gems?';
+
+        var amount = document.createElement('div');
+        amount.className = 'double-reward-amount';
+        amount.innerHTML = '+' + gemReward + ' \u{1F48E} \u2192 +' + (gemReward * 2) + ' \u{1F48E}';
+
+        var watchBtn = document.createElement('button');
+        watchBtn.className = 'double-reward-btn double-reward-btn-watch';
+        var adsLeft = getAdsRemaining();
+        watchBtn.innerHTML = '\u{1F4FA} Watch Ad <span class="double-reward-ads-left">' + adsLeft + '/' + MAX_REWARDED_ADS_PER_DAY + ' left</span>';
+
+        var skipBtn = document.createElement('button');
+        skipBtn.className = 'double-reward-btn double-reward-btn-skip';
+        skipBtn.textContent = 'No thanks';
+
+        // Countdown bar
+        var timerBar = document.createElement('div');
+        timerBar.className = 'double-reward-timer-bar';
+        var timerFill = document.createElement('div');
+        timerFill.className = 'double-reward-timer-fill';
+        timerBar.appendChild(timerFill);
+
+        card.appendChild(icon);
+        card.appendChild(title);
+        card.appendChild(amount);
+        card.appendChild(watchBtn);
+        card.appendChild(skipBtn);
+        card.appendChild(timerBar);
+        backdrop.appendChild(card);
+
+        document.getElementById('app').appendChild(backdrop);
+
+        // Animate in
+        requestAnimationFrame(function() {
+            backdrop.classList.add('double-reward-show');
+            timerFill.style.width = '0%';
+        });
+
+        var dismissed = false;
+        function dismiss() {
+            if (dismissed) return;
+            dismissed = true;
+            clearTimeout(autoDismissTimer);
+            backdrop.classList.remove('double-reward-show');
+            setTimeout(function() { backdrop.remove(); }, 300);
+        }
+
+        // Auto-dismiss after 5 seconds
+        var autoDismissTimer = setTimeout(function() {
+            dismiss();
+        }, DOUBLE_REWARD_DISMISS_MS);
+
+        // Watch Ad button
+        watchBtn.addEventListener('click', function() {
+            dismiss();
+            show(AD_TYPE.REWARDED_DOUBLE, function(success) {
+                if (success) {
+                    // Award the extra gems (doubling the original reward)
+                    Game.addGems(gemReward);
+                    if (typeof Sound !== 'undefined') Sound.playCelebration();
+                    if (typeof Board !== 'undefined' && Board.showFloatingText) {
+                        Board.showFloatingText(row, col, '2x! +' + gemReward + ' \u{1F48E}');
+                    }
+                    if (typeof Board !== 'undefined' && Board.showToast) {
+                        Board.showToast('Gems doubled! +' + gemReward + ' bonus \u{1F48E}', Board.TOAST_PRIORITY.HIGH);
+                    }
+                    Game.vibrate([10, 20, 10, 20, 10]);
+                }
+            });
+        });
+
+        // Skip button / backdrop tap
+        skipBtn.addEventListener('click', dismiss);
+        backdrop.addEventListener('click', function(e) {
+            if (e.target === backdrop) dismiss();
+        });
+    }
+
     function init() {
         // Listen for energyEmpty event to show the bottom sheet
         Game.on('energyEmpty', function() {
@@ -304,6 +414,7 @@ const AdAdapter = (() => {
         getAdsRemaining: getAdsRemaining,
         getAdsWatchedToday: getAdsWatchedToday,
         showEnergyBottomSheet: showEnergyBottomSheet,
+        maybeShowDoubleReward: maybeShowDoubleReward,
         AD_TYPE: AD_TYPE,
         MAX_REWARDED_ADS_PER_DAY: MAX_REWARDED_ADS_PER_DAY
     };
