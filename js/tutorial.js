@@ -33,6 +33,15 @@ var Tutorial = (function() {
             setupFn: 'setupFirstMerge'
         },
         {
+            id: 'swipe-merge',
+            type: 'spotlight',
+            target: 'board',
+            instruction: 'Now try swiping! Drag your finger across 3+ matching items to merge them all at once.',
+            position: 'above',
+            event: 'mergeCompleted',
+            setupFn: 'setupSwipeMerge'
+        },
+        {
             id: 'chain-merge',
             type: 'spotlight',
             target: 'wood-node',
@@ -86,7 +95,13 @@ var Tutorial = (function() {
 
     function start() {
         var state = Game.getState();
-        if (!state.firstPlay) return;
+        if (!state.firstPlay) {
+            // For existing players: start recipe hint listener if not yet shown
+            if (!state.recipeHintShown) {
+                startRecipeHintListener();
+            }
+            return;
+        }
 
         isRunning = true;
         currentStep = -1;
@@ -375,6 +390,16 @@ var Tutorial = (function() {
             Board.clearForcedSpawnTier();
             Board.setAutoMergeSuppressed(false);
         },
+        setupSwipeMerge: function(step) {
+            // After the first merge, spawn a few more matching items
+            // so there are 3+ adjacent items to swipe across.
+            Board.setForcedSpawnTier(0);
+            Board.setAutoMergeSuppressed(true); // Suppress auto-merge so player can swipe
+            // Spawn 3 wood items to create swipe opportunities
+            Board.spawnItem('wood');
+            Board.spawnItem('wood');
+            Board.spawnItem('wood');
+        },
         setupChainMerge: function(step) {
             // After the first merge, we want the player to see a chain reaction.
             // They will spawn 2 wood items that land near existing wood items,
@@ -627,6 +652,79 @@ var Tutorial = (function() {
                 questNav.removeEventListener('click', removeQuestPulse);
             };
             questNav.addEventListener('click', removeQuestPulse);
+        }
+
+        // Start listening for cross-chain recipe hint opportunities
+        startRecipeHintListener();
+    }
+
+    // ─── CROSS-CHAIN RECIPE HINT (just-in-time guidance) ────
+    // Fires when a player first has recipe ingredients adjacent on the board.
+    // Only shows once. Uses LOW priority toast (90s silence required).
+
+    var recipeHintListenerActive = false;
+
+    function startRecipeHintListener() {
+        if (recipeHintListenerActive) return;
+        var state = Game.getState();
+        // Don't start if hint was already shown
+        if (state.recipeHintShown) return;
+        recipeHintListenerActive = true;
+
+        // Listen for merges and spawns — these are when the board changes
+        var checkAfterEvent = function() {
+            // Small delay so the board state has settled after animations
+            setTimeout(function() { checkForAdjacentRecipe(); }, 500);
+        };
+        Game.on('mergeCompleted', checkAfterEvent);
+        Game.on('itemSpawned', checkAfterEvent);
+    }
+
+    function checkForAdjacentRecipe() {
+        var state = Game.getState();
+        if (state.recipeHintShown) return;
+        if (typeof Items === 'undefined') return;
+
+        var ROWS = Game.ROWS;
+        var COLS = Game.COLS;
+        var directions = [{dr: -1, dc: 0}, {dr: 1, dc: 0}, {dr: 0, dc: -1}, {dr: 0, dc: 1}];
+
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                var item = Board.getItemAt(r, c);
+                if (!item) continue;
+
+                for (var d = 0; d < directions.length; d++) {
+                    var nr = r + directions[d].dr;
+                    var nc = c + directions[d].dc;
+                    if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+
+                    var neighbor = Board.getItemAt(nr, nc);
+                    if (!neighbor) continue;
+
+                    var recipe = Items.getCrossChainResult(item, neighbor);
+                    if (recipe) {
+                        // Check if this recipe is already discovered
+                        if (state.recipes && state.recipes.discovered && state.recipes.discovered[recipe.chain]) {
+                            continue;
+                        }
+                        // Found undiscovered adjacent recipe pair — show hint!
+                        showRecipeHint(item, neighbor);
+                        state.recipeHintShown = true;
+                        Game.save();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    function showRecipeHint(itemA, itemB) {
+        var chainA = Items.chains[itemA.chain];
+        var chainB = Items.chains[itemB.chain];
+        var msg = chainA.icon + ' + ' + chainB.icon + ' Drag one onto the other to discover a new recipe!';
+        if (typeof Board !== 'undefined' && Board.showToast) {
+            Board.showToast(msg, Board.TOAST_PRIORITY.LOW);
         }
     }
 

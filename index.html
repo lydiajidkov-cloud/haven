@@ -33,6 +33,10 @@
             </div>
             <h1 id="game-title">Haven</h1>
             <div style="display:flex;align-items:center;gap:6px;">
+                <div id="stars-display">
+                    <span class="stars-icon">⭐</span>
+                    <span id="stars-count">0</span>
+                </div>
                 <div id="gems-display">
                     <span class="gems-icon">💎</span>
                     <span id="gems-count">50</span>
@@ -283,8 +287,13 @@
             }
         });
 
-        // Stars display
+        // Stars display (top bar + panels)
         Game.on('starsChanged', function(stars) {
+            document.getElementById('stars-count').textContent = stars;
+            // Brief flash animation
+            var starsEl = document.getElementById('stars-display');
+            starsEl.style.transform = 'scale(1.1)';
+            setTimeout(function() { starsEl.style.transform = ''; }, 150);
             // Re-render quest and island panels when stars change
             Quests.renderQuestPanel();
             Island.renderIslandMap();
@@ -294,6 +303,7 @@
         document.getElementById('energy-count').textContent = Game.getEnergy();
         document.getElementById('energy-max').textContent = Game.getMaxEnergy();
         document.getElementById('gems-count').textContent = Game.getGems();
+        document.getElementById('stars-count').textContent = Game.getStars();
 
         // ─── NAVIGATION ──────────────────────────────────────
 

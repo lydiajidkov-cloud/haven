@@ -255,3 +255,45 @@
     - index.html and celebration.js updated to pass priority parameter.
     - Previously these callers used Board.showToast but it wasn't exported —
       the typeof guard made them silently fail. Now they work correctly.
+
+2026-02-12 — Task 8: Tutorial improvements
+  Three additions to the tutorial and post-tutorial flow that improve onboarding and
+  surface a critical currency (stars) on the main board screen.
+
+  Files modified: js/tutorial.js, index.html, css/style.css
+
+  (a) Swipe-merge tutorial step (tutorial.js):
+    - Added new 'swipe-merge' step after 'first-merge' in the STEPS array.
+    - Instruction: "Now try swiping! Drag your finger across 3+ matching items to
+      merge them all at once." — teaches the game's most satisfying input method.
+    - setupSwipeMerge() function: sets forcedSpawnTier(0) to spawn tier-0 wood items,
+      suppresses auto-merge so the player can practice swiping manually, and spawns
+      3 wood items via Board.spawnItem('wood') to create adjacent swipe opportunities.
+    - Step advances on 'mergeCompleted' event (same as first-merge step).
+    - Board spotlight targets the board-wrapper so the full grid is interactive.
+
+  (b) Cross-chain recipe hint tooltip (tutorial.js):
+    - Just-in-time guidance that fires when a player first has recipe ingredients
+      adjacent on the board (e.g., wood tier 1 next to flora tier 1).
+    - startRecipeHintListener() registers on 'mergeCompleted' and 'itemSpawned' events.
+    - checkForAdjacentRecipe() scans all board cells and their 4 orthogonal neighbors,
+      calling Items.getCrossChainResult() on each pair. If an undiscovered recipe pair
+      is found, shows a toast via Board.showToast() with LOW priority (respects 90s
+      silence requirement from Task 7's toast queue system).
+    - Toast message: "[icon] + [icon] Drag one onto the other to discover a new recipe!"
+    - state.recipeHintShown flag persisted to save state — hint fires only once ever.
+    - Listener starts both for new players (after tutorial completes, in
+      showPostTutorialBreadcrumbs) and for existing players (in start() when
+      firstPlay is false and recipeHintShown is falsy).
+
+  (c) Stars display in top bar (index.html + css/style.css):
+    - Added #stars-display element to the top bar, placed before #gems-display in
+      the right-side flex container. Shows star emoji + count.
+    - CSS: shares styling with #energy-display and #gems-display (pill shape,
+      dark background, rounded borders). Color: var(--accent-gold). Min-width: 50px.
+    - Event listener: 'starsChanged' updates #stars-count text and plays brief
+      scale(1.1) flash animation (same pattern as gems display).
+    - Initial value set from Game.getStars() during initialization.
+    - Stars are now visible on the main board screen at all times — previously only
+      visible in Island/Quest tabs. This was flagged as a critical gap: stars are
+      the primary progression currency but were invisible during core gameplay.
