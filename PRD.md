@@ -100,7 +100,7 @@ Specific numbers from playtest analysis. All changes work together — sinks inc
 
 These tasks prepare the code for AI-generated assets. Lydia generates the actual art/audio separately (see LYDIA TASKS below).
 
-- [ ] **23. Sprite rendering infrastructure** — Refactor `board.js` `renderCell()` to support `<img>` or inline `<svg>` instead of text nodes for item display. Create a sprite mapping system: `data/sprites.json` maps each chain+tier combination to a sprite file path. If no sprite exists, fall back to the current emoji rendering. This lets art assets be swapped in incrementally without breaking the game. Preserve existing CSS glow/shimmer layers from `tiles.css`.
+- [x] **23. Sprite rendering infrastructure** — Refactor `board.js` `renderCell()` to support `<img>` or inline `<svg>` instead of text nodes for item display. Create a sprite mapping system: `data/sprites.json` maps each chain+tier combination to a sprite file path. If no sprite exists, fall back to the current emoji rendering. This lets art assets be swapped in incrementally without breaking the game. Preserve existing CSS glow/shimmer layers from `tiles.css`.
 
 - [ ] **24. Performance mode auto-detection** — Add auto-detection on first load via `navigator.hardwareConcurrency` + a quick canvas benchmark. Two tiers: "Balanced" (cuts decorative animations: per-tier box-shadow pulse, ::after sparkles, conic-gradient rainbow) and "Minimal" (cuts everything except core merge feedback). NEVER cut: merge-flash, particle bursts, combo escalation, golden merge-target pulses, purchase-moment animations (piggy bank break, battle pass unlock, deal reveal). No player-visible toggle — automatic.
 

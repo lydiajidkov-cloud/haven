@@ -76,6 +76,9 @@ const Board = (() => {
         ROWS = Game.ROWS;
         COLS = Game.COLS;
 
+        // Load sprite map for image-based rendering
+        loadSpriteMap();
+
         // Apply CSS grid dimensions
         updateBoardGridCSS();
 
@@ -1510,6 +1513,35 @@ const Board = (() => {
 
     // ─── RENDERING ───────────────────────────────────────────────
 
+    // Sprite mapping: loaded from data/sprites.json at init
+    var spriteMap = null;
+
+    function loadSpriteMap() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'data/sprites.json', true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.sprites && typeof data.sprites === 'object') {
+                        spriteMap = data.sprites;
+                    }
+                } catch (e) {
+                    console.warn('Haven: sprites.json parse error', e);
+                }
+            }
+        };
+        xhr.onerror = function() {};
+        xhr.send();
+    }
+
+    function createSymbolEl(symbol) {
+        var el = document.createElement('span');
+        el.className = 'item-symbol';
+        el.textContent = symbol;
+        return el;
+    }
+
     function renderCell(row, col) {
         var cell = grid[row][col];
         cell.innerHTML = '';
@@ -1532,11 +1564,23 @@ const Board = (() => {
             el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.15)';
         }
 
-        // Symbol
-        var symbolEl = document.createElement('span');
-        symbolEl.className = 'item-symbol';
-        symbolEl.textContent = def.symbol;
-        el.appendChild(symbolEl);
+        // Symbol — use sprite image if available, otherwise emoji text
+        var spriteKey = item.chain + '_' + item.tier;
+        var spritePath = spriteMap && spriteMap[spriteKey];
+        if (spritePath) {
+            var imgEl = document.createElement('img');
+            imgEl.className = 'item-sprite';
+            imgEl.src = spritePath;
+            imgEl.alt = def.name;
+            imgEl.draggable = false;
+            imgEl.onerror = function() {
+                // Fallback to emoji on load failure
+                this.replaceWith(createSymbolEl(def.symbol));
+            };
+            el.appendChild(imgEl);
+        } else {
+            el.appendChild(createSymbolEl(def.symbol));
+        }
 
         // Name
         var nameEl = document.createElement('span');

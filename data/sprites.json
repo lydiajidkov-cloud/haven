@@ -1,0 +1,6 @@
+{
+  "_schema": "Haven Sprite Mapping — maps chain+tier to image file paths",
+  "_notes": "If a sprite path exists for chain+tier, renderCell() uses <img> instead of emoji. Paths relative to project root. Set to null or omit for emoji fallback.",
+  "_example": "To add a sprite: set 'wood_3': 'assets/items/wood_plank.png'",
+  "sprites": {}
+}

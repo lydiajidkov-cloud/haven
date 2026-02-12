@@ -1011,3 +1011,28 @@
   (d) JSON loading:
     - loadOrderSchedule() fetches data/orders.json at init.
     - Graceful fallback if JSON unavailable (no specials, just normal orders).
+
+2026-02-12 — Task 23: Sprite rendering infrastructure
+  Image-based rendering system for board items, with emoji fallback.
+
+  Files created: data/sprites.json
+  Files modified: js/board.js, css/style.css
+
+  (a) Sprite mapping (data/sprites.json):
+    - Maps chain+tier keys (e.g. "wood_3") to image file paths.
+    - Empty by default — Lydia adds paths as AI art is generated.
+    - Includes schema documentation and example entry.
+
+  (b) board.js rendering changes:
+    - spriteMap variable loaded from data/sprites.json via XHR at init.
+    - loadSpriteMap() called from Board.init() before board rendering.
+    - createSymbolEl(symbol) helper creates <span class="item-symbol"> for emoji.
+    - renderCell() checks spriteMap for chain_tier key:
+      - If sprite found: creates <img class="item-sprite"> with onerror fallback to emoji.
+      - If no sprite: uses emoji text node as before.
+    - Graceful degradation: if sprites.json fails to load, all cells use emoji.
+
+  (c) CSS styling (.item-sprite):
+    - Sized at 52% of cell-size with object-fit: contain.
+    - Drop shadow for depth. pointer-events: none to not interfere with interaction.
+    - Placed alongside existing .item-symbol styling.
