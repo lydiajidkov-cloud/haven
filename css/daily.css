@@ -293,3 +293,258 @@
         padding: 2px 4px;
     }
 }
+
+/* ─── STREAK WARNING BANNER (board screen) ─────────────── */
+
+.streak-warning-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, rgba(255, 60, 30, 0.15), rgba(255, 140, 0, 0.12));
+    border: 1px solid rgba(255, 100, 50, 0.35);
+    border-radius: var(--radius-sm);
+    margin: 4px 8px 0;
+    animation: streak-warn-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes streak-warn-pulse {
+    0%   { border-color: rgba(255, 100, 50, 0.35); }
+    100% { border-color: rgba(255, 100, 50, 0.6); }
+}
+
+.streak-warn-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.streak-warn-text {
+    font-size: 12px;
+    color: var(--text-primary);
+    line-height: 1.3;
+    flex: 1;
+}
+
+.streak-warn-time {
+    color: #ff6b4a;
+}
+
+.streak-warn-claim-btn {
+    padding: 5px 12px;
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.streak-warn-claim-btn:active {
+    transform: scale(0.95);
+}
+
+/* ─── STREAK AT-RISK (inline in daily tab) ────────────── */
+
+.cal-streak-atrisk {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, rgba(255, 60, 30, 0.12), rgba(255, 100, 50, 0.08));
+    border: 1px solid rgba(255, 80, 40, 0.3);
+    border-radius: var(--radius-sm);
+    animation: atrisk-flash 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes atrisk-flash {
+    0%   { background: linear-gradient(135deg, rgba(255, 60, 30, 0.12), rgba(255, 100, 50, 0.08)); }
+    100% { background: linear-gradient(135deg, rgba(255, 60, 30, 0.18), rgba(255, 100, 50, 0.14)); }
+}
+
+.cal-streak-atrisk-icon {
+    font-size: 14px;
+}
+
+.cal-streak-atrisk-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ff6b4a;
+}
+
+/* ─── STREAK BREAK MODAL ──────────────────────────────── */
+
+.streak-break-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.streak-break-overlay.streak-break-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.streak-break-overlay.streak-break-exit {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.streak-break-card {
+    background: var(--bg-medium);
+    border: 1.5px solid rgba(255, 100, 50, 0.3);
+    border-radius: var(--radius-md, 12px);
+    padding: 24px 20px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.streak-break-visible .streak-break-card {
+    transform: scale(1);
+}
+
+.streak-break-exit .streak-break-card {
+    transform: scale(0.9);
+}
+
+.streak-break-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+    filter: grayscale(0.5) brightness(0.7);
+}
+
+.streak-break-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #ff6b4a;
+    margin: 0 0 8px;
+}
+
+.streak-break-message {
+    font-size: 14px;
+    color: var(--text-primary);
+    margin: 0 0 4px;
+    line-height: 1.4;
+}
+
+.streak-break-encourage {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 16px;
+}
+
+/* ─── STREAK SAVE SECTION ─────────────────────────────── */
+
+.streak-save-section {
+    background: rgba(255, 215, 0, 0.06);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.streak-save-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    margin-bottom: 10px;
+}
+
+.streak-save-btn {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 6px;
+    transition: transform 0.1s, opacity 0.1s;
+}
+
+.streak-save-btn:active {
+    transform: scale(0.97);
+}
+
+.streak-save-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.streak-save-gems {
+    background: linear-gradient(135deg, #7b68ee, #9370db);
+    color: #fff;
+}
+
+.streak-save-ad {
+    background: linear-gradient(135deg, #3a8a3a, #4caf50);
+    color: #fff;
+}
+
+.streak-save-ad-count {
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.8;
+}
+
+.streak-save-cap-note {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    opacity: 0.7;
+}
+
+/* ─── STREAK BREAK CONTINUE BUTTON ────────────────────── */
+
+.streak-break-continue-btn {
+    display: block;
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-light, rgba(255, 255, 255, 0.08));
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.streak-break-continue-btn:active {
+    transform: scale(0.97);
+}
+
+/* ─── REDUCED MOTION ──────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .streak-warning-banner {
+        animation: none;
+    }
+    .cal-streak-atrisk {
+        animation: none;
+    }
+    .streak-break-overlay,
+    .streak-break-card {
+        transition: none;
+    }
+}

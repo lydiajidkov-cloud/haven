@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 8;
+    const SAVE_VERSION = 9;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const DEFAULT_ROWS = 8;
@@ -239,6 +239,13 @@ const Game = (() => {
         if (data._saveVersion < 8) {
             if (!data.vipSubscription) data.vipSubscription = null;
             data._saveVersion = 8;
+        }
+        // v8 → v9: Streak system overhaul (lastStreakSaveDate)
+        if (data._saveVersion < 9) {
+            if (data.daily && !data.daily.lastStreakSaveDate) {
+                data.daily.lastStreakSaveDate = null;
+            }
+            data._saveVersion = 9;
         }
         return data;
     }

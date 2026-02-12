@@ -842,3 +842,80 @@
 
   Players away less than 1 hour still see the basic welcome overlay with worker
   earnings and energy info (no chest). The chest system activates at 1+ hours away.
+
+2026-02-12 — Task 19: Streak system overhaul
+  Three changes that eliminate hostile silent streak resets, warn players before
+  streak expiry, and offer a monetizable streak-save option. All departments agreed
+  silent resets are hostile design (synthesis: consensus item).
+
+  Files modified: js/daily.js, js/game.js, css/daily.css
+
+  (a) Streak-at-risk warning banner (20 hours since last claim):
+    - checkStreakWarning() runs every 60 seconds via setInterval while the app is
+      open. Checks if player has an active streak AND hasn't claimed today AND
+      20+ hours have passed since last claim date.
+    - Shows a persistent banner at the top of the board screen (#streak-warning-banner)
+      with urgency styling: orange/red gradient background, pulsing border animation,
+      warning icon, streak count, time remaining until midnight (when streak expires).
+    - Banner includes a "Claim" button that navigates directly to the Shop > Daily
+      tab where the calendar claim button is.
+    - Time display updates every 60 seconds as the banner refreshes.
+    - Also shows a one-time CRITICAL priority toast on the board: "Your X-day streak
+      expires in Yh Zm! Claim now!" (once per session via streakWarningToastShown flag).
+    - Inline at-risk warning also renders in the Daily tab itself (between streak
+      banner and calendar grid) when conditions are met.
+    - Banner removed immediately when player claims their daily reward.
+
+  (b) Streak break acknowledgment screen:
+    - When checkNewDay() detects gap > 1 day (streak broken), instead of silently
+      resetting, it stores pendingStreakBreak = { oldStreak: N } and shows a modal
+      after 800ms delay (lets UI settle).
+    - showStreakBreakModal(): full-screen overlay (z-index 90) with:
+      - Dimmed, desaturated fire emoji icon (filter: grayscale + brightness)
+      - "Streak Lost" title in red-orange
+      - "Your X-day streak has ended" message with old streak count
+      - Encouraging "Don't worry, you can start a new one today!" subtext
+      - Streak save options (if available, see part c)
+      - "Start Fresh" continue button
+    - Dismissible by backdrop tap or "Start Fresh" button.
+    - CSS entrance/exit animations: scale + opacity transitions.
+    - Calendar still resets to day 1 and streak to 0 before showing the modal,
+      but the modal captures the old streak count for display and save option.
+
+  (c) Streak-save option (50 gems OR watch ad, 1 per week):
+    - Shown inside the streak break modal when available.
+    - Two save methods: spend 50 gems (STREAK_SAVE_GEM_COST) or watch a rewarded
+      ad via AdAdapter.show().
+    - canStreakSave() checks if at least 7 days (STREAK_SAVE_COOLDOWN_MS) have
+      elapsed since the last streak save. Uses state.daily.lastStreakSaveDate
+      timestamp for tracking.
+    - On successful save: restores old streak count, sets lastClaimDate to
+      yesterday (so today's claim extends the streak), recalculates currentDay
+      to match the restored streak position, sets todayCanClaim = true.
+    - Records lastStreakSaveDate timestamp to enforce 1-save-per-week cap.
+    - Gem save button shows cost and uses purple gradient styling.
+    - Ad save button shows remaining ad count from AdAdapter.getAdsRemaining().
+      Disables during ad playback, shows "Watching..." text. Re-enables if
+      ad fails or is skipped.
+    - "1 streak save per week" cap note shown below save buttons.
+    - Ad save respects the 5/day rewarded ad cap from AdAdapter (Task 15).
+    - Both save methods trigger celebration sound, haptic feedback, and
+      HIGH priority toast confirming streak restoration.
+
+  Save version bump (game.js):
+    - SAVE_VERSION raised from 8 to 9.
+    - migrateState() v8->v9: adds lastStreakSaveDate: null to daily state
+      if missing.
+
+  CSS additions (daily.css):
+    - .streak-warning-banner: board-screen warning with orange/red gradient,
+      pulsing border, flex layout for icon + text + claim button.
+    - .cal-streak-atrisk: inline daily-tab warning with urgency color flash.
+    - .streak-break-overlay: full-screen dark backdrop, centered card,
+      scale + opacity transitions for entrance/exit.
+    - .streak-break-card: modal card with fire icon, title, message,
+      save options section, continue button.
+    - .streak-save-section: gold-bordered container for save buttons.
+    - .streak-save-gems / .streak-save-ad: distinct button styles
+      (purple for gems, green for ad).
+    - prefers-reduced-motion: disables all streak animations.

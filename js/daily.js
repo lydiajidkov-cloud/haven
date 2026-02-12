@@ -1,4 +1,4 @@
-// Haven - 7-Day Rolling Login Calendar & Daily Quests
+// Haven - 7-Day Rolling Login Calendar & Daily Quests + Streak System
 'use strict';
 
 const Daily = (() => {
@@ -13,6 +13,11 @@ const Daily = (() => {
         { day: 6, rewards: { gems: 30, egg: 'common' },               label: 'Common Egg + 30 gems', icons: '\uD83E\uDD5A + \uD83D\uDC8E 30' },
         { day: 7, rewards: { gems: 150, stars: 3, egg: 'rare' },      label: '150 gems + 3 stars + Rare Egg', icons: '\uD83C\uDF81 JACKPOT' }
     ];
+
+    // ─── STREAK SYSTEM CONSTANTS ──────────────────────────────
+    var STREAK_WARN_HOURS = 20;          // Show warning after 20h since last claim
+    var STREAK_SAVE_GEM_COST = 50;       // Gems to save a streak
+    var STREAK_SAVE_COOLDOWN_MS = 7 * 24 * 3600000; // 1 save per week
 
     // ─── DAILY QUESTS ───────────────────────────────────────
     const dailyQuestPool = [
@@ -39,6 +44,8 @@ const Daily = (() => {
 
     let todayCanClaim = false;
     let dailyQuests = [];
+    var pendingStreakBreak = null;  // { oldStreak: N } when a streak break needs acknowledgment
+    var streakWarningTimerId = null;
 
     // ─── INIT ───────────────────────────────────────────────
 
@@ -73,6 +80,9 @@ const Daily = (() => {
         Game.on('powerupUsed', function(data) { updateDailyQuests('powerup_use', data); });
 
         renderDaily();
+
+        // Start streak warning check (runs periodically while app is open)
+        startStreakWarningCheck();
     }
 
     // ─── DATE HELPERS ───────────────────────────────────────
@@ -93,6 +103,13 @@ const Daily = (() => {
         var a = new Date(dateStrA + 'T00:00:00');
         var b = new Date(dateStrB + 'T00:00:00');
         return Math.round((b - a) / (1000 * 60 * 60 * 24));
+    }
+
+    function getHoursSinceLastClaim() {
+        if (!calendar.lastClaimDate) return Infinity;
+        var claimDate = new Date(calendar.lastClaimDate + 'T00:00:00');
+        var now = new Date();
+        return (now - claimDate) / 3600000;
     }
 
     // ─── NEW DAY CHECK ──────────────────────────────────────
@@ -116,7 +133,10 @@ const Daily = (() => {
                 todayCanClaim = true;
                 // currentDay was already advanced when they last claimed
             } else if (gap > 1) {
-                // Streak broken — reset to day 1
+                // Streak broken — show acknowledgment instead of silent reset
+                if (calendar.streak > 0) {
+                    pendingStreakBreak = { oldStreak: calendar.streak };
+                }
                 calendar.currentDay = 1;
                 calendar.streak = 0;
                 todayCanClaim = true;
@@ -138,6 +158,335 @@ const Daily = (() => {
         }
 
         saveDailyState();
+
+        // Show streak break acknowledgment after a brief delay (let UI settle)
+        if (pendingStreakBreak) {
+            var breakData = pendingStreakBreak;
+            pendingStreakBreak = null;
+            setTimeout(function() {
+                showStreakBreakModal(breakData.oldStreak);
+            }, 800);
+        }
+    }
+
+    // ─── STREAK WARNING BANNER ────────────────────────────────
+    // At 20 hours since last claim, show a warning banner on the board screen.
+    // This runs on a timer while the app is open.
+
+    function startStreakWarningCheck() {
+        // Check every 60 seconds
+        if (streakWarningTimerId) clearInterval(streakWarningTimerId);
+        streakWarningTimerId = setInterval(checkStreakWarning, 60000);
+        // Also check immediately
+        checkStreakWarning();
+    }
+
+    function checkStreakWarning() {
+        // Only warn if the player has an active streak and hasn't claimed today
+        if (calendar.streak <= 0) {
+            removeStreakWarningBanner();
+            return;
+        }
+
+        var today = getDateString();
+        if (calendar.lastClaimDate === today) {
+            // Already claimed today, no risk
+            removeStreakWarningBanner();
+            return;
+        }
+
+        var hoursSince = getHoursSinceLastClaim();
+        if (hoursSince >= STREAK_WARN_HOURS) {
+            var hoursLeft = Math.max(0, Math.floor(48 - hoursSince));
+            // Streak expires at end of the "missed" day, i.e., 2 calendar days after last claim
+            // But from user perspective: they need to claim before end of today
+            // So "hours left" = hours until midnight tonight
+            var now = new Date();
+            var midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+            var msLeft = midnight - now;
+            var hLeft = Math.floor(msLeft / 3600000);
+            var mLeft = Math.floor((msLeft % 3600000) / 60000);
+            var timeStr = hLeft > 0 ? hLeft + 'h ' + mLeft + 'm' : mLeft + 'm';
+
+            showStreakWarningBanner(calendar.streak, timeStr);
+
+            // Also show a toast on the board (once per session)
+            showStreakWarningToast(calendar.streak, timeStr);
+        } else {
+            removeStreakWarningBanner();
+        }
+    }
+
+    var streakWarningToastShown = false;
+
+    function showStreakWarningToast(streak, timeStr) {
+        if (streakWarningToastShown) return;
+        streakWarningToastShown = true;
+
+        if (typeof Board !== 'undefined' && Board.showToast) {
+            Board.showToast(
+                '\uD83D\uDD25 Your ' + streak + '-day streak expires in ' + timeStr + '! Claim now!',
+                (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.CRITICAL : undefined
+            );
+        }
+    }
+
+    function showStreakWarningBanner(streak, timeStr) {
+        var existing = document.getElementById('streak-warning-banner');
+        if (existing) {
+            // Update time
+            var timeEl = existing.querySelector('.streak-warn-time');
+            if (timeEl) timeEl.textContent = timeStr;
+            return;
+        }
+
+        var banner = document.createElement('div');
+        banner.id = 'streak-warning-banner';
+        banner.className = 'streak-warning-banner';
+        banner.innerHTML =
+            '<span class="streak-warn-icon">\u26A0\uFE0F</span>' +
+            '<span class="streak-warn-text">Your <strong>' + streak + '-day streak</strong> expires in ' +
+            '<strong class="streak-warn-time">' + timeStr + '</strong>!</span>' +
+            '<button class="streak-warn-claim-btn">Claim</button>';
+
+        // Insert at top of board screen
+        var boardScreen = document.getElementById('board-screen');
+        if (boardScreen) {
+            boardScreen.insertBefore(banner, boardScreen.firstChild);
+        }
+
+        // Click "Claim" navigates to Daily tab
+        var claimBtn = banner.querySelector('.streak-warn-claim-btn');
+        if (claimBtn) {
+            claimBtn.addEventListener('click', function() {
+                navigateToDaily();
+            });
+        }
+    }
+
+    function removeStreakWarningBanner() {
+        var existing = document.getElementById('streak-warning-banner');
+        if (existing) existing.remove();
+    }
+
+    function navigateToDaily() {
+        // Navigate to shop screen, daily tab
+        var navBtns = document.querySelectorAll('.nav-btn');
+        for (var j = 0; j < navBtns.length; j++) navBtns[j].classList.remove('active');
+        var shopBtn = document.querySelector('[data-screen="shop"]');
+        if (shopBtn) shopBtn.classList.add('active');
+        document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+        var shopScreen = document.getElementById('shop-screen');
+        if (shopScreen) shopScreen.classList.add('active');
+
+        // Activate daily tab
+        var shopTabs = document.querySelectorAll('.shop-tab');
+        for (var t = 0; t < shopTabs.length; t++) shopTabs[t].classList.remove('active');
+        var dailyTab = document.querySelector('[data-shop-tab="daily"]');
+        if (dailyTab) dailyTab.classList.add('active');
+        document.querySelectorAll('.shop-tab-content').forEach(function(c) { c.classList.remove('active'); });
+        var dailyContent = document.getElementById('shop-tab-daily');
+        if (dailyContent) dailyContent.classList.add('active');
+
+        renderDaily();
+
+        if (typeof Sound !== 'undefined') Sound.playNavSwitch();
+    }
+
+    // ─── STREAK BREAK ACKNOWLEDGMENT MODAL ────────────────────
+    // When a streak breaks, show a modal instead of silently resetting.
+    // Offers streak-save option (50 gems or watch ad).
+
+    function showStreakBreakModal(oldStreak) {
+        // Don't show for streaks of 0 (no streak to break)
+        if (oldStreak <= 0) return;
+
+        // Check if streak-save is available
+        var canSaveWithGems = canStreakSave() && Game.getGems() >= STREAK_SAVE_GEM_COST;
+        var canSaveWithAd = canStreakSave() && (typeof AdAdapter !== 'undefined' && AdAdapter.canShowRewarded());
+
+        var overlay = document.createElement('div');
+        overlay.id = 'streak-break-overlay';
+        overlay.className = 'streak-break-overlay';
+
+        var card = document.createElement('div');
+        card.className = 'streak-break-card';
+
+        // Broken flame icon
+        card.innerHTML =
+            '<div class="streak-break-icon">\uD83D\uDD25</div>' +
+            '<h2 class="streak-break-title">Streak Lost</h2>' +
+            '<p class="streak-break-message">Your <strong>' + oldStreak + '-day streak</strong> has ended.</p>' +
+            '<p class="streak-break-encourage">Don\'t worry, you can start a new one today!</p>';
+
+        // Streak-save section (if available)
+        if (canSaveWithGems || canSaveWithAd) {
+            var saveSection = document.createElement('div');
+            saveSection.className = 'streak-save-section';
+
+            var saveLabel = document.createElement('div');
+            saveLabel.className = 'streak-save-label';
+            saveLabel.textContent = 'Save your streak?';
+            saveSection.appendChild(saveLabel);
+
+            if (canSaveWithGems) {
+                var gemBtn = document.createElement('button');
+                gemBtn.className = 'streak-save-btn streak-save-gems';
+                gemBtn.innerHTML = '\uD83D\uDC8E ' + STREAK_SAVE_GEM_COST + ' gems';
+                gemBtn.addEventListener('click', function() {
+                    if (executeStreakSave('gems', oldStreak)) {
+                        dismissStreakBreakModal(overlay);
+                    }
+                });
+                saveSection.appendChild(gemBtn);
+            }
+
+            if (canSaveWithAd) {
+                var adBtn = document.createElement('button');
+                adBtn.className = 'streak-save-btn streak-save-ad';
+                var adsLeft = (typeof AdAdapter !== 'undefined') ? AdAdapter.getAdsRemaining() : 0;
+                adBtn.innerHTML = '\uD83C\uDFAC Watch Ad <span class="streak-save-ad-count">(' + adsLeft + ' left)</span>';
+                adBtn.addEventListener('click', function() {
+                    adBtn.disabled = true;
+                    adBtn.textContent = 'Watching...';
+                    executeStreakSaveWithAd(oldStreak, overlay);
+                });
+                saveSection.appendChild(adBtn);
+            }
+
+            var capNote = document.createElement('div');
+            capNote.className = 'streak-save-cap-note';
+            capNote.textContent = '1 streak save per week';
+            saveSection.appendChild(capNote);
+
+            card.appendChild(saveSection);
+        }
+
+        // Continue button
+        var continueBtn = document.createElement('button');
+        continueBtn.className = 'streak-break-continue-btn';
+        continueBtn.textContent = 'Start Fresh';
+        continueBtn.addEventListener('click', function() {
+            dismissStreakBreakModal(overlay);
+        });
+        card.appendChild(continueBtn);
+
+        overlay.appendChild(card);
+
+        // Backdrop dismiss
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) dismissStreakBreakModal(overlay);
+        });
+
+        var app = document.getElementById('app');
+        if (app) {
+            app.appendChild(overlay);
+            // Trigger entrance animation
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    overlay.classList.add('streak-break-visible');
+                });
+            });
+        }
+    }
+
+    function dismissStreakBreakModal(overlay) {
+        overlay.classList.remove('streak-break-visible');
+        overlay.classList.add('streak-break-exit');
+        setTimeout(function() {
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }, 300);
+    }
+
+    // ─── STREAK SAVE LOGIC ────────────────────────────────────
+
+    function canStreakSave() {
+        var state = Game.getState();
+        state.daily = state.daily || {};
+        var lastSave = state.daily.lastStreakSaveDate || null;
+        if (!lastSave) return true;
+        var elapsed = Date.now() - lastSave;
+        return elapsed >= STREAK_SAVE_COOLDOWN_MS;
+    }
+
+    function executeStreakSave(method, oldStreak) {
+        if (!canStreakSave()) return false;
+
+        if (method === 'gems') {
+            if (Game.getGems() < STREAK_SAVE_GEM_COST) return false;
+            Game.addGems(-STREAK_SAVE_GEM_COST);
+        }
+
+        // Restore the old streak
+        calendar.streak = oldStreak;
+        // Set lastClaimDate to yesterday so today's claim extends the streak
+        calendar.lastClaimDate = getDateString(-1);
+        // currentDay needs to recalculate: if streak was at N, we're on day (N % 7) + 1
+        calendar.currentDay = ((oldStreak) % 7) + 1;
+        todayCanClaim = true;
+
+        // Record streak save timestamp
+        var state = Game.getState();
+        state.daily = state.daily || {};
+        state.daily.lastStreakSaveDate = Date.now();
+
+        saveDailyState();
+
+        // Effects
+        if (typeof Sound !== 'undefined') Sound.playCelebration();
+        Game.vibrate([30, 50, 30]);
+
+        if (typeof Board !== 'undefined' && Board.showToast) {
+            Board.showToast(
+                '\uD83D\uDD25 Streak saved! Your ' + oldStreak + '-day streak continues!',
+                (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.HIGH : undefined
+            );
+        }
+
+        renderDaily();
+        return true;
+    }
+
+    function executeStreakSaveWithAd(oldStreak, overlay) {
+        if (!canStreakSave()) return;
+        if (typeof AdAdapter === 'undefined' || !AdAdapter.canShowRewarded()) return;
+
+        AdAdapter.show('rewarded_streak_save', function(completed) {
+            if (completed) {
+                // Restore streak same as gem save
+                calendar.streak = oldStreak;
+                calendar.lastClaimDate = getDateString(-1);
+                calendar.currentDay = ((oldStreak) % 7) + 1;
+                todayCanClaim = true;
+
+                var state = Game.getState();
+                state.daily = state.daily || {};
+                state.daily.lastStreakSaveDate = Date.now();
+
+                saveDailyState();
+
+                if (typeof Sound !== 'undefined') Sound.playCelebration();
+                Game.vibrate([30, 50, 30]);
+
+                if (typeof Board !== 'undefined' && Board.showToast) {
+                    Board.showToast(
+                        '\uD83D\uDD25 Streak saved! Your ' + oldStreak + '-day streak continues!',
+                        (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.HIGH : undefined
+                    );
+                }
+
+                dismissStreakBreakModal(overlay);
+                renderDaily();
+            } else {
+                // Ad failed or was skipped, re-enable button
+                var adBtn = overlay.querySelector('.streak-save-ad');
+                if (adBtn) {
+                    adBtn.disabled = false;
+                    var adsLeft = AdAdapter.getAdsRemaining();
+                    adBtn.innerHTML = '\uD83C\uDFAC Watch Ad <span class="streak-save-ad-count">(' + adsLeft + ' left)</span>';
+                }
+            }
+        });
     }
 
     // ─── CLAIM CALENDAR REWARD ──────────────────────────────
@@ -173,6 +522,10 @@ const Daily = (() => {
         }
 
         todayCanClaim = false;
+
+        // Remove streak warning banner since we just claimed
+        removeStreakWarningBanner();
+        streakWarningToastShown = false;
 
         // Effects
         Sound.playCelebration();
@@ -321,6 +674,17 @@ const Daily = (() => {
         }
         html += '</div>';
 
+        // ── Streak at-risk warning (inline in daily tab) ──
+        if (calendar.streak > 0 && todayCanClaim) {
+            // Check if streak is at risk (20+ hours since last claim, not yet claimed today)
+            if (getHoursSinceLastClaim() >= STREAK_WARN_HOURS) {
+                html += '<div class="cal-streak-atrisk">';
+                html += '<span class="cal-streak-atrisk-icon">\u26A0\uFE0F</span>';
+                html += '<span class="cal-streak-atrisk-text">Claim now to keep your streak!</span>';
+                html += '</div>';
+            }
+        }
+
         // ── 7-Day Calendar Grid ──
         html += '<div class="cal-section">';
         html += '<h3 class="cal-section-title">\uD83D\uDCC5 Login Calendar</h3>';
@@ -455,6 +819,7 @@ const Daily = (() => {
             streak: calendar.streak
         };
         state.daily.quests = dailyQuests;
+        // lastStreakSaveDate is preserved (written directly to state.daily)
         Game.save();
     }
 
