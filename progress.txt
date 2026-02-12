@@ -213,3 +213,45 @@
     - Resource node spawns (spawnItem)
     - Starter items (spawnStarterItems — first-play tutorial items)
     Discovery only fires once per chain+tier combo; duplicate calls are no-ops.
+
+2026-02-12 — Task 7: Toast queue with cooldown + surge tooltip
+  Replaced the simple fire-and-forget showToast() with a priority-based queue system
+  that prevents post-tutorial toast fatigue, and added a contextual surge tooltip.
+
+  Files modified: js/board.js, js/celebration.js, index.html
+
+  (a) Toast queue with priority ranking and cooldown:
+    - Four priority levels: CRITICAL (100), HIGH (80), NORMAL (50), LOW (20).
+    - CRITICAL and HIGH bypass all cooldowns — show immediately (surge activation,
+      board full, no merges, lucky merge, surge end).
+    - NORMAL respects a 45-second cooldown between toasts. If cooldown hasn't elapsed,
+      the toast is queued (max 3 items). When queue is full, lowest priority is dropped.
+      Queued toasts drain automatically when cooldown expires, highest priority first.
+    - LOW (for future recipe hints) requires 90 seconds of complete toast silence before
+      showing. Silently dropped if the quiet period hasn't elapsed.
+    - Queue drain is scheduled via setTimeout — no polling.
+    - displayToast() properly tracks the current toast element and dismiss timer to
+      prevent orphaned DOM elements when a new toast replaces an existing one.
+
+  Priority assignments for all 10 internal toast call sites:
+    - CRITICAL: board full, no merges possible (free shuffle), surge tooltip
+    - HIGH: surge activated, surge ended, lucky auto-merge
+    - NORMAL: cluttered board, no energy (available merges), companion effect,
+      item discovery, energy low (from index.html), clipboard copy (from celebration.js)
+
+  (b) Contextual surge tooltip — first surge after tutorial:
+    - On first surge activation after tutorial completion (state.firstPlay === false
+      and state.surgeTooltipShown !== true), shows educational tooltip:
+      "💡 You triggered SURGE! Merge fast to keep it going!"
+    - Fires 2.2 seconds after surge toast so the SURGE MODE! toast is seen first.
+    - Sets state.surgeTooltipShown = true and saves, so it never fires again.
+    - Uses CRITICAL priority to bypass cooldown (it's a one-time educational moment).
+    - state.surgeTooltipShown is lazily initialized (undefined → falsy for new saves,
+      true for saves after first surge). No defaultState() change needed.
+
+  (c) Exported showToast and TOAST_PRIORITY from Board module:
+    - Board.showToast(msg, priority) now available to external callers.
+    - Board.TOAST_PRIORITY exposes priority constants (CRITICAL/HIGH/NORMAL/LOW).
+    - index.html and celebration.js updated to pass priority parameter.
+    - Previously these callers used Board.showToast but it wasn't exported —
+      the typeof guard made them silently fail. Now they work correctly.

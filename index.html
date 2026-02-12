@@ -248,7 +248,7 @@
 
         Game.on('energyLow', function() {
             if (typeof Board !== 'undefined' && Board.showToast) {
-                Board.showToast('Energy running low! Merge to keep going.');
+                Board.showToast('Energy running low! Merge to keep going.', Board.TOAST_PRIORITY.NORMAL);
             }
         });
 

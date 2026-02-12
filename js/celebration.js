@@ -277,7 +277,7 @@ var Celebration = (function() {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(function() {
                     if (typeof Board !== 'undefined' && Board.showToast) {
-                        Board.showToast('Copied to clipboard!');
+                        Board.showToast('Copied to clipboard!', Board.TOAST_PRIORITY.NORMAL);
                     }
                 }).catch(function() {});
             }

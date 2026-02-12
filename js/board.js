@@ -626,8 +626,19 @@ const Board = (() => {
         boardEl.classList.add('surge-active');
         Game.vibrate([15, 30, 20, 30, 15]);
         Sound.playCelebration();
-        showToast('\u26A1 SURGE MODE!');
+        showToast('\u26A1 SURGE MODE!', TOAST_PRIORITY.HIGH);
         Game.emit('surgeActivated');
+
+        // Contextual surge tooltip: fires once, after tutorial completes
+        var state = Game.getState();
+        if (!state.firstPlay && !state.surgeTooltipShown) {
+            state.surgeTooltipShown = true;
+            Game.save();
+            // Show the educational tooltip after a brief delay so SURGE toast is seen first
+            setTimeout(function() {
+                showToast('\u{1F4A1} You triggered SURGE! Merge fast to keep it going!', TOAST_PRIORITY.CRITICAL);
+            }, 2200);
+        }
     }
 
     function deactivateSurge() {
@@ -640,7 +651,7 @@ const Board = (() => {
             var bonus = Math.floor(surgeMergeCount * 1.5) + 2;
             Game.addGems(bonus);
             showFloatingText(3, 2, 'Surge! +' + bonus + ' \u{1F48E}');
-            showToast('\u26A1 Surge ended! ' + surgeMergeCount + ' merges \u2192 +' + bonus + ' gems');
+            showToast('\u26A1 Surge ended! ' + surgeMergeCount + ' merges \u2192 +' + bonus + ' gems', TOAST_PRIORITY.HIGH);
         }
 
         surgeMergeCount = 0;
@@ -1180,7 +1191,7 @@ const Board = (() => {
             energyEl.classList.add('shake');
             setTimeout(function() { energyEl.classList.remove('shake'); }, 500);
             if (cluttered) {
-                showToast('Cluttered! Spawns cost ' + totalCost + ' energy. Merge or clear tier-0 items!');
+                showToast('Cluttered! Spawns cost ' + totalCost + ' energy. Merge or clear tier-0 items!', TOAST_PRIORITY.NORMAL);
             } else {
                 // Count available merges to encourage continued play
                 var availableMerges = 0;
@@ -1195,7 +1206,7 @@ const Board = (() => {
                     }
                 }
                 if (availableMerges > 0) {
-                    showToast('No energy, but ' + availableMerges + ' merge' + (availableMerges > 1 ? 's' : '') + ' ready!');
+                    showToast('No energy, but ' + availableMerges + ' merge' + (availableMerges > 1 ? 's' : '') + ' ready!', TOAST_PRIORITY.NORMAL);
                 }
             }
             return;
@@ -1215,7 +1226,7 @@ const Board = (() => {
         if (!empty) {
             Sound.playBoardFull();
             Game.addEnergy(totalCost); // Refund full cost
-            showToast('Board is full! Merge some items first.');
+            showToast('Board is full! Merge some items first.', TOAST_PRIORITY.CRITICAL);
             // Free shuffle safety valve if no merges possible
             var hasMerge = false;
             for (var fr = 0; fr < ROWS && !hasMerge; fr++) {
@@ -1232,7 +1243,7 @@ const Board = (() => {
                 }
             }
             if (!hasMerge) {
-                showToast('No merges possible! Free shuffle incoming...');
+                showToast('No merges possible! Free shuffle incoming...', TOAST_PRIORITY.CRITICAL);
                 setTimeout(function() {
                     if (typeof PowerUps !== 'undefined' && PowerUps.activateShuffle) {
                         PowerUps.activateShuffle();
@@ -1303,7 +1314,7 @@ const Board = (() => {
             Game.addGems(luckyGems);
             Game.addEnergy(1);
             showFloatingText(empty.row, empty.col, 'Lucky! +' + luckyGems + ' \u{1F48E} +1\u26A1');
-            showToast('\u{1F340} Lucky merge! +' + luckyGems + ' gems, +1 energy');
+            showToast('\u{1F340} Lucky merge! +' + luckyGems + ' gems, +1 energy', TOAST_PRIORITY.HIGH);
             Game.emit('luckyMerge', { count: connected.length });
             setTimeout(function() {
                 executeMerge(connected, item.chain, item.tier, empty.row, empty.col, connected.length);
@@ -1494,7 +1505,7 @@ const Board = (() => {
         var floatRow = (targetRow !== undefined) ? targetRow : 0;
         var floatCol = (targetCol !== undefined) ? targetCol : 3;
         showFloatingText(floatRow, floatCol, '+' + gemReward + ' NEW!');
-        showToast('\u{1F50D} New Discovery: ' + itemName + ' (' + chainName + ') +' + gemReward + ' \u{1F48E}');
+        showToast('\u{1F50D} New Discovery: ' + itemName + ' (' + chainName + ') +' + gemReward + ' \u{1F48E}', TOAST_PRIORITY.NORMAL);
 
         // Distinct discovery chime sound
         if (typeof Sound !== 'undefined' && Sound.playItemDiscovery) {
@@ -1518,18 +1529,121 @@ const Board = (() => {
         setTimeout(function() { el.remove(); }, 1200);
     }
 
-    function showToast(msg) {
-        var existing = document.querySelector('.toast');
-        if (existing) existing.remove();
+    // ─── TOAST QUEUE WITH COOLDOWN + PRIORITY ─────────────────────
+    // Max one toast per 45s for normal/low priority.
+    // High/critical bypass the cooldown.
+    // Low priority (recipe hints) only fires if no toast in 90s.
+    var TOAST_PRIORITY = { CRITICAL: 100, HIGH: 80, NORMAL: 50, LOW: 20 };
+    var TOAST_COOLDOWN = 45000;      // 45s between normal+ toasts
+    var TOAST_LOW_COOLDOWN = 90000;  // 90s quiet period required for low-priority
+    var lastToastTime = 0;           // timestamp of last displayed toast
+    var toastQueue = [];             // { msg, priority, ts }
+    var toastDisplayTimer = null;    // timer for auto-showing next queued toast
+    var currentToastEl = null;       // currently visible toast element
+    var currentToastDismissTimer = null;
+
+    function showToast(msg, priority) {
+        if (priority === undefined) priority = TOAST_PRIORITY.NORMAL;
+        enqueueToast(msg, priority);
+    }
+
+    function enqueueToast(msg, priority) {
+        var now = Date.now();
+        var sinceLastToast = now - lastToastTime;
+
+        // Critical and high priority bypass cooldown — show immediately
+        if (priority >= TOAST_PRIORITY.HIGH) {
+            displayToast(msg);
+            return;
+        }
+
+        // Low priority requires 90s of silence
+        if (priority <= TOAST_PRIORITY.LOW && sinceLastToast < TOAST_LOW_COOLDOWN) {
+            return; // silently dropped
+        }
+
+        // Normal priority respects 45s cooldown
+        if (sinceLastToast < TOAST_COOLDOWN) {
+            // Queue it (max 3 items, drop lowest priority if full)
+            if (toastQueue.length >= 3) {
+                // Find lowest priority in queue
+                var lowestIdx = 0;
+                for (var i = 1; i < toastQueue.length; i++) {
+                    if (toastQueue[i].priority < toastQueue[lowestIdx].priority) lowestIdx = i;
+                }
+                if (toastQueue[lowestIdx].priority < priority) {
+                    toastQueue.splice(lowestIdx, 1);
+                } else {
+                    return; // new toast is lower priority than everything queued
+                }
+            }
+            toastQueue.push({ msg: msg, priority: priority, ts: now });
+            // Schedule drain if not already scheduled
+            if (!toastDisplayTimer) {
+                var waitTime = TOAST_COOLDOWN - sinceLastToast + 50;
+                toastDisplayTimer = setTimeout(drainToastQueue, waitTime);
+            }
+            return;
+        }
+
+        // Cooldown expired — show immediately
+        displayToast(msg);
+    }
+
+    function drainToastQueue() {
+        toastDisplayTimer = null;
+        if (toastQueue.length === 0) return;
+
+        // Sort by priority desc, pick highest
+        toastQueue.sort(function(a, b) { return b.priority - a.priority; });
+        var next = toastQueue.shift();
+
+        var now = Date.now();
+        var sinceLastToast = now - lastToastTime;
+
+        // Re-check low-priority cooldown
+        if (next.priority <= TOAST_PRIORITY.LOW && sinceLastToast < TOAST_LOW_COOLDOWN) {
+            // Skip this low-priority toast, try next
+            if (toastQueue.length > 0) {
+                drainToastQueue();
+            }
+            return;
+        }
+
+        if (sinceLastToast >= TOAST_COOLDOWN) {
+            displayToast(next.msg);
+        }
+
+        // Schedule next drain if queue still has items
+        if (toastQueue.length > 0 && !toastDisplayTimer) {
+            toastDisplayTimer = setTimeout(drainToastQueue, TOAST_COOLDOWN + 50);
+        }
+    }
+
+    function displayToast(msg) {
+        // Remove any existing toast
+        if (currentToastEl && currentToastEl.parentNode) {
+            currentToastEl.remove();
+        }
+        if (currentToastDismissTimer) {
+            clearTimeout(currentToastDismissTimer);
+        }
+
+        lastToastTime = Date.now();
 
         var el = document.createElement('div');
         el.className = 'toast';
         el.textContent = msg;
         document.getElementById('app').appendChild(el);
+        currentToastEl = el;
         setTimeout(function() { el.classList.add('toast-show'); }, 10);
-        setTimeout(function() {
+        currentToastDismissTimer = setTimeout(function() {
             el.classList.remove('toast-show');
-            setTimeout(function() { el.remove(); }, 300);
+            setTimeout(function() {
+                if (el.parentNode) el.remove();
+                if (currentToastEl === el) currentToastEl = null;
+            }, 300);
+            currentToastDismissTimer = null;
         }, 2000);
     }
 
@@ -1818,7 +1932,7 @@ const Board = (() => {
         var creature = trigger.creature;
         var label = Creatures.getCompanionLabel(effect);
 
-        showToast(creature.emoji + ' ' + creature.name + ': ' + label.label + '!');
+        showToast(creature.emoji + ' ' + creature.name + ': ' + label.label + '!', TOAST_PRIORITY.NORMAL);
 
         switch (effect) {
             case 'auto_merge':
@@ -1904,6 +2018,8 @@ const Board = (() => {
         getItemAt: function(r, c) { return items[r] ? items[r][c] : null; },
         isCluttered: isCluttered,
         countTierZero: countTierZero,
-        CLUTTER_THRESHOLD: CLUTTER_THRESHOLD
+        CLUTTER_THRESHOLD: CLUTTER_THRESHOLD,
+        showToast: showToast,
+        TOAST_PRIORITY: TOAST_PRIORITY
     };
 })();
