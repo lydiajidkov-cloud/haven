@@ -1,0 +1,41 @@
+{
+  "_schema": "Haven Boss Flavour Text — narrative hooks for island boss encounters",
+  "_notes": "Each boss has 2-3 sentences of story text shown when a player reaches them. Keys match creature names. Used by island.js showBossReveal(). Light narrative for marketing ad creatives.",
+  "bosses": {
+    "Lumina": {
+      "species": "Seahorse",
+      "region": "The Shore",
+      "story": "The shore was once a thriving refuge, alive with the sound of waves and the laughter of creatures. Lumina has waited here through the long silence, guiding lost creatures back with her bioluminescent light. She remembers a time when the tides brought gifts, not ruin."
+    },
+    "Whisper": {
+      "species": "Deer",
+      "region": "Whispering Woods",
+      "story": "The ancient pines remember everything — every footstep, every whispered secret, every season that passed. Whisper can hear the island's heartbeat in the trees, a rhythm growing stronger with each node you restore. Follow the sound, and the forest will show you the way."
+    },
+    "Bloom": {
+      "species": "Butterfly",
+      "region": "Sunlit Meadows",
+      "story": "The meadow was the heart of celebrations, where creatures gathered under golden skies. Bloom's wings shimmer with every colour the island has ever known, and where she flies, flowers grow from bare stone. She's been waiting for someone brave enough to bring the colours back."
+    },
+    "Boulder": {
+      "species": "Bear",
+      "region": "Stone Peaks",
+      "story": "The rocks along the peaks are carved with ancient symbols that tell the island's history — its rise, its fall, and the prophecy of its return. Boulder sculpts shelters from raw stone and guards the mountain passes. He's gruff, but his loyalty runs deeper than the bedrock."
+    },
+    "Prism": {
+      "species": "Dragon",
+      "region": "Crystal Depths",
+      "story": "Deep within the crystal caves, magic still pulses like a second heartbeat. Prism guards the light, breathing not fire but rainbows that refract through the cavern walls. The crystals sing when she's near — an ancient melody that the island is slowly remembering."
+    },
+    "Zephyr": {
+      "species": "Eagle",
+      "region": "Cloud Realm",
+      "story": "From the Cloud Realm, you can see the whole island and beyond — the faint shimmer of other havens, waiting to be found. Zephyr rides the highest winds, carrying messages between realms that have been silent for too long. With your help, the sky bridges may open again."
+    },
+    "Haven Guardian": {
+      "species": "Spirit",
+      "region": "Ancient Ruins",
+      "story": "In the ruins, the truth is revealed: Haven was created as a sanctuary for all magical creatures, a place where no being would be turned away. The Guardian is not one spirit but many — the collective memory of every creature that ever called this island home. And now, you are its guardian too."
+    }
+  }
+}

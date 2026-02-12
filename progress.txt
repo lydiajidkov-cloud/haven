@@ -1136,3 +1136,21 @@
     - All 8px, 9px, and 10px values raised to 11px minimum.
     - Includes responsive media query overrides (max-height, max-width, min-width).
     - Tier dots (.tier-dot) increased from 3px to 4px (width + height).
+
+2026-02-12 — Task 27: Boss flavour text + narrative hooks
+  Enriched boss story text stored in data/bosses.json, loaded at init.
+
+  Files created: data/bosses.json
+  Files modified: js/island.js
+
+  (a) data/bosses.json:
+    - 7 boss entries keyed by creature name (Lumina, Whisper, Bloom, etc.).
+    - Each has species, region, and 2-3 sentence story text.
+    - Richer narratives than inline originals — more world-building detail.
+    - Light narrative hooks for marketing ad creatives.
+
+  (b) island.js loading:
+    - loadBossText() fetches data/bosses.json at init via XHR.
+    - Overrides inline story text on boss nodes with JSON versions.
+    - Graceful fallback: if JSON fails, original inline stories remain.
+    - Called at the start of Island.init() before state loading.

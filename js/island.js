@@ -119,9 +119,38 @@ var Island = (function() {
         'cloud-nest': 28, 'misty-peak': 32, 'ancient-ruins': 37
     };
 
+    // ─── BOSS TEXT LOADING ─────────────────────────────────────────
+
+    function loadBossText() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'data/bosses.json', true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.bosses) {
+                        // Override inline story text with richer JSON versions
+                        for (var i = 0; i < allNodes.length; i++) {
+                            var node = allNodes[i];
+                            if (node.boss && node.creature && data.bosses[node.creature.name]) {
+                                node.story = data.bosses[node.creature.name].story;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Haven: bosses.json parse error', e);
+                }
+            }
+        };
+        xhr.onerror = function() {};
+        xhr.send();
+    }
+
     // ─── INIT ─────────────────────────────────────────────────────
 
     function init() {
+        // Load enriched boss flavour text from JSON (overrides inline stories)
+        loadBossText();
         var state = Game.getState();
 
         if (state.island && state.island.unlockedNodes) {

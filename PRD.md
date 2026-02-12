@@ -110,7 +110,7 @@ These tasks prepare the code for AI-generated assets. Lydia generates the actual
 
 - [x] **26. FOMO moderate messaging + micro-text fix** — (a) Add "EXCLUSIVE" gold badges on event-only creatures in hatchery/creature collection. (b) Add "X hours left" countdown text on time-limited shop deals and event banners. Subtle gold badge, small countdown text — no flashing. (c) Audit all font sizes: set minimum 11px everywhere. Fix 8-9px fonts and 3px tier dots flagged by the board.
 
-- [ ] **27. Boss flavour text + narrative hooks** — Add 2-3 sentences of story text to each island boss/region node. When a player reaches a boss, show a brief story snippet ("The Crystal Guardian hoards ancient gems in the frozen cavern..."). Store text in `data/bosses.json`. Light narrative hook for marketing ad creatives. Zero ongoing maintenance.
+- [x] **27. Boss flavour text + narrative hooks** — Add 2-3 sentences of story text to each island boss/region node. When a player reaches a boss, show a brief story snippet ("The Crystal Guardian hoards ancient gems in the frozen cavern..."). Store text in `data/bosses.json`. Light narrative hook for marketing ad creatives. Zero ongoing maintenance.
 
 - [ ] **28. Brag card share mechanism** — Create a static "brag card" using Canvas: snapshot of the post-surge board with stats overlay (creatures discovered X/184, island X%, longest combo, total merges). Share via Web Share API. Add "Share" button to: (a) post-surge celebration screen, (b) creature discovery modal, (c) settings/stats panel. Fallback: copy image to clipboard.
 
