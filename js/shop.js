@@ -2,7 +2,7 @@
 'use strict';
 
 const Shop = (() => {
-    const shopItems = [
+    var shopItems = [
         // Energy
         { id: 'energy5',   name: 'Energy Pack',      desc: '5 Energy refill',             price: 20,  icon: '⚡', category: 'energy',
           action: function() { Game.addEnergy(5); } },
@@ -222,6 +222,109 @@ const Shop = (() => {
         renderShop();
     }
 
+    // ─── JSON-DRIVEN ACTION EXECUTOR ──────────────────────────
+    function executeAction(actionType, actionParams) {
+        switch (actionType) {
+            case 'addEnergy':
+                var amt = actionParams.amount === 'max' ? Game.MAX_ENERGY : actionParams.amount;
+                Game.addEnergy(amt);
+                break;
+            case 'addGems':
+                Game.addGems(actionParams.amount);
+                break;
+            case 'applyBoost':
+                applyBoost(actionParams.boostId, actionParams.duration);
+                break;
+            case 'spawnEgg':
+                spawnEgg(actionParams.tier);
+                break;
+            case 'addPowerup':
+                PowerUps.addToInventory(actionParams.type, actionParams.count);
+                break;
+            case 'addPowerupPack':
+                var types = ['mass_match','sort_sweep','shuffle','upgrade_wand','lightning','golden_spawn'];
+                for (var i = 0; i < types.length; i++) PowerUps.addToInventory(types[i], actionParams.count);
+                break;
+            case 'discoverBiome':
+                discoverBiomeCreature(actionParams.biome);
+                break;
+            case 'discoverUndiscoveredBiome':
+                discoverUndiscoveredBiomeCreature(actionParams.biome);
+                break;
+            case 'discoverRandomBiome':
+                var biomes = ['meadow','forest','ocean','enchanted'];
+                discoverBiomeCreature(biomes[Math.floor(Math.random() * biomes.length)]);
+                break;
+            default:
+                console.warn('Haven: unknown shop action type:', actionType);
+        }
+    }
+
+    // ─── JSON LOADER ──────────────────────────────────────────
+    function loadShopFromJSON(callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'data/shop.json', true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.items && Array.isArray(data.items)) {
+                        // Hydrate items with action functions from declarative data
+                        for (var i = 0; i < data.items.length; i++) {
+                            var item = data.items[i];
+                            if (item.actionType) {
+                                item.action = (function(at, ap) {
+                                    return function() { executeAction(at, ap); };
+                                })(item.actionType, item.actionParams || {});
+                            }
+                        }
+                        // Replace hardcoded shopItems
+                        shopItems.length = 0;
+                        for (var j = 0; j < data.items.length; j++) {
+                            shopItems.push(data.items[j]);
+                        }
+                    }
+                    if (data.dailyDeals && Array.isArray(data.dailyDeals)) {
+                        for (var d = 0; d < data.dailyDeals.length; d++) {
+                            var dd = data.dailyDeals[d];
+                            if (dd.actionType) {
+                                dd.action = (function(at, ap) {
+                                    return function() { executeAction(at, ap); };
+                                })(dd.actionType, dd.actionParams || {});
+                            }
+                        }
+                        DAILY_DEAL_POOL.length = 0;
+                        for (var k = 0; k < data.dailyDeals.length; k++) {
+                            DAILY_DEAL_POOL.push(data.dailyDeals[k]);
+                        }
+                    }
+                    if (data.flashSalePool && Array.isArray(data.flashSalePool)) {
+                        for (var f = 0; f < data.flashSalePool.length; f++) {
+                            var fs = data.flashSalePool[f];
+                            if (fs.actionType) {
+                                fs.action = (function(at, ap) {
+                                    return function() { executeAction(at, ap); };
+                                })(fs.actionType, fs.actionParams || {});
+                            }
+                        }
+                        FLASH_SALE_POOL.length = 0;
+                        for (var m = 0; m < data.flashSalePool.length; m++) {
+                            FLASH_SALE_POOL.push(data.flashSalePool[m]);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Haven: shop.json parse error, using hardcoded fallback', e);
+                }
+            }
+            callback();
+        };
+        xhr.onerror = function() {
+            console.warn('Haven: shop.json load failed, using hardcoded fallback');
+            callback();
+        };
+        xhr.send();
+    }
+
     function init() {
         var state = Game.getState();
         if (state.shop) {
@@ -229,6 +332,13 @@ const Shop = (() => {
             boosts = state.shop.boosts || {};
         }
 
+        // Load from JSON, then continue init
+        loadShopFromJSON(function() {
+            initAfterLoad();
+        });
+    }
+
+    function initAfterLoad() {
         generateDailyDeals();
         generateFlashSale();
 

@@ -949,3 +949,34 @@
     - ENERGY_FULL: Tracks energy transitions from below-max to max.
 
   (d) Save version bump: SAVE_VERSION 9 → 10, migration adds notifications state.
+
+2026-02-12 — Task 21: Extract events + shop to config-driven JSON
+  Moved event and shop definitions from hardcoded JS to external JSON files.
+  Both load at init via XHR with graceful fallback to hardcoded data if JSON fails.
+
+  Files created: data/events.json, data/shop.json
+  Files modified: js/events.js, js/shop.js, PRD.md
+
+  (a) data/events.json:
+    - All 8 event definitions with declarative trackChain/trackCountField fields.
+    - trackFilter/trackIncrement functions hydrated from JSON at load time.
+    - Schema: id, name, desc, icon, exclusiveCreature, modifier, challenges[],
+      trackEvent, trackChain (string|null), trackCountField (string|null).
+
+  (b) data/shop.json:
+    - 28 shop items with declarative actionType/actionParams fields.
+    - starterPack, 8 dailyDeals, 7 flashSalePool items.
+    - Action types: addEnergy, addGems, applyBoost, spawnEgg, addPowerup,
+      addPowerupPack, discoverBiome, discoverUndiscoveredBiome, discoverRandomBiome.
+    - executeAction() dispatcher maps actionType to actual function calls.
+
+  (c) events.js changes:
+    - loadEventsFromJSON() fetches data/events.json and hydrates functions.
+    - init() now calls loadEventsFromJSON() then initAfterLoad().
+    - eventPool changed from const to var to allow JSON replacement.
+
+  (d) shop.js changes:
+    - loadShopFromJSON() fetches data/shop.json and hydrates action functions.
+    - init() now calls loadShopFromJSON() then initAfterLoad().
+    - shopItems changed from const to var to allow JSON replacement.
+    - executeAction() central dispatcher for all JSON-defined actions.

@@ -1,0 +1,62 @@
+{
+  "_schema": "Haven Shop Definitions — loaded by shop.js at init",
+  "_notes": "actionType maps to handler functions in shop.js. price = -1 means real-money IAP (priceLabel shown instead).",
+  "items": [
+    { "id": "energy5",    "name": "Energy Pack",       "desc": "5 Energy refill",              "price": 20,  "icon": "\u26A1",       "category": "energy",   "actionType": "addEnergy",       "actionParams": { "amount": 5 } },
+    { "id": "energy_full","name": "Full Recharge",      "desc": "Fully recharge energy",        "price": 75,  "icon": "\uD83D\uDD0B", "category": "energy",   "actionType": "addEnergy",       "actionParams": { "amount": "max" } },
+    { "id": "lucky_spawn","name": "Lucky Spawn",        "desc": "Next 5 spawns are rare+",      "price": 30,  "icon": "\uD83C\uDF40", "category": "boost",    "actionType": "applyBoost",      "actionParams": { "boostId": "lucky_spawn", "duration": 5 } },
+    { "id": "merge_bonus","name": "Merge Bonus",        "desc": "2x gems from merges (10 min)", "price": 40,  "icon": "\u2728",       "category": "boost",    "actionType": "applyBoost",      "actionParams": { "boostId": "merge_bonus", "duration": 600 } },
+    { "id": "common_egg", "name": "Common Egg",         "desc": "A common creature egg",        "price": 50,  "icon": "\uD83E\uDD5A", "category": "eggs",     "actionType": "spawnEgg",        "actionParams": { "tier": 0 } },
+    { "id": "rare_egg",   "name": "Rare Egg",           "desc": "A rare creature egg",          "price": 150, "icon": "\uD83E\uDD5A", "category": "eggs",     "actionType": "spawnEgg",        "actionParams": { "tier": 2 } },
+    { "id": "epic_egg",   "name": "Epic Egg",           "desc": "An epic creature egg",         "price": 400, "icon": "\uD83E\uDD5A", "category": "eggs",     "actionType": "spawnEgg",        "actionParams": { "tier": 3 } },
+    { "id": "pu_mass3",   "name": "Mass Match \u00D73", "desc": "3 Mass Match power-ups",       "price": 60,  "icon": "\uD83D\uDCA5", "category": "powerups", "actionType": "addPowerup",      "actionParams": { "type": "mass_match", "count": 3 } },
+    { "id": "pu_sort3",   "name": "Sort & Sweep \u00D73","desc": "3 Sort & Sweep power-ups",    "price": 45,  "icon": "\uD83E\uDDF9", "category": "powerups", "actionType": "addPowerup",      "actionParams": { "type": "sort_sweep", "count": 3 } },
+    { "id": "pu_shuffle5","name": "Shuffle \u00D75",    "desc": "5 Shuffle power-ups",          "price": 60,  "icon": "\uD83D\uDD00", "category": "powerups", "actionType": "addPowerup",      "actionParams": { "type": "shuffle", "count": 5 } },
+    { "id": "pu_wand2",   "name": "Upgrade Wand \u00D72","desc": "2 Upgrade Wands",             "price": 55,  "icon": "\uD83E\uDE84", "category": "powerups", "actionType": "addPowerup",      "actionParams": { "type": "upgrade_wand", "count": 2 } },
+    { "id": "pu_pack",    "name": "Power Pack",         "desc": "2 of each power-up",           "price": 120, "icon": "\uD83C\uDF81", "category": "powerups", "actionType": "addPowerupPack",  "actionParams": { "count": 2 } },
+    { "id": "egg_meadow",   "name": "Meadow Egg",       "desc": "Discover a Meadow creature",      "price": 250,  "icon": "\uD83C\uDF3E", "category": "biome_eggs",       "actionType": "discoverBiome", "actionParams": { "biome": "meadow" } },
+    { "id": "egg_forest",   "name": "Forest Egg",       "desc": "Discover a Forest creature",      "price": 250,  "icon": "\uD83C\uDF32", "category": "biome_eggs",       "actionType": "discoverBiome", "actionParams": { "biome": "forest" } },
+    { "id": "egg_ocean",    "name": "Ocean Egg",        "desc": "Discover an Ocean creature",      "price": 350,  "icon": "\uD83C\uDF0A", "category": "biome_eggs",       "actionType": "discoverBiome", "actionParams": { "biome": "ocean" } },
+    { "id": "egg_enchanted","name": "Enchanted Egg",    "desc": "Discover an Enchanted creature",  "price": 600,  "icon": "\u2728",       "category": "biome_eggs",       "actionType": "discoverBiome", "actionParams": { "biome": "enchanted" } },
+    { "id": "egg_celestial","name": "Celestial Egg",    "desc": "Discover a Celestial creature",   "price": 900,  "icon": "\uD83D\uDCAB", "category": "biome_eggs",       "actionType": "discoverBiome", "actionParams": { "biome": "celestial" } },
+    { "id": "egg_undiscovered_meadow",    "name": "Undiscovered Meadow Egg",    "desc": "Guaranteed new Meadow creature",    "price": 500,  "icon": "\uD83C\uDF3E", "category": "undiscovered_eggs", "actionType": "discoverUndiscoveredBiome", "actionParams": { "biome": "meadow" } },
+    { "id": "egg_undiscovered_forest",    "name": "Undiscovered Forest Egg",    "desc": "Guaranteed new Forest creature",    "price": 500,  "icon": "\uD83C\uDF32", "category": "undiscovered_eggs", "actionType": "discoverUndiscoveredBiome", "actionParams": { "biome": "forest" } },
+    { "id": "egg_undiscovered_ocean",     "name": "Undiscovered Ocean Egg",     "desc": "Guaranteed new Ocean creature",     "price": 700,  "icon": "\uD83C\uDF0A", "category": "undiscovered_eggs", "actionType": "discoverUndiscoveredBiome", "actionParams": { "biome": "ocean" } },
+    { "id": "egg_undiscovered_enchanted", "name": "Undiscovered Enchanted Egg", "desc": "Guaranteed new Enchanted creature", "price": 1200, "icon": "\u2728",       "category": "undiscovered_eggs", "actionType": "discoverUndiscoveredBiome", "actionParams": { "biome": "enchanted" } },
+    { "id": "egg_undiscovered_celestial", "name": "Undiscovered Celestial Egg", "desc": "Guaranteed new Celestial creature", "price": 1800, "icon": "\uD83D\uDCAB", "category": "undiscovered_eggs", "actionType": "discoverUndiscoveredBiome", "actionParams": { "biome": "celestial" } },
+    { "id": "gems_small",  "name": "Gem Pouch",    "desc": "100 Gems",                     "price": -1, "priceLabel": "$0.99",  "icon": "\uD83D\uDC8E", "category": "gems", "gems": 100 },
+    { "id": "gems_medium", "name": "Gem Chest",    "desc": "500 Gems + bonus",             "price": -1, "priceLabel": "$4.99",  "icon": "\uD83D\uDC8E", "category": "gems", "gems": 550 },
+    { "id": "gems_large",  "name": "Gem Vault",    "desc": "1200 Gems + big bonus",        "price": -1, "priceLabel": "$9.99",  "icon": "\uD83D\uDC8E", "category": "gems", "gems": 1350 },
+    { "id": "gems_mega",   "name": "Gem Treasury", "desc": "3000 Gems + huge bonus",       "price": -1, "priceLabel": "$19.99", "icon": "\uD83D\uDC8E", "category": "gems", "gems": 3500 },
+    { "id": "gems_whale1", "name": "Gem Hoard",    "desc": "10,000 Gems + massive bonus",  "price": -1, "priceLabel": "$49.99", "icon": "\uD83D\uDC51", "category": "gems", "gems": 11000 },
+    { "id": "gems_whale2", "name": "Gem Empire",   "desc": "25,000 Gems + legendary bonus", "price": -1, "priceLabel": "$99.99", "icon": "\uD83D\uDC51", "category": "gems", "gems": 28000 }
+  ],
+  "starterPack": {
+    "id": "starter_pack",
+    "name": "Starter Pack",
+    "desc": "500 Gems + 30 Energy + Starter Companion Egg",
+    "priceLabel": "$1.99",
+    "originalLabel": "$12.99",
+    "icon": "\uD83C\uDF81",
+    "gems": 500
+  },
+  "dailyDeals": [
+    { "id": "dd_energy10",    "name": "Energy Mega Pack",    "desc": "10 Energy (50% off!)",          "normalPrice": 40,  "dealPrice": 20,  "icon": "\u26A1",       "actionType": "addEnergy",       "actionParams": { "amount": 10 } },
+    { "id": "dd_rare_egg",    "name": "Rare Egg Deal",       "desc": "Rare Egg at half price",        "normalPrice": 150, "dealPrice": 75,  "icon": "\uD83E\uDD5A", "actionType": "spawnEgg",        "actionParams": { "tier": 2 } },
+    { "id": "dd_epic_egg",    "name": "Epic Egg Flash Sale",  "desc": "Epic Egg 40% off",             "normalPrice": 400, "dealPrice": 240, "icon": "\uD83E\uDD5A", "actionType": "spawnEgg",        "actionParams": { "tier": 3 } },
+    { "id": "dd_power_pack",  "name": "Power Combo",         "desc": "3 of each power-up",            "normalPrice": 180, "dealPrice": 90,  "icon": "\uD83D\uDCA5", "actionType": "addPowerupPack",  "actionParams": { "count": 3 } },
+    { "id": "dd_gem200",      "name": "Gem Jackpot",         "desc": "200 gems for price of 100",     "normalPrice": 200, "dealPrice": 100, "icon": "\uD83D\uDC8E", "actionType": "addGems",         "actionParams": { "amount": 200 } },
+    { "id": "dd_merge_boost", "name": "Merge Bonanza",       "desc": "2x gems from merges (30 min)",  "normalPrice": 80,  "dealPrice": 35,  "icon": "\u2728",       "actionType": "applyBoost",      "actionParams": { "boostId": "merge_bonus", "duration": 1800 } },
+    { "id": "dd_biome_rand",  "name": "Mystery Biome Egg",   "desc": "Random biome creature!",        "normalPrice": 350, "dealPrice": 175, "icon": "\uD83C\uDF0D", "actionType": "discoverRandomBiome", "actionParams": {} },
+    { "id": "dd_shuffle10",   "name": "Shuffle Stash",       "desc": "10 Shuffles (60% off!)",        "normalPrice": 120, "dealPrice": 48,  "icon": "\uD83D\uDD00", "actionType": "addPowerup",      "actionParams": { "type": "shuffle", "count": 10 } }
+  ],
+  "flashSalePool": [
+    { "id": "fs_epic_egg",    "name": "Epic Egg",           "basePrice": 400, "icon": "\uD83E\uDD5A", "actionType": "spawnEgg",            "actionParams": { "tier": 3 } },
+    { "id": "fs_energy_full", "name": "Full Recharge",      "basePrice": 75,  "icon": "\uD83D\uDD0B", "actionType": "addEnergy",           "actionParams": { "amount": "max" } },
+    { "id": "fs_power_pack",  "name": "Power Pack",         "basePrice": 120, "icon": "\uD83C\uDF81", "actionType": "addPowerupPack",      "actionParams": { "count": 2 } },
+    { "id": "fs_gem200",      "name": "200 Gems",           "basePrice": 200, "icon": "\uD83D\uDC8E", "actionType": "addGems",             "actionParams": { "amount": 200 } },
+    { "id": "fs_merge_boost", "name": "2x Merge (30 min)",  "basePrice": 80,  "icon": "\u2728",       "actionType": "applyBoost",          "actionParams": { "boostId": "merge_bonus", "duration": 1800 } },
+    { "id": "fs_biome_egg",   "name": "Mystery Biome Egg",  "basePrice": 350, "icon": "\uD83C\uDF0D", "actionType": "discoverRandomBiome", "actionParams": {} },
+    { "id": "fs_lucky10",     "name": "Lucky Spawn x10",    "basePrice": 60,  "icon": "\uD83C\uDF40", "actionType": "applyBoost",          "actionParams": { "boostId": "lucky_spawn", "duration": 10 } }
+  ]
+}

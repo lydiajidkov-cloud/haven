@@ -7,8 +7,9 @@ const Events = (() => {
     // Epoch anchor: Monday 2024-01-01T00:00:00Z (a known Monday)
     const EPOCH = new Date('2024-01-01T00:00:00Z').getTime();
 
-    // ─── EVENT POOL (8 rotating weekly events) ─────────────────
-    const eventPool = [
+    // ─── EVENT POOL (loaded from data/events.json, fallback to hardcoded) ──
+    var eventPoolLoaded = false;
+    var eventPool = [
         {
             id: 'crystal_rush',
             name: 'Crystal Rush',
@@ -192,7 +193,51 @@ const Events = (() => {
 
     // ─── INIT ──────────────────────────────────────────────────
 
+    // ─── JSON LOADER ─────────────────────────────────────────────
+    function loadEventsFromJSON(callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'data/events.json', true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.events && Array.isArray(data.events)) {
+                        // Hydrate declarative trackFilter/trackIncrement from JSON fields
+                        for (var i = 0; i < data.events.length; i++) {
+                            var ev = data.events[i];
+                            var chain = ev.trackChain;
+                            var countField = ev.trackCountField;
+                            ev.trackFilter = chain
+                                ? (function(c) { return function(d) { return d.chain === c; }; })(chain)
+                                : function() { return true; };
+                            ev.trackIncrement = countField
+                                ? (function(f) { return function(d) { return d[f] || 1; }; })(countField)
+                                : function() { return 1; };
+                        }
+                        eventPool = data.events;
+                        eventPoolLoaded = true;
+                    }
+                } catch (e) {
+                    console.warn('Haven: events.json parse error, using hardcoded fallback', e);
+                }
+            }
+            callback();
+        };
+        xhr.onerror = function() {
+            console.warn('Haven: events.json load failed, using hardcoded fallback');
+            callback();
+        };
+        xhr.send();
+    }
+
     function init() {
+        // Try loading from JSON first, fall back to hardcoded pool
+        loadEventsFromJSON(function() {
+            initAfterLoad();
+        });
+    }
+
+    function initAfterLoad() {
         var weekNum = getWeekNumber();
         var eventDef = getEventForWeek(weekNum);
         currentEvent = eventDef;
