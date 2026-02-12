@@ -262,19 +262,15 @@ var Celebration = (function() {
     // ─── WEB SHARE API ─────────────────────────────────────────
 
     function shareDiscovery(data) {
-        var text = 'I just discovered ' + (data.name || 'a new creature') + ' in Haven! ' +
-                   (data.emoji || '') + ' #HavenGame';
-
-        if (navigator.share) {
-            navigator.share({
-                title: 'Haven - Creature Discovered!',
-                text: text
-            }).catch(function() {
-                // User cancelled or share failed — silently ignore
-            });
+        // Use brag card share if available, otherwise text fallback
+        if (typeof Share !== 'undefined') {
+            Share.shareBragCard('creature', data);
         } else {
-            // Fallback: copy to clipboard
-            if (navigator.clipboard && navigator.clipboard.writeText) {
+            var text = 'I just discovered ' + (data.name || 'a new creature') + ' in Haven! ' +
+                       (data.emoji || '') + ' #HavenGame';
+            if (navigator.share) {
+                navigator.share({ title: 'Haven', text: text }).catch(function() {});
+            } else if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(function() {
                     if (typeof Board !== 'undefined' && Board.showToast) {
                         Board.showToast('Copied to clipboard!', Board.TOAST_PRIORITY.NORMAL);

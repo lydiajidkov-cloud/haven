@@ -189,6 +189,7 @@
                     <p>Quests Completed: <span id="stat-quests">0</span></p>
                     <p>Island Restored: <span id="stat-island">0%</span></p>
                 </div>
+                <button class="share-brag-btn" id="settings-share">📤 Share My Stats</button>
                 <div class="settings-divider"></div>
                 <button class="settings-reset-btn" id="settings-reset">Reset Game</button>
                 <button class="settings-close-btn" id="settings-close">Close</button>
@@ -218,6 +219,7 @@
     <script src="js/events.js"></script>
     <script src="js/achievements.js"></script>
     <script src="js/recipes.js"></script>
+    <script src="js/share.js"></script>
     <script src="js/notifications.js"></script>
     <script src="js/welcome.js"></script>
     <script src="js/tutorial.js"></script>
@@ -464,6 +466,10 @@
             var state = Game.getState();
             state.vibrationEnabled = this.checked;
             Game.save();
+        });
+
+        document.getElementById('settings-share').addEventListener('click', function() {
+            if (typeof Share !== 'undefined') Share.shareBragCard('stats');
         });
 
         document.getElementById('settings-reset').addEventListener('click', function() {

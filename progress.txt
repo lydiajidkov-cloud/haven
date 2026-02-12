@@ -1154,3 +1154,32 @@
     - Overrides inline story text on boss nodes with JSON versions.
     - Graceful fallback: if JSON fails, original inline stories remain.
     - Called at the start of Island.init() before state loading.
+
+2026-02-12 — Task 28: Brag card share mechanism
+  Canvas-generated brag card with stats overlay, Web Share API, share buttons.
+
+  Files created: js/share.js
+  Files modified: js/celebration.js, js/board.js, index.html, css/style.css
+
+  (a) Canvas brag card (js/share.js):
+    - Share IIFE module with generateBragCard(), shareBragCard(), createShareButton().
+    - 600x400 canvas with dark gradient background, gold border, stats grid.
+    - Three trigger modes: 'creature' (discovery card), 'surge' (merge count),
+      'stats' (general stats).
+    - Stats always shown: creatures discovered/184, island %, combo record, total merges.
+    - roundRect() helper for rounded stat boxes.
+
+  (b) Web Share API + fallback:
+    - navigator.canShare() with files → share PNG image.
+    - navigator.share() text-only fallback if no file support.
+    - ClipboardItem write for image-to-clipboard fallback.
+    - Final fallback: clipboard.writeText with stats summary.
+
+  (c) Share button placements:
+    - Creature discovery celebration (celebration.js shareDiscovery → Share.shareBragCard).
+    - Post-surge: board.js emits 'surgeComplete' event with merge count and gems.
+    - Settings/stats panel: "Share My Stats" button above Reset.
+
+  (d) CSS (.share-brag-btn):
+    - Gold gradient border and text, dark background.
+    - Active state with scale-down feedback.

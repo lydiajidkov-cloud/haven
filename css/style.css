@@ -1013,6 +1013,27 @@ body {
     transform: translateX(20px);
 }
 
+.share-brag-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,170,0,0.15));
+    color: var(--accent-gold);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    text-align: center;
+    transition: background 0.15s;
+}
+
+.share-brag-btn:active {
+    background: rgba(255,215,0,0.25);
+    transform: scale(0.97);
+}
+
 .settings-close-btn {
     display: block;
     width: 100%;

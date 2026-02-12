@@ -750,6 +750,9 @@ const Board = (() => {
             Game.addGems(bonus);
             showFloatingText(3, 2, 'Surge! +' + bonus + ' \u{1F48E}');
             showToast('\u26A1 Surge ended! ' + surgeMergeCount + ' merges \u2192 +' + bonus + ' gems', TOAST_PRIORITY.HIGH);
+
+            // Emit surge data for share
+            Game.emit('surgeComplete', { mergeCount: surgeMergeCount, gemsEarned: bonus });
         }
 
         surgeMergeCount = 0;
