@@ -1105,6 +1105,41 @@ body {
     background: rgba(92,184,92,0.08);
 }
 
+.order-card.order-urgent {
+    border-color: rgba(255,100,50,0.5);
+    background: rgba(255,100,50,0.08);
+}
+
+.order-card.order-mega {
+    border-color: rgba(255,215,0,0.5);
+    background: rgba(255,215,0,0.08);
+}
+
+.order-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    display: inline-block;
+}
+
+.order-urgent-badge {
+    background: rgba(255,80,40,0.2);
+    color: #ff6633;
+}
+
+.order-mega-badge {
+    background: rgba(255,215,0,0.2);
+    color: #ffd700;
+}
+
+.order-mult {
+    font-size: 9px;
+    opacity: 0.8;
+    margin-left: 3px;
+}
+
 .order-reqs {
     margin-bottom: 4px;
 }

@@ -1,0 +1,13 @@
+{
+  "_schema": "Haven Special Order Schedule — loaded by orders.js",
+  "_notes": "dayOfWeek: 0=Sunday. urgentMinutes: time limit. megaReqCount: number of items. Only one special order active at a time.",
+  "schedule": [
+    { "dayOfWeek": 1, "type": "urgent", "urgentMinutes": 5, "rewardMultiplier": 2 },
+    { "dayOfWeek": 2, "type": "mega",   "megaReqCount": 3,  "rewardMultiplier": 3 },
+    { "dayOfWeek": 3, "type": "urgent", "urgentMinutes": 7, "rewardMultiplier": 2 },
+    { "dayOfWeek": 4, "type": "mega",   "megaReqCount": 3,  "rewardMultiplier": 3 },
+    { "dayOfWeek": 5, "type": "urgent", "urgentMinutes": 5, "rewardMultiplier": 2 },
+    { "dayOfWeek": 6, "type": "mega",   "megaReqCount": 3,  "rewardMultiplier": 3 },
+    { "dayOfWeek": 0, "type": "urgent", "urgentMinutes": 10,"rewardMultiplier": 2 }
+  ]
+}

@@ -980,3 +980,34 @@
     - init() now calls loadShopFromJSON() then initAfterLoad().
     - shopItems changed from const to var to allow JSON replacement.
     - executeAction() central dispatcher for all JSON-defined actions.
+
+2026-02-12 — Task 22: Urgent orders + mega orders
+  Two new order types with calendar-driven scheduling and enhanced rewards.
+
+  Files created: data/orders.json
+  Files modified: js/orders.js, css/style.css
+
+  (a) Urgent orders (timed, 2x rewards):
+    - generateUrgentOrder(minutes, rewardMult): creates a timed order with deadline.
+    - Countdown timer displayed as badge on order card (MM:SS format).
+    - Updates every second via setInterval.
+    - expireUrgentOrders(): replaces timed-out orders with normal ones + toast.
+    - Orange border/background styling for urgent orders.
+
+  (b) Mega orders (3 items, 3x rewards):
+    - generateMegaOrder(reqCount, rewardMult): 3 requirements across different chains.
+    - Gold MEGA badge displayed on order card.
+    - 3x gem and star rewards compared to equivalent normal orders.
+    - Gold border/background styling for mega orders.
+
+  (c) Calendar-driven scheduling (data/orders.json):
+    - Schedule maps day-of-week to special order type.
+    - Mon/Wed/Fri/Sun = urgent (5-10 min timer).
+    - Tue/Thu/Sat = mega (3 items, 3x).
+    - injectSpecialOrder() checks schedule, creates one special per day.
+    - Replaces last normal order slot with the special order.
+    - createdDate field prevents duplicate specials on same day.
+
+  (d) JSON loading:
+    - loadOrderSchedule() fetches data/orders.json at init.
+    - Graceful fallback if JSON unavailable (no specials, just normal orders).

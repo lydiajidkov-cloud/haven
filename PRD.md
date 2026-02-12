@@ -94,7 +94,7 @@ Specific numbers from playtest analysis. All changes work together — sinks inc
 
 - [x] **21. Extract events + shop to config-driven JSON** — (a) Move event definitions from hardcoded JS arrays in `events.js` to `data/events.json`. Schema: name, duration, modifiers (with min/max validated ranges), reward tiers, scheduled start/end dates. (b) Move shop offer definitions from `shop.js` to `data/shop.json`. Schema: name, price, contents, display order, availability window. Both load at init with graceful fallback if JSON is malformed.
 
-- [ ] **22. Urgent orders + mega orders** — Add two new order types: (a) Urgent orders: timed orders with countdown (e.g., "Deliver 2 Wood Tier 4 in 5 minutes") with 2x gem rewards. (b) Mega orders: require 3 items instead of the usual deliveries, with 3x rewards. Both must be calendar-driven (scheduled, not random) to prevent collisions with weekly events. Game Design owns mechanics, Live Ops owns scheduling. Add to `data/orders.json`.
+- [x] **22. Urgent orders + mega orders** — Add two new order types: (a) Urgent orders: timed orders with countdown (e.g., "Deliver 2 Wood Tier 4 in 5 minutes") with 2x gem rewards. (b) Mega orders: require 3 items instead of the usual deliveries, with 3x rewards. Both must be calendar-driven (scheduled, not random) to prevent collisions with weekly events. Game Design owns mechanics, Live Ops owns scheduling. Add to `data/orders.json`.
 
 ## Phase 7: Visual & Audio Upgrade (Code Prep)
 

@@ -16,6 +16,8 @@ const Orders = (() => {
     var orders = [];
     var deliveryMode = null; // null or { orderIndex: N }
     var ordersCompleted = 0;
+    var specialSchedule = null; // loaded from data/orders.json
+    var urgentTimerId = null;
 
     function init() {
         var state = Game.getState();
@@ -25,17 +27,49 @@ const Orders = (() => {
         }
 
         // On first play, ensure the first order is trivially completable
-        // (tier 1 wood, count 1) so the player can complete it during the tutorial.
-        // This gives them an instant win after learning the orders system.
         if (state.firstPlay && orders.length === 0) {
             orders.push(generateFirstPlayOrder());
         }
 
-        while (orders.length < MAX_ORDERS) {
-            orders.push(generateOrder());
-        }
-        renderOrders();
-        saveState();
+        // Load special order schedule from JSON, then fill orders
+        loadOrderSchedule(function() {
+            // Expire any timed-out urgent orders
+            expireUrgentOrders();
+
+            while (orders.length < MAX_ORDERS) {
+                orders.push(generateOrder());
+            }
+
+            // Try to inject a special order if today has one scheduled
+            injectSpecialOrder();
+
+            renderOrders();
+            saveState();
+
+            // Start urgent order countdown ticker
+            urgentTimerId = setInterval(function() {
+                expireUrgentOrders();
+                renderOrders();
+            }, 1000);
+        });
+    }
+
+    function loadOrderSchedule(callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'data/orders.json', true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.schedule) specialSchedule = data.schedule;
+                } catch (e) {
+                    console.warn('Haven: orders.json parse error', e);
+                }
+            }
+            callback();
+        };
+        xhr.onerror = function() { callback(); };
+        xhr.send();
     }
 
     // Generate a trivially easy first order: 1x Branch (wood tier 1)
@@ -54,6 +88,117 @@ const Orders = (() => {
             completed: false,
             claimed: false
         };
+    }
+
+    // ─── SPECIAL ORDERS (urgent + mega) ────────────────────────
+
+    function injectSpecialOrder() {
+        if (!specialSchedule) return;
+        var today = new Date().getDay(); // 0=Sun
+        var todaySchedule = null;
+        for (var i = 0; i < specialSchedule.length; i++) {
+            if (specialSchedule[i].dayOfWeek === today) {
+                todaySchedule = specialSchedule[i];
+                break;
+            }
+        }
+        if (!todaySchedule) return;
+
+        // Check if we already have a special order today
+        var todayStr = new Date().toISOString().slice(0, 10);
+        for (var j = 0; j < orders.length; j++) {
+            if (orders[j].orderType && orders[j].orderType !== 'normal' && orders[j].createdDate === todayStr) {
+                return; // Already have today's special order
+            }
+        }
+
+        // Generate the special order and replace the last normal slot
+        var special;
+        if (todaySchedule.type === 'urgent') {
+            special = generateUrgentOrder(todaySchedule.urgentMinutes, todaySchedule.rewardMultiplier);
+        } else if (todaySchedule.type === 'mega') {
+            special = generateMegaOrder(todaySchedule.megaReqCount, todaySchedule.rewardMultiplier);
+        }
+        if (special) {
+            special.createdDate = todayStr;
+            // Replace last slot (or add if under max)
+            if (orders.length >= MAX_ORDERS) {
+                orders[MAX_ORDERS - 1] = special;
+            } else {
+                orders.push(special);
+            }
+        }
+    }
+
+    function generateUrgentOrder(minutes, rewardMult) {
+        var base = generateOrder();
+        base.orderType = 'urgent';
+        base.deadline = Date.now() + minutes * 60 * 1000;
+        base.urgentMinutes = minutes;
+        base.reward.gems = Math.round(base.reward.gems * rewardMult);
+        if (base.reward.stars) base.reward.stars = Math.round(base.reward.stars * rewardMult);
+        return base;
+    }
+
+    function generateMegaOrder(reqCount, rewardMult) {
+        var mainChains = ['wood', 'stone', 'flora', 'crystal'];
+        var requirements = [];
+        var usedChains = {};
+        var difficultyBoost = Math.min(5, Math.floor(ordersCompleted / 8));
+
+        for (var i = 0; i < reqCount; i++) {
+            var chain;
+            do {
+                chain = mainChains[Math.floor(Math.random() * mainChains.length)];
+            } while (usedChains[chain] && i < mainChains.length);
+            usedChains[chain] = true;
+
+            var minTier = 1 + difficultyBoost;
+            var maxTier = Math.min(3 + difficultyBoost, 8);
+            var tier = minTier + Math.floor(Math.random() * (maxTier - minTier + 1));
+            var count = tier >= 4 ? 1 : (1 + Math.floor(Math.random() * 2));
+            requirements.push({ chain: chain, tier: tier, count: count, delivered: 0 });
+        }
+
+        var difficulty = 0;
+        for (var r = 0; r < requirements.length; r++) {
+            difficulty += requirements[r].tier * requirements[r].count * 8;
+        }
+
+        var primaryChain = requirements[0].chain;
+        var gemReward = Math.round(difficulty * (1 + Math.random() * 0.3) * rewardMult);
+
+        return {
+            id: 'ord_mega_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            orderType: 'mega',
+            requirements: requirements,
+            reward: {
+                gems: gemReward,
+                stars: Math.max(1, Math.floor(difficulty / 10)) * rewardMult
+            },
+            primaryChain: primaryChain,
+            completed: false,
+            claimed: false
+        };
+    }
+
+    function expireUrgentOrders() {
+        var now = Date.now();
+        var changed = false;
+        for (var i = 0; i < orders.length; i++) {
+            if (orders[i].orderType === 'urgent' && orders[i].deadline && !orders[i].completed && !orders[i].claimed) {
+                if (now >= orders[i].deadline) {
+                    // Time expired — replace with a normal order
+                    orders[i] = generateOrder();
+                    changed = true;
+                    if (typeof Board !== 'undefined' && Board.showToast) {
+                        Board.showToast('\u23F0 Urgent order expired!',
+                            (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.HIGH : undefined);
+                    }
+                }
+            }
+        }
+        if (changed) saveState();
     }
 
     function generateOrder() {
@@ -272,10 +417,25 @@ const Orders = (() => {
             var isActive = deliveryMode && deliveryMode.orderIndex === i;
             var primaryBonus = CHAIN_BONUSES[order.primaryChain];
 
+            var isUrgent = order.orderType === 'urgent';
+            var isMega = order.orderType === 'mega';
+
             html += '<div class="order-card' +
                 (order.completed ? ' order-complete' : '') +
                 (isActive ? ' order-active' : '') +
+                (isUrgent ? ' order-urgent' : '') +
+                (isMega ? ' order-mega' : '') +
                 '" data-order="' + i + '">';
+
+            // Special order badge
+            if (isUrgent && !order.completed) {
+                var timeLeft = Math.max(0, (order.deadline || 0) - Date.now());
+                var mins = Math.floor(timeLeft / 60000);
+                var secs = Math.floor((timeLeft % 60000) / 1000);
+                html += '<div class="order-badge order-urgent-badge">\u23F0 ' + mins + ':' + (secs < 10 ? '0' : '') + secs + ' <span class="order-mult">2x</span></div>';
+            } else if (isMega) {
+                html += '<div class="order-badge order-mega-badge">\u2B50 MEGA <span class="order-mult">3x</span></div>';
+            }
 
             // Requirements
             html += '<div class="order-reqs">';
