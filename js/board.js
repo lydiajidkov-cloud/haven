@@ -838,6 +838,16 @@ const Board = (() => {
                 showFloatingText(targetRow, targetCol, '+' + maxTierGems + ' \u{1F48E}');
                 Game.addGems(maxTierGems);
                 Game.addStars(1);
+                // Celebration overlay for max-tier merge
+                if (typeof Celebration !== 'undefined') {
+                    var maxDef = Items.getItemDef(chain, tier);
+                    Celebration.show('maxTierMerge', {
+                        chain: chain,
+                        chainName: maxDef ? maxDef.chainName : chain,
+                        emoji: maxDef ? maxDef.symbol : undefined,
+                        tier: tier
+                    });
+                }
                 unlockCell(targetRow, targetCol);
                 syncToGameState();
                 return;
@@ -897,12 +907,38 @@ const Board = (() => {
             }
 
             // High-tier celebration
-            if (nextTier >= 5) {
+            if (nextTier >= 7) {
                 Sound.playCelebration();
                 Game.vibrate([20, 40, 30, 40, 20]);
                 emitParticlesAtCell(targetRow, targetCol, 'legendary');
                 boardEl.classList.add('screen-shake');
                 setTimeout(function() { boardEl.classList.remove('screen-shake'); }, 400);
+                // Full-screen celebration overlay for tier 7+
+                if (typeof Celebration !== 'undefined') {
+                    var htDef = Items.getItemDef(chain, actualTier);
+                    Celebration.show('highTierMerge', {
+                        chain: chain,
+                        chainName: htDef ? htDef.chainName : chain,
+                        emoji: htDef ? htDef.symbol : undefined,
+                        tier: actualTier
+                    });
+                }
+            } else if (nextTier >= 5) {
+                Sound.playCelebration();
+                Game.vibrate([20, 40, 30, 40, 20]);
+                emitParticlesAtCell(targetRow, targetCol, 'legendary');
+                boardEl.classList.add('screen-shake');
+                setTimeout(function() { boardEl.classList.remove('screen-shake'); }, 400);
+                // Brief banner for tier 5-6 (fires too frequently for full-screen)
+                if (typeof Celebration !== 'undefined') {
+                    var mtDef = Items.getItemDef(chain, actualTier);
+                    Celebration.show('midTierMerge', {
+                        chain: chain,
+                        chainName: mtDef ? mtDef.chainName : chain,
+                        emoji: mtDef ? mtDef.symbol : undefined,
+                        tier: actualTier
+                    });
+                }
             } else if (nextTier >= 3) {
                 boardEl.classList.add('screen-shake');
                 setTimeout(function() { boardEl.classList.remove('screen-shake'); }, 250);

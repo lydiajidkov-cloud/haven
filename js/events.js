@@ -560,12 +560,22 @@ const Events = (() => {
             Game.emit('shopSpawnRequest', { chain: 'creature', tier: 2 });
         }
 
-        // Effects
-        if (typeof Sound !== 'undefined') Sound.playAchievement();
-        Game.vibrate([15, 30, 15, 30, 15]);
+        // Effects — celebration overlay handles sound + particles
         Game.emit('eventTierClaimed', { eventId: currentEvent.id, tier: tier });
 
-        // Show toast
+        if (typeof Celebration !== 'undefined') {
+            var tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+            Celebration.show('eventTier', {
+                tierLabel: tierLabel,
+                eventName: currentEvent.name,
+                emoji: currentEvent.icon || '\u{1F3AA}'
+            });
+        } else {
+            if (typeof Sound !== 'undefined') Sound.playAchievement();
+            Game.vibrate([15, 30, 15, 30, 15]);
+        }
+
+        // Show toast with reward details
         showEventToast(
             '\u{1F3C6} ' + tier.charAt(0).toUpperCase() + tier.slice(1) +
             ' reward claimed! ' +

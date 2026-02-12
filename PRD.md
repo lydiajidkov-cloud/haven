@@ -50,7 +50,7 @@
 
 These features directly increase the "one more merge" compulsion loop and player retention.
 
-- [ ] **5. Celebration overlay system** — Build a shared, configurable full-screen celebration overlay that fires for: tier 7+ merges, creature discoveries, first hybrid unlocks, battle pass tier unlocks, and event tier completions. Tap-skippable, auto-dismisses in 3 seconds. Tier 5-6 merges get enhanced particle burst + brief banner instead (NOT full-screen — fires too frequently during surge). One system, configured per trigger. Store config in a data structure. Include share button on creature discovery celebrations.
+- [x] **5. Celebration overlay system** — Build a shared, configurable full-screen celebration overlay that fires for: tier 7+ merges, creature discoveries, first hybrid unlocks, battle pass tier unlocks, and event tier completions. Tap-skippable, auto-dismisses in 3 seconds. Tier 5-6 merges get enhanced particle burst + brief banner instead (NOT full-screen — fires too frequently during surge). One system, configured per trigger. Store config in a data structure. Include share button on creature discovery celebrations.
 
 - [ ] **6. Item discovery rewards** — Award gems for every NEW item tier a player discovers for the first time (not just creature discoveries). Track discovered tiers in save state. Award: 5 gems for common tiers, 10 for uncommon, 25 for rare, 50 for legendary. Show floating "+5 NEW!" text with a distinct chime sound. This creates constant micro-dopamine hits throughout early and mid-game (competitive gap: Travel Town does this and it's their most addictive feature).
 

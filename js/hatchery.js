@@ -202,8 +202,18 @@ var Hatchery = (function() {
             '</div>';
 
         modal.classList.remove('hidden');
-        Sound.playCreatureDiscover();
-        Game.vibrate([20, 40, 30, 40, 20]);
+
+        // Fire celebration overlay (handles sound + particles + share button)
+        if (typeof Celebration !== 'undefined') {
+            Celebration.show('creatureDiscovery', {
+                name: creature.name,
+                emoji: creature.emoji,
+                rarity: creature.rarity
+            });
+        } else {
+            Sound.playCreatureDiscover();
+            Game.vibrate([20, 40, 30, 40, 20]);
+        }
 
         modal.querySelector('.modal-close-btn').addEventListener('click', function() {
             modal.classList.add('hidden');

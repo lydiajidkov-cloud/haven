@@ -296,35 +296,14 @@ const Recipes = (() => {
         var hybrid = Items.chains[hybridChain];
         if (!hybrid) return;
 
-        // Create a full-screen celebration overlay
-        var overlay = document.createElement('div');
-        overlay.className = 'recipe-discovery-overlay';
-        overlay.innerHTML =
-            '<div class="recipe-discovery-card">' +
-                '<div class="recipe-discovery-sparkle"></div>' +
-                '<div class="recipe-discovery-icon">' + hybrid.icon + '</div>' +
-                '<h3>Recipe Discovered!</h3>' +
-                '<p class="recipe-discovery-name">' + hybrid.name + ' Chain</p>' +
-                '<p class="recipe-discovery-sub">Check the Recipe Book for details</p>' +
-                '<button class="recipe-discovery-btn">Awesome!</button>' +
-            '</div>';
-
-        document.getElementById('app').appendChild(overlay);
-
-        // Fade in
-        requestAnimationFrame(function() {
-            overlay.classList.add('recipe-discovery-show');
-        });
-
-        var closeOverlay = function() {
-            overlay.classList.remove('recipe-discovery-show');
-            setTimeout(function() { overlay.remove(); }, 300);
-        };
-
-        overlay.querySelector('.recipe-discovery-btn').addEventListener('click', closeOverlay);
-        overlay.addEventListener('click', function(e) {
-            if (e.target === overlay) closeOverlay();
-        });
+        // Use shared celebration overlay for first hybrid unlocks
+        if (typeof Celebration !== 'undefined') {
+            Celebration.show('hybridUnlock', {
+                chain: hybridChain,
+                chainName: hybrid.name,
+                emoji: hybrid.icon
+            });
+        }
 
         // Pulse the recipe book button
         var bookBtn = document.getElementById('recipe-book-btn');

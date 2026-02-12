@@ -123,3 +123,54 @@
     - migrateState() updated: v1 saves are stamped to v2 on load. No data migration
       needed — these are gameplay rule changes, not save format changes.
     - defaultState() will now stamp new saves as v2.
+
+2026-02-12 — Task 5: Celebration overlay system
+  Built a shared, configurable full-screen celebration overlay and brief banner system.
+  One module (js/celebration.js) with a data-driven config structure serves all trigger types.
+
+  Files created: js/celebration.js, css/celebration.css
+  Files modified: index.html, js/board.js, js/hatchery.js, js/pass.js, js/events.js, js/recipes.js
+
+  Architecture:
+    - Celebration IIFE module with CONFIGS data structure mapping 7 trigger types to display settings.
+    - Two display modes: 'overlay' (full-screen, z-index 80) and 'banner' (brief top pill, z-index 75).
+    - All overlays are tap-skippable and auto-dismiss (3s for overlays, 1.5s for banners).
+    - Each config specifies: type, title, subtitle, icon, gradient colors, sound, duration, showShare.
+    - Title/subtitle/icon/gradient can be static values or functions of the trigger data.
+
+  Trigger types wired:
+    (a) maxTierMerge (overlay): Fires in board.js executeMerge() when isMaxTier is true.
+        Shows chain name + "chain mastered!" with item symbol emoji.
+    (b) highTierMerge (overlay): Fires in board.js executeMerge() for tier 7+ regular merges.
+        Shows "TIER 7!" with item symbol and chain name.
+    (c) midTierMerge (banner): Fires in board.js executeMerge() for tier 5-6 merges.
+        Brief top banner instead of full-screen (fires too frequently during surge).
+        Enhanced particle burst (legendary) already existed; banner adds visual text feedback.
+    (d) creatureDiscovery (overlay): Fires in hatchery.js showDiscoveryModal().
+        Shows creature emoji, name, rarity. Includes Web Share API share button.
+        Falls back to clipboard copy on devices without Web Share API.
+        Existing detailed creature modal remains underneath for discovery count + biome info.
+    (e) hybridUnlock (overlay): Fires in recipes.js showDiscoveryAnimation().
+        Replaces the old hand-built recipe discovery overlay with the shared celebration system.
+        Keeps the recipe book button pulse effect.
+    (f) battlePassTier (overlay): Fires in pass.js claimTierReward().
+        Shows reward-type emoji (gems/energy/stars/egg/powerup).
+    (g) eventTier (overlay): Fires in events.js claimTier().
+        Shows tier label (Bronze/Silver/Gold) + event name + event icon.
+
+  Share button (creature discovery only):
+    - Uses navigator.share() (Web Share API) if available.
+    - Falls back to navigator.clipboard.writeText() with toast confirmation.
+    - Shares: "I just discovered [name] in Haven! [emoji] #HavenGame"
+
+  CSS (celebration.css):
+    - Full overlay: dark backdrop, centered card with shimmer effect, icon bounce animation,
+      gradient title, tap-hint text. Smooth scale+fade transitions for enter/exit.
+    - Brief banner: absolute positioned pill at top, gradient background, slide-down entrance.
+    - Respects prefers-reduced-motion media query.
+
+  Safety:
+    - All trigger sites use typeof Celebration !== 'undefined' guards.
+    - When Celebration is unavailable, falls back to existing Sound/vibrate calls.
+    - celebration.js loads after particles.js (for Particles.emit access at call time)
+      and before game.js. No load-time dependencies on other modules.

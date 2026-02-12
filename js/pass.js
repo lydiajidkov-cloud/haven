@@ -154,7 +154,20 @@ const Pass = (() => {
                 break;
         }
 
-        Sound.playCelebration();
+        // Celebration overlay for battle pass tier unlock
+        if (typeof Celebration !== 'undefined') {
+            var rewardEmoji = reward.type === 'gems' ? '\u{1F48E}' :
+                              reward.type === 'energy' ? '\u26A1' :
+                              reward.type === 'stars' ? '\u2B50' :
+                              reward.type === 'egg' ? '\u{1F95A}' :
+                              reward.type === 'powerup' ? '\u{1F4A5}' : '\u{1F381}';
+            Celebration.show('battlePassTier', {
+                tier: tier,
+                emoji: rewardEmoji
+            });
+        } else {
+            Sound.playCelebration();
+        }
         savePassState();
         renderPass();
     }
