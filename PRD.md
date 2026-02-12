@@ -76,7 +76,7 @@ Specific numbers from playtest analysis. All changes work together — sinks inc
 
 ## Phase 4: Monetization Infrastructure
 
-- [ ] **15. AdAdapter module + energy-empty bottom sheet** — (a) Create `js/ad-adapter.js` as an IIFE behind the event bus. Define `AdAdapter.show(type, callback)` that simulates a 3-second ad for now (will connect to real SDK later). (b) When energy hits zero, show a non-blocking bottom sheet from screen bottom: "Watch Ad — Free Refill" and "Buy Refill — 75 gems." Dismissible by tapping outside. Subtle, dark-palette styling. Cap rewarded ads at 5/day to protect IAP value.
+- [x] **15. AdAdapter module + energy-empty bottom sheet** — (a) Create `js/ad-adapter.js` as an IIFE behind the event bus. Define `AdAdapter.show(type, callback)` that simulates a 3-second ad for now (will connect to real SDK later). (b) When energy hits zero, show a non-blocking bottom sheet from screen bottom: "Watch Ad — Free Refill" and "Buy Refill — 75 gems." Dismissible by tapping outside. Subtle, dark-palette styling. Cap rewarded ads at 5/day to protect IAP value.
 
 - [ ] **16. Double-reward ad + first purchase bonus** — (a) After a tier 4+ merge that awards gems, 20% chance to show "Double your gems?" prompt. If accepted, play ad via AdAdapter, double the gem reward. Auto-dismiss after 5 seconds. Show AFTER merge animation (don't interrupt flow). (b) Add first-purchase bonus: ANY first real-money purchase (even $0.99) permanently unlocks +10% gem income. Display this benefit prominently in the shop to encourage first conversion.
 

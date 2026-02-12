@@ -256,16 +256,33 @@ const Shop = (() => {
     }
 
     function simulateRewardedAd() {
-        showShopToast('Watching ad...');
-        // Simulate a 3-second ad
-        setTimeout(function() {
-            var reward = 5 + Math.floor(Math.random() * 6); // 5-10 gems
-            Game.addGems(reward);
-            Game.addEnergy(2);
-            Sound.playCelebration();
-            showShopToast('Ad reward: +' + reward + ' gems + 2 energy!');
-            renderShop();
-        }, 3000);
+        // Use AdAdapter if available (with daily cap), else fall back to direct simulation
+        if (typeof AdAdapter !== 'undefined' && AdAdapter.show) {
+            if (!AdAdapter.canShowRewarded()) {
+                showShopToast('No ads remaining today (' + AdAdapter.MAX_REWARDED_ADS_PER_DAY + '/day limit)');
+                return;
+            }
+            AdAdapter.show('rewarded_shop', function(success) {
+                if (success) {
+                    var reward = 5 + Math.floor(Math.random() * 6); // 5-10 gems
+                    Game.addGems(reward);
+                    Game.addEnergy(2);
+                    Sound.playCelebration();
+                    showShopToast('Ad reward: +' + reward + ' gems + 2 energy!');
+                    renderShop();
+                }
+            });
+        } else {
+            showShopToast('Watching ad...');
+            setTimeout(function() {
+                var reward = 5 + Math.floor(Math.random() * 6);
+                Game.addGems(reward);
+                Game.addEnergy(2);
+                Sound.playCelebration();
+                showShopToast('Ad reward: +' + reward + ' gems + 2 energy!');
+                renderShop();
+            }, 3000);
+        }
     }
 
     function discoverUndiscoveredBiomeCreature(biomeId) {
@@ -358,13 +375,14 @@ const Shop = (() => {
         var html = '';
 
         // Rewarded Ad
+        var adsLeft = (typeof AdAdapter !== 'undefined') ? AdAdapter.getAdsRemaining() : 5;
         html += '<div class="shop-section">';
         html += '<h3 class="shop-section-title">Free Rewards</h3>';
         html += '<div class="shop-item ad-item" id="shop-ad">';
-        html += '<span class="shop-item-icon">📺</span>';
+        html += '<span class="shop-item-icon">\uD83D\uDCFA</span>';
         html += '<div class="shop-item-info"><span class="shop-item-name">Watch Ad</span>';
-        html += '<span class="shop-item-desc">Gems + 2 energy</span></div>';
-        html += '<button class="shop-buy-btn ad-btn">Watch</button>';
+        html += '<span class="shop-item-desc">Gems + 2 energy \u00B7 ' + adsLeft + '/5 left today</span></div>';
+        html += '<button class="shop-buy-btn ad-btn"' + (adsLeft <= 0 ? ' disabled' : '') + '>Watch</button>';
         html += '</div></div>';
 
         // Daily Deals

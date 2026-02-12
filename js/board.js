@@ -1303,6 +1303,10 @@ const Board = (() => {
             if (cluttered) {
                 showToast('Cluttered! Spawns cost ' + totalCost + ' energy. Merge or clear tier-0 items!', TOAST_PRIORITY.NORMAL);
             } else {
+                // Show energy-empty bottom sheet (ad + gem refill options)
+                if (typeof AdAdapter !== 'undefined' && AdAdapter.showEnergyBottomSheet) {
+                    AdAdapter.showEnergyBottomSheet();
+                }
                 // Count available merges to encourage continued play
                 var availableMerges = 0;
                 var visitedCells = {};

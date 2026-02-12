@@ -606,3 +606,60 @@
     - SAVE_VERSION raised from 5 to 6.
     - migrateState() v5→v6: adds pityCounter to hatchery state if missing,
       initializes to 0.
+
+2026-02-12 — Task 15: AdAdapter module + energy-empty bottom sheet
+  Created the ad infrastructure module and non-blocking energy-empty monetization
+  bottom sheet. This is the first monetization insertion point, placing ad and gem
+  refill options at the moment of highest player motivation (energy depletion).
+
+  Files created: js/ad-adapter.js, css/ad-adapter.css
+  Files modified: index.html, js/board.js, js/shop.js
+
+  (a) AdAdapter IIFE module (js/ad-adapter.js):
+    - AdAdapter.show(type, callback): simulates a 3-second ad with visual overlay
+      (progress bar, countdown timer, film clapper icon). Callback receives true
+      on completion, false on failure/cap exceeded.
+    - AD_TYPE constants: REWARDED_ENERGY (energy refill), REWARDED_DOUBLE (future
+      Task 16 double gem reward).
+    - Simulated ad overlay: dark full-screen overlay with animated progress bar
+      and 3-second countdown. Will be replaced by real SDK (AdMob/IronSource) later.
+    - Events emitted: 'adStarted', 'adCompleted', 'adSkipped' via Game event bus
+      for analytics integration.
+
+  (b) Rewarded ad daily cap at 5/day (js/ad-adapter.js):
+    - MAX_REWARDED_ADS_PER_DAY = 5 to protect IAP value.
+    - Ad state tracked in Game.getState().adAdapter: { adsToday, adDate }.
+    - Counter resets automatically on new calendar day (ISO date comparison).
+    - canShowRewarded(), getAdsRemaining(), getAdsWatchedToday() query functions
+      exposed for UI display.
+
+  (c) Energy-empty bottom sheet (js/ad-adapter.js + css/ad-adapter.css):
+    - Non-blocking bottom sheet slides up from screen bottom when energy is zero.
+    - Two options: "Watch Ad" (free full recharge) and "Buy Refill" (75 gems).
+    - Dismissible by tapping backdrop (outside sheet) or swiping down.
+    - Watch Ad button shows remaining ads (e.g., "3/5 left today"), disabled when
+      cap reached. Buy Refill shows gem cost, disabled when can't afford.
+    - After ad: full energy recharge + celebration sound + haptic feedback + toast.
+    - After gem purchase: 75 gems deducted + full recharge + purchase sound + toast.
+    - 10-second cooldown after dismissal prevents re-showing on rapid spawn taps.
+    - Duplicate prevention: won't show if already visible (DOM ID check).
+    - CSS: subtle dark palette matching game theme, smooth slide-up animation,
+      swipe-to-dismiss gesture support, safe-area-inset-bottom for notched phones.
+      Respects prefers-reduced-motion.
+
+  (d) Integration points:
+    - board.js spawnItem(): when energy insufficient (non-cluttered), calls
+      AdAdapter.showEnergyBottomSheet() via typeof guard. Cluttered boards keep
+      their existing clutter-specific messaging instead.
+    - Game 'energyEmpty' event: AdAdapter.init() registers a listener as fallback
+      for any edge case where useEnergy() is called with 0 energy.
+    - shop.js simulateRewardedAd(): now routes through AdAdapter.show() when
+      available, respecting the 5/day cap. Falls back to direct simulation if
+      AdAdapter is not loaded.
+    - shop.js renderShop(): Watch Ad section now shows remaining ad count
+      (e.g., "3/5 left today") and disables button when cap is reached.
+
+  (e) Script loading (index.html):
+    - ad-adapter.js loaded after game.js (dependency) and before board.js/shop.js.
+    - css/ad-adapter.css linked in head alongside other feature CSS files.
+    - AdAdapter.init() called after Shop.init() in initialization sequence.
