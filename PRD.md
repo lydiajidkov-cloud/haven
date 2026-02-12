@@ -80,7 +80,7 @@ Specific numbers from playtest analysis. All changes work together — sinks inc
 
 - [x] **16. Double-reward ad + first purchase bonus** — (a) After a tier 4+ merge that awards gems, 20% chance to show "Double your gems?" prompt. If accepted, play ad via AdAdapter, double the gem reward. Auto-dismiss after 5 seconds. Show AFTER merge animation (don't interrupt flow). (b) Add first-purchase bonus: ANY first real-money purchase (even $0.99) permanently unlocks +10% gem income. Display this benefit prominently in the shop to encourage first conversion.
 
-- [ ] **17. Starter pack + subscription + whale tiers** — (a) Update starter pack ($1.99) to include a "Starter Companion Egg" guaranteeing one rare creature (board-agreed compromise). (b) Add VIP subscription tier ($4.99/month): 200 gems/day, 50% faster energy regen, exclusive "VIP" badge. (c) Add whale gem bundles: $49.99 = 10,000 gems, $99.99 = 25,000 gems. (d) Add daily flash sale: 1 rotating item at 30% off, changes every 24 hours, creates daily re-open habit.
+- [x] **17. Starter pack + subscription + whale tiers** — (a) Update starter pack ($1.99) to include a "Starter Companion Egg" guaranteeing one rare creature (board-agreed compromise). (b) Add VIP subscription tier ($4.99/month): 200 gems/day, 50% faster energy regen, exclusive "VIP" badge. (c) Add whale gem bundles: $49.99 = 10,000 gems, $99.99 = 25,000 gems. (d) Add daily flash sale: 1 rotating item at 30% off, changes every 24 hours, creates daily re-open habit.
 
 ## Phase 5: Retention & Return
 

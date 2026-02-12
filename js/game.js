@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 7;
+    const SAVE_VERSION = 8;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const DEFAULT_ROWS = 8;
@@ -76,6 +76,7 @@ const Game = (() => {
             boardTheme: null,
             ownedThemes: {},
             firstPurchaseMade: false,
+            vipSubscription: null, // { subscribedAt, expiresAt } or null
             soundEnabled: true,
             vibrationEnabled: true
         };
@@ -234,6 +235,11 @@ const Game = (() => {
             if (typeof data.firstPurchaseMade === 'undefined') data.firstPurchaseMade = false;
             data._saveVersion = 7;
         }
+        // v7 → v8: VIP subscription support
+        if (data._saveVersion < 8) {
+            if (!data.vipSubscription) data.vipSubscription = null;
+            data._saveVersion = 8;
+        }
         return data;
     }
 
@@ -289,6 +295,10 @@ const Game = (() => {
         if (typeof Creatures !== 'undefined' && state.hatchery && state.hatchery.discovered) {
             var bonuses = Creatures.calculatePassiveBonuses(state.hatchery.discovered);
             regenMs = Math.max(60000, ENERGY_REGEN_MS - Math.round(bonuses.energy_regen * 250));
+        }
+        // VIP subscription: 50% faster energy regen
+        if (isVipActive()) {
+            regenMs = Math.max(30000, Math.floor(regenMs / VIP_ENERGY_REGEN_MULT));
         }
         // Event modifier: energy_regen_multiplier (e.g., Speed Demon 2x faster regen)
         if (typeof Events !== 'undefined' && Events.hasModifier('energy_regen_multiplier')) {
@@ -552,6 +562,43 @@ const Game = (() => {
         return (state && state.ownedThemes) || {};
     }
 
+    // ─── VIP SUBSCRIPTION ───────────────────────────────────
+    var VIP_DAILY_GEMS = 200;
+    var VIP_ENERGY_REGEN_MULT = 1.5; // 50% faster energy regen
+
+    function isVipActive() {
+        if (!state || !state.vipSubscription) return false;
+        return Date.now() < state.vipSubscription.expiresAt;
+    }
+
+    function activateVip() {
+        // Simulated: 30 days from now
+        var now = Date.now();
+        state.vipSubscription = {
+            subscribedAt: now,
+            expiresAt: now + 30 * 24 * 60 * 60 * 1000
+        };
+        save();
+        emit('vipActivated');
+        return true;
+    }
+
+    function claimVipDailyGems() {
+        if (!isVipActive()) return false;
+        var today = new Date().toISOString().slice(0, 10);
+        if (state.vipSubscription.lastClaimDate === today) return false;
+        state.vipSubscription.lastClaimDate = today;
+        addGems(VIP_DAILY_GEMS);
+        save();
+        emit('vipDailyClaimed');
+        return true;
+    }
+
+    function getVipDaysRemaining() {
+        if (!isVipActive()) return 0;
+        return Math.ceil((state.vipSubscription.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+    }
+
     var exports = {
         init: init,
         save: save,
@@ -586,7 +633,13 @@ const Game = (() => {
         getBoardTheme: getBoardTheme,
         getOwnedThemes: getOwnedThemes,
         markFirstPurchase: markFirstPurchase,
-        hasFirstPurchaseBonus: hasFirstPurchaseBonus
+        hasFirstPurchaseBonus: hasFirstPurchaseBonus,
+        isVipActive: isVipActive,
+        activateVip: activateVip,
+        claimVipDailyGems: claimVipDailyGems,
+        getVipDaysRemaining: getVipDaysRemaining,
+        VIP_DAILY_GEMS: VIP_DAILY_GEMS,
+        VIP_ENERGY_REGEN_MULT: VIP_ENERGY_REGEN_MULT
     };
 
     // ROWS and COLS are dynamic (change on board expansion), so use getters

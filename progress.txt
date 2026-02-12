@@ -720,3 +720,65 @@
   (c) Save version bump (game.js):
     - SAVE_VERSION raised from 6 to 7.
     - migrateState() v6->v7: adds firstPurchaseMade: false if missing.
+
+2026-02-12 — Task 17: Starter pack + subscription + whale tiers
+  Four monetization features: updated starter pack, VIP subscription, whale gem
+  bundles, and daily flash sale. Combined these create a full monetization stack
+  from $0.99 impulse buys to $99.99 whale bundles, with recurring revenue from
+  VIP subscription.
+
+  Files modified: js/shop.js, js/game.js, css/shop.css
+
+  (a) Starter pack updated with Starter Companion Egg (shop.js):
+    - Starter Pack ($1.99) now includes a guaranteed rare creature discovery
+      instead of just spawning a rare egg on the board.
+    - discoverStarterCompanionEgg() picks a random undiscovered rare creature
+      from any biome. Falls back to uncommon if all rares discovered, then
+      awards 100 bonus gems if all rare+uncommon already found.
+    - Updates pity counter (reset on legendary, increment otherwise).
+    - Triggers 'creatureDiscovered' event for hatchery/celebration integration.
+
+  (b) VIP subscription tier at $4.99/month (game.js + shop.js):
+    - Game.activateVip(): simulated 30-day subscription stored in save state
+      as vipSubscription { subscribedAt, expiresAt, lastClaimDate }.
+    - Game.isVipActive(): checks if current time is before expiresAt.
+    - Game.claimVipDailyGems(): awards 200 gems/day, tracked by lastClaimDate
+      (ISO date string). Returns false if already claimed today.
+    - Game.getVipDaysRemaining(): returns days left on subscription.
+    - 50% faster energy regen: VIP_ENERGY_REGEN_MULT (1.5) applied in
+      updateEnergy() before event modifiers, with 30s floor.
+    - Shop displays VIP section with purchase button ($4.99/mo) or
+      active status with claim button (Claim 200 gems) or claimed badge.
+    - VIP purchase triggers markFirstPurchase() for +10% gem bonus.
+    - Events: 'vipActivated' and 'vipDailyClaimed' trigger shop re-render.
+
+  (c) Whale gem bundles (shop.js):
+    - Gem Hoard: $49.99 for 10,000 gems (11,000 with bonus).
+    - Gem Empire: $99.99 for 25,000 gems (28,000 with bonus).
+    - Both use crown icon to distinguish from standard gem bundles.
+    - Processed through existing simulatePurchase() IAP flow with
+      confirmation dialog and first-purchase bonus integration.
+
+  (d) Daily flash sale (shop.js + css/shop.css):
+    - FLASH_SALE_POOL: 7 items (epic egg, full recharge, power pack,
+      200 gems, merge boost, mystery biome egg, lucky spawn x10).
+    - generateFlashSale(): picks 1 item per day using seeded random
+      (different seed offset from daily deals to avoid overlap).
+    - 30% discount: salePrice = Math.round(basePrice * 0.7).
+    - purchaseFlashSale(): deducts gems, executes action, persists
+      purchase state to shop.flashSalePurchased { date, id }.
+    - Flash sale renders at top of shop (after free rewards, before VIP)
+      with yellow/gold accent styling and hours-left countdown timer.
+    - One purchase per day, shows SOLD badge after purchase.
+
+  (e) CSS additions (shop.css):
+    - .flash-sale-item: yellow/gold border and gradient background.
+    - .flash-sale-btn: gold gradient button for flash sale purchase.
+    - .vip-item: purple border and gradient background.
+    - .vip-claim-btn: green gradient for daily gem claim.
+    - .vip-claimed-badge: green text with subtle background.
+
+  (f) Save version bump (game.js):
+    - SAVE_VERSION raised from 7 to 8.
+    - migrateState() v7->v8: adds vipSubscription: null if missing.
+    - defaultState() includes vipSubscription: null.

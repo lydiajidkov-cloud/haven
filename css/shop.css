@@ -506,3 +506,36 @@
     0%, 100% { border-color: rgba(255, 215, 0, 0.15); }
     50% { border-color: rgba(255, 215, 0, 0.4); }
 }
+
+/* ─── FLASH SALE ─────────────────────────────────────────── */
+
+.flash-sale-item {
+    border-color: rgba(250, 204, 21, 0.3) !important;
+    background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), var(--bg-medium)) !important;
+}
+
+.flash-sale-btn {
+    background: linear-gradient(135deg, #eab308, #ca8a04) !important;
+    color: #1a1a2e !important;
+}
+
+/* ─── VIP SUBSCRIPTION ───────────────────────────────────── */
+
+.vip-item {
+    border-color: rgba(168, 85, 247, 0.3) !important;
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), var(--bg-medium)) !important;
+}
+
+.vip-claim-btn {
+    background: linear-gradient(135deg, var(--accent-green), #48a040) !important;
+    color: white !important;
+}
+
+.vip-claimed-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-green);
+    background: rgba(76, 175, 80, 0.12);
+    padding: 4px 12px;
+    border-radius: 10px;
+}

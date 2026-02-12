@@ -71,13 +71,17 @@ const Shop = (() => {
         { id: 'gems_medium', name: 'Gem Chest',       desc: '500 Gems + bonus',            price: -1, priceLabel: '$4.99',  icon: '\u{1F48E}', category: 'gems', gems: 550 },
         { id: 'gems_large',  name: 'Gem Vault',       desc: '1200 Gems + big bonus',       price: -1, priceLabel: '$9.99',  icon: '\u{1F48E}', category: 'gems', gems: 1350 },
         { id: 'gems_mega',   name: 'Gem Treasury',    desc: '3000 Gems + huge bonus',      price: -1, priceLabel: '$19.99', icon: '\u{1F48E}', category: 'gems', gems: 3500 },
+
+        // Whale bundles
+        { id: 'gems_whale1', name: 'Gem Hoard',       desc: '10,000 Gems + massive bonus', price: -1, priceLabel: '$49.99', icon: '\u{1F451}', category: 'gems', gems: 11000 },
+        { id: 'gems_whale2', name: 'Gem Empire',      desc: '25,000 Gems + legendary bonus', price: -1, priceLabel: '$99.99', icon: '\u{1F451}', category: 'gems', gems: 28000 },
     ];
 
-    // Starter pack (appears once)
+    // Starter pack (appears once) — includes Starter Companion Egg (guaranteed rare creature)
     const starterPack = {
         id: 'starter_pack',
         name: 'Starter Pack',
-        desc: '500 Gems + 30 Energy + Rare Egg',
+        desc: '500 Gems + 30 Energy + Starter Companion Egg',
         priceLabel: '$1.99',
         originalLabel: '$12.99',
         icon: '🎁',
@@ -154,6 +158,70 @@ const Shop = (() => {
         renderShop();
     }
 
+    // ─── DAILY FLASH SALE (1 rotating item, 30% off, 24h cycle) ──────
+    var FLASH_SALE_POOL = [
+        { id: 'fs_epic_egg',    name: 'Epic Egg',          basePrice: 400,  icon: '\u{1F95A}',  action: function() { spawnEgg(3); } },
+        { id: 'fs_energy_full', name: 'Full Recharge',     basePrice: 75,   icon: '\u{1F50B}',  action: function() { Game.addEnergy(Game.MAX_ENERGY); } },
+        { id: 'fs_power_pack',  name: 'Power Pack',        basePrice: 120,  icon: '\u{1F381}',  action: function() { var types = ['mass_match','sort_sweep','shuffle','upgrade_wand','lightning','golden_spawn']; for(var i=0;i<types.length;i++) PowerUps.addToInventory(types[i],2); } },
+        { id: 'fs_gem200',      name: '200 Gems',          basePrice: 200,  icon: '\u{1F48E}',  action: function() { Game.addGems(200); } },
+        { id: 'fs_merge_boost', name: '2x Merge (30 min)', basePrice: 80,   icon: '\u2728',     action: function() { applyBoost('merge_bonus', 1800); } },
+        { id: 'fs_biome_egg',   name: 'Mystery Biome Egg', basePrice: 350,  icon: '\u{1F30D}',  action: function() { var b = ['meadow','forest','ocean','enchanted']; discoverBiomeCreature(b[Math.floor(Math.random()*b.length)]); } },
+        { id: 'fs_lucky10',     name: 'Lucky Spawn x10',   basePrice: 60,   icon: '\u{1F340}',  action: function() { applyBoost('lucky_spawn', 10); } },
+    ];
+    var flashSale = null;
+    var flashSaleDate = null;
+
+    function generateFlashSale() {
+        var today = new Date().toISOString().slice(0, 10);
+        if (flashSaleDate === today && flashSale) return;
+
+        // Seeded random from date (different seed offset than daily deals)
+        var seed = 7;
+        for (var i = 0; i < today.length; i++) seed += today.charCodeAt(i) * (i + 3);
+
+        var idx = seed % FLASH_SALE_POOL.length;
+        var item = FLASH_SALE_POOL[idx];
+        var salePrice = Math.round(item.basePrice * 0.7); // 30% off
+
+        flashSale = {
+            id: item.id,
+            name: item.name,
+            icon: item.icon,
+            basePrice: item.basePrice,
+            salePrice: salePrice,
+            action: item.action,
+            purchased: false
+        };
+        flashSaleDate = today;
+
+        // Load purchased state
+        var state = Game.getState();
+        if (state.shop && state.shop.flashSalePurchased && state.shop.flashSalePurchased.date === today) {
+            flashSale.purchased = true;
+        }
+    }
+
+    function purchaseFlashSale() {
+        if (!flashSale || flashSale.purchased) return;
+        if (Game.getGems() < flashSale.salePrice) {
+            showShopToast('Not enough gems!');
+            Sound.playError();
+            return;
+        }
+        Game.addGems(-flashSale.salePrice);
+        flashSale.action();
+        flashSale.purchased = true;
+
+        var state = Game.getState();
+        state.shop = state.shop || {};
+        state.shop.flashSalePurchased = { date: flashSaleDate, id: flashSale.id };
+        Game.save();
+
+        Sound.playPurchase();
+        showShopToast(flashSale.name + ' purchased!');
+        renderShop();
+    }
+
     function init() {
         var state = Game.getState();
         if (state.shop) {
@@ -162,6 +230,7 @@ const Shop = (() => {
         }
 
         generateDailyDeals();
+        generateFlashSale();
 
         // Accumulate piggy gems on merges
         Game.on('mergeCompleted', function() {
@@ -179,6 +248,8 @@ const Shop = (() => {
         Game.on('boardThemeChanged', function() { renderShop(); });
         Game.on('creatureDiscovered', function() { renderShop(); });
         Game.on('firstPurchaseMade', function() { renderShop(); });
+        Game.on('vipActivated', function() { renderShop(); });
+        Game.on('vipDailyClaimed', function() { renderShop(); });
 
         renderShop();
     }
@@ -238,8 +309,8 @@ const Shop = (() => {
             var wasFirst = Game.markFirstPurchase();
             Game.addGems(starterPack.gems);
             Game.addEnergy(30);
-            // Spawn a rare egg on the board
-            spawnEgg(2);
+            // Starter Companion Egg: guarantee a rare creature discovery
+            discoverStarterCompanionEgg();
             state.shop = state.shop || {};
             state.shop.starterBought = true;
             Game.save();
@@ -251,6 +322,51 @@ const Shop = (() => {
             }
             renderShop();
         }
+    }
+
+    function discoverStarterCompanionEgg() {
+        // Guaranteed rare creature from any biome (starter companion egg)
+        var creatures = CreatureData.creatures;
+        var state = Game.getState();
+        var discovered = (state.hatchery && state.hatchery.discovered) || {};
+        var pool = [];
+        for (var i = 0; i < creatures.length; i++) {
+            if (creatures[i].rarity === 'rare' && !discovered[creatures[i].id]) {
+                pool.push(creatures[i]);
+            }
+        }
+        // Fall back to uncommon if no undiscovered rares left
+        if (pool.length === 0) {
+            for (var j = 0; j < creatures.length; j++) {
+                if (creatures[j].rarity === 'uncommon' && !discovered[creatures[j].id]) {
+                    pool.push(creatures[j]);
+                }
+            }
+        }
+        if (pool.length === 0) {
+            // All rare/uncommon discovered; just give gems instead
+            Game.addGems(100);
+            showShopToast('All rare creatures discovered! +100 bonus gems');
+            return;
+        }
+        var picked = pool[Math.floor(Math.random() * pool.length)];
+        discovered[picked.id] = { discoveredAt: Date.now(), tier: 0 };
+
+        // Update pity counter
+        var pityCounter = (state.hatchery && typeof state.hatchery.pityCounter === 'number') ? state.hatchery.pityCounter : 0;
+        if (picked.rarity === 'legendary') {
+            pityCounter = 0;
+        } else {
+            pityCounter++;
+        }
+
+        state.hatchery = state.hatchery || { discovered: {}, pityCounter: 0 };
+        state.hatchery.discovered = discovered;
+        state.hatchery.pityCounter = pityCounter;
+        Game.save();
+        Game.emit('creatureDiscovered', { creature: picked.id, rarity: picked.rarity, biome: picked.biome });
+        showShopToast(picked.emoji + ' Companion Egg: ' + picked.name + '!');
+        Sound.playCreatureDiscover();
     }
 
     function breakPiggyBank() {
@@ -403,6 +519,48 @@ const Shop = (() => {
         html += '<div class="shop-item-info"><span class="shop-item-name">Watch Ad</span>';
         html += '<span class="shop-item-desc">Gems + 2 energy \u00B7 ' + adsLeft + '/5 left today</span></div>';
         html += '<button class="shop-buy-btn ad-btn"' + (adsLeft <= 0 ? ' disabled' : '') + '>Watch</button>';
+        html += '</div></div>';
+
+        // Flash Sale (single rotating item, 30% off)
+        generateFlashSale();
+        if (flashSale) {
+            var fsHoursLeft = 24 - new Date().getHours();
+            html += '<div class="shop-section shop-flash-sale">';
+            html += '<h3 class="shop-section-title">\u26A1 Flash Sale <span class="deal-timer">' + fsHoursLeft + 'h left</span></h3>';
+            html += '<div class="shop-item flash-sale-item' + (flashSale.purchased ? ' deal-purchased' : '') + '" id="shop-flash-sale">';
+            html += '<span class="shop-item-icon">' + flashSale.icon + '</span>';
+            html += '<div class="shop-item-info"><span class="shop-item-name">' + flashSale.name + '</span>';
+            html += '<span class="shop-item-desc">30% off today only!</span></div>';
+            if (flashSale.purchased) {
+                html += '<span class="deal-sold-badge">SOLD</span>';
+            } else {
+                html += '<div class="shop-price-stack"><span class="shop-original-price">\u{1F48E}' + flashSale.basePrice + '</span>';
+                html += '<button class="shop-buy-btn flash-sale-btn">\u{1F48E} ' + flashSale.salePrice + '</button></div>';
+            }
+            html += '</div></div>';
+        }
+
+        // VIP Subscription
+        var vipActive = Game.isVipActive();
+        html += '<div class="shop-section shop-vip-section">';
+        html += '<h3 class="shop-section-title">\u{1F451} VIP Membership</h3>';
+        html += '<div class="shop-item vip-item" id="shop-vip">';
+        html += '<span class="shop-item-icon">\u{1F451}</span>';
+        html += '<div class="shop-item-info"><span class="shop-item-name">VIP Pass</span>';
+        if (vipActive) {
+            var daysLeft = Game.getVipDaysRemaining();
+            var today = new Date().toISOString().slice(0, 10);
+            var claimed = state.vipSubscription && state.vipSubscription.lastClaimDate === today;
+            html += '<span class="shop-item-desc">Active \u2022 ' + daysLeft + ' days left \u2022 200 gems/day \u2022 50% faster energy</span></div>';
+            if (claimed) {
+                html += '<span class="vip-claimed-badge">Claimed</span>';
+            } else {
+                html += '<button class="shop-buy-btn vip-claim-btn" id="vip-claim-btn">\u{1F48E} Claim 200</button>';
+            }
+        } else {
+            html += '<span class="shop-item-desc">200 gems/day \u2022 50% faster energy \u2022 VIP badge</span></div>';
+            html += '<button class="shop-buy-btn iap-btn" id="vip-buy-btn">$4.99/mo</button>';
+        }
         html += '</div></div>';
 
         // Daily Deals
@@ -667,6 +825,46 @@ const Shop = (() => {
 
         var starterBtn = document.getElementById('shop-starter');
         if (starterBtn) starterBtn.querySelector('.shop-buy-btn').addEventListener('click', purchaseStarterPack);
+
+        // Flash sale button
+        var flashSaleBtn = document.getElementById('shop-flash-sale');
+        if (flashSaleBtn) {
+            var fsBtn = flashSaleBtn.querySelector('.flash-sale-btn');
+            if (fsBtn) fsBtn.addEventListener('click', purchaseFlashSale);
+        }
+
+        // VIP purchase/claim buttons
+        var vipBuyBtn = document.getElementById('vip-buy-btn');
+        if (vipBuyBtn) {
+            vipBuyBtn.addEventListener('click', function() {
+                var confirmed = confirm('DEMO: Subscribe to VIP for $4.99/month?\n200 gems/day + 50% faster energy + VIP badge\n(This is a prototype — no real charge)');
+                if (confirmed) {
+                    var wasFirst = Game.markFirstPurchase();
+                    Game.activateVip();
+                    Sound.playPurchase();
+                    Game.vibrate([15, 30, 15]);
+                    if (wasFirst) {
+                        showShopToast('VIP activated! +10% gem bonus unlocked!');
+                    } else {
+                        showShopToast('VIP activated! Claim 200 gems daily.');
+                    }
+                    renderShop();
+                }
+            });
+        }
+        var vipClaimBtn = document.getElementById('vip-claim-btn');
+        if (vipClaimBtn) {
+            vipClaimBtn.addEventListener('click', function() {
+                var claimed = Game.claimVipDailyGems();
+                if (claimed) {
+                    Sound.playCelebration();
+                    showShopToast('VIP daily reward: +200 gems!');
+                    renderShop();
+                } else {
+                    showShopToast('Already claimed today!');
+                }
+            });
+        }
 
         var piggyBtn = document.getElementById('shop-piggy');
         if (piggyBtn) piggyBtn.querySelector('.shop-buy-btn').addEventListener('click', breakPiggyBank);
