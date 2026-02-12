@@ -123,6 +123,12 @@ const Board = (() => {
             confirmBoardExpansionDirect();
         });
 
+        // Apply saved board theme
+        applyBoardTheme(Game.getBoardTheme());
+        Game.on('boardThemeChanged', function(themeId) {
+            applyBoardTheme(themeId);
+        });
+
         // Cache grid layout for touch coordinate math
         requestAnimationFrame(function() { cacheGridLayout(); });
         window.addEventListener('resize', function() { cacheGridLayout(); });
@@ -2113,6 +2119,23 @@ const Board = (() => {
     function updateBoardGridCSS() {
         boardEl.style.gridTemplateColumns = 'repeat(' + COLS + ', var(--cell-size))';
         boardEl.style.gridTemplateRows = 'repeat(' + ROWS + ', var(--cell-size))';
+    }
+
+    function applyBoardTheme(themeId) {
+        if (!boardEl) return;
+        // Remove any existing theme class
+        var classes = boardEl.className.split(' ');
+        var filtered = [];
+        for (var i = 0; i < classes.length; i++) {
+            if (classes[i].indexOf('board-theme-') !== 0) {
+                filtered.push(classes[i]);
+            }
+        }
+        boardEl.className = filtered.join(' ');
+        // Apply new theme if specified
+        if (themeId) {
+            boardEl.classList.add('board-theme-' + themeId);
+        }
     }
 
     function renderExpandButton() {

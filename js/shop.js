@@ -162,6 +162,10 @@ const Shop = (() => {
             renderShop();
         });
 
+        // Re-render shop when a creature is evolved or theme changes
+        Game.on('creatureEvolved', function() { renderShop(); });
+        Game.on('boardThemeChanged', function() { renderShop(); });
+
         renderShop();
     }
 
@@ -365,6 +369,81 @@ const Shop = (() => {
             html += '</div></div>';
         }
 
+        // Creature Evolution
+        if (typeof Creatures !== 'undefined') {
+            var discoveredMap = (state.hatchery && state.hatchery.discovered) || {};
+            var evolvedMap = state.evolvedCreatures || {};
+            var evolvable = [];
+            for (var ei = 0; ei < CreatureData.creatures.length; ei++) {
+                var ec = CreatureData.creatures[ei];
+                if (discoveredMap[ec.id] && !evolvedMap[ec.id]) {
+                    evolvable.push(ec);
+                }
+            }
+            if (evolvable.length > 0) {
+                html += '<div class="shop-section">';
+                html += '<h3 class="shop-section-title">\u2728 Creature Evolution</h3>';
+                // Show up to 6 evolvable creatures (prioritize rarer ones)
+                var rarityOrder = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
+                evolvable.sort(function(a, b) { return (rarityOrder[a.rarity] || 3) - (rarityOrder[b.rarity] || 3); });
+                var showCount = Math.min(6, evolvable.length);
+                for (var ej = 0; ej < showCount; ej++) {
+                    var evo = evolvable[ej];
+                    var evoCost = Creatures.getEvolutionCost(evo);
+                    var rarLabel = evo.rarity.charAt(0).toUpperCase() + evo.rarity.slice(1);
+                    html += '<div class="shop-item" data-evolve="' + evo.id + '">';
+                    html += '<span class="shop-item-icon">' + evo.emoji + '</span>';
+                    html += '<div class="shop-item-info"><span class="shop-item-name">Evolve ' + evo.name + '</span>';
+                    html += '<span class="shop-item-desc">' + rarLabel + ' \u2022 1.75x bonus + faster companion</span></div>';
+                    html += '<button class="shop-buy-btn gem-btn">\u{1F48E} ' + evoCost + '</button>';
+                    html += '</div>';
+                }
+                if (evolvable.length > showCount) {
+                    html += '<p style="font-size:10px;color:var(--text-secondary);text-align:center;padding:4px;">+' + (evolvable.length - showCount) + ' more in Hatchery</p>';
+                }
+                html += '</div>';
+            }
+        }
+
+        // Cosmetic Board Themes
+        var themes = Game.BOARD_THEMES || [];
+        var ownedThemes = Game.getOwnedThemes();
+        var currentTheme = Game.getBoardTheme();
+        var hasUnowned = false;
+        for (var ti = 0; ti < themes.length; ti++) {
+            if (!ownedThemes[themes[ti].id]) { hasUnowned = true; break; }
+        }
+        if (themes.length > 0) {
+            html += '<div class="shop-section">';
+            html += '<h3 class="shop-section-title">\u{1F3A8} Board Themes</h3>';
+            // Default theme option
+            html += '<div class="shop-item" data-theme-select="default" style="' + (!currentTheme ? 'border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.05);' : '') + '">';
+            html += '<span class="shop-item-icon">\u2B1C</span>';
+            html += '<div class="shop-item-info"><span class="shop-item-name">Default</span>';
+            html += '<span class="shop-item-desc">Classic dark palette</span></div>';
+            html += (!currentTheme ? '<span style="color:#ffd700;font-size:11px;font-weight:700;">ACTIVE</span>' : '<button class="shop-buy-btn" style="font-size:11px;">Use</button>');
+            html += '</div>';
+            for (var tj = 0; tj < themes.length; tj++) {
+                var th = themes[tj];
+                var owned = !!ownedThemes[th.id];
+                var active = currentTheme === th.id;
+                html += '<div class="shop-item" data-theme-id="' + th.id + '" ' + (owned ? 'data-theme-select="' + th.id + '"' : '') +
+                    ' style="' + (active ? 'border:1px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.05);' : '') + '">';
+                html += '<span class="shop-item-icon">' + th.icon + '</span>';
+                html += '<div class="shop-item-info"><span class="shop-item-name">' + th.name + '</span>';
+                html += '<span class="shop-item-desc">' + th.desc + '</span></div>';
+                if (active) {
+                    html += '<span style="color:#ffd700;font-size:11px;font-weight:700;">ACTIVE</span>';
+                } else if (owned) {
+                    html += '<button class="shop-buy-btn" style="font-size:11px;">Use</button>';
+                } else {
+                    html += '<button class="shop-buy-btn gem-btn" data-theme-buy="' + th.id + '">\u{1F48E} ' + th.cost + '</button>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
         // Energy & Boosts
         html += '<div class="shop-section">';
         html += '<h3 class="shop-section-title">⚡ Energy & Boosts</h3>';
@@ -459,6 +538,54 @@ const Shop = (() => {
             if (btn) {
                 btn.addEventListener('click', function() {
                     purchaseDailyDeal(parseInt(el.dataset.deal));
+                });
+            }
+        });
+
+        // Creature evolution buttons
+        container.querySelectorAll('.shop-item[data-evolve]').forEach(function(el) {
+            el.querySelector('.shop-buy-btn').addEventListener('click', function() {
+                var creatureId = el.dataset.evolve;
+                if (typeof Creatures !== 'undefined' && Creatures.evolveCreature) {
+                    var success = Creatures.evolveCreature(creatureId);
+                    if (success) {
+                        var cr = Creatures.getCreatureById(creatureId);
+                        showShopToast(cr ? (cr.emoji + ' ' + cr.name + ' evolved!') : 'Evolved!');
+                    } else {
+                        if (Game.getGems() < (Creatures.getEvolutionCost(Creatures.getCreatureById(creatureId)) || 200)) {
+                            showShopToast('Not enough gems!');
+                            Sound.playError();
+                        }
+                    }
+                }
+            });
+        });
+
+        // Board theme purchase buttons
+        container.querySelectorAll('[data-theme-buy]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var themeId = btn.dataset.themeBuy;
+                if (!themeId) return;
+                var success = Game.purchaseBoardTheme(themeId);
+                if (success) {
+                    showShopToast('Theme unlocked!');
+                    Sound.playPurchase();
+                } else {
+                    showShopToast('Not enough gems!');
+                    Sound.playError();
+                }
+            });
+        });
+
+        // Board theme select buttons (owned themes)
+        container.querySelectorAll('.shop-item[data-theme-select]').forEach(function(el) {
+            var btn = el.querySelector('.shop-buy-btn');
+            if (btn) {
+                btn.addEventListener('click', function() {
+                    var themeId = el.dataset.themeSelect;
+                    Game.setBoardTheme(themeId === 'default' ? null : themeId);
+                    showShopToast('Theme applied!');
+                    Sound.playTap();
                 });
             }
         });

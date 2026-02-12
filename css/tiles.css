@@ -921,3 +921,89 @@
     85%  { transform: scale(1.04); filter: brightness(1); }
     100% { transform: scale(1) rotate(0); filter: brightness(1); }
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COSMETIC BOARD THEMES
+   Applied via .board-theme-{name} class on #board
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- Ocean Theme --- */
+#board.board-theme-ocean {
+    background: linear-gradient(145deg, #0c2d48, #0a1e32);
+    border-color: rgba(44, 180, 220, 0.15);
+}
+
+#board.board-theme-ocean .cell {
+    background: #143a52;
+    border-radius: var(--radius-xs);
+}
+
+#board.board-theme-ocean .cell.selected {
+    background: rgba(44, 180, 220, 0.25);
+    box-shadow: 0 0 0 2px rgba(44, 180, 220, 0.7), inset 0 0 8px rgba(44, 180, 220, 0.2);
+}
+
+#board.board-theme-ocean .cell.valid-target {
+    background: rgba(44, 180, 220, 0.15);
+}
+
+/* --- Forest Theme --- */
+#board.board-theme-forest {
+    background: linear-gradient(145deg, #1a2e1a, #132013);
+    border-color: rgba(92, 184, 92, 0.15);
+}
+
+#board.board-theme-forest .cell {
+    background: #1e3a1e;
+    border-radius: var(--radius-xs);
+}
+
+#board.board-theme-forest .cell.selected {
+    background: rgba(92, 184, 92, 0.25);
+    box-shadow: 0 0 0 2px rgba(92, 184, 92, 0.7), inset 0 0 8px rgba(92, 184, 92, 0.2);
+}
+
+#board.board-theme-forest .cell.valid-target {
+    background: rgba(92, 184, 92, 0.15);
+}
+
+/* --- Crystal Theme --- */
+#board.board-theme-crystal {
+    background: linear-gradient(145deg, #1a1530, #120e24);
+    border-color: rgba(155, 136, 255, 0.15);
+}
+
+#board.board-theme-crystal .cell {
+    background: #221a3e;
+    border-radius: var(--radius-xs);
+}
+
+#board.board-theme-crystal .cell.selected {
+    background: rgba(155, 136, 255, 0.25);
+    box-shadow: 0 0 0 2px rgba(155, 136, 255, 0.7), inset 0 0 8px rgba(155, 136, 255, 0.2);
+}
+
+#board.board-theme-crystal .cell.valid-target {
+    background: rgba(155, 136, 255, 0.15);
+}
+
+/* --- Shadow Theme --- */
+#board.board-theme-shadow {
+    background: linear-gradient(145deg, #0a0a14, #050510);
+    border-color: rgba(180, 50, 50, 0.15);
+}
+
+#board.board-theme-shadow .cell {
+    background: #121218;
+    border-radius: var(--radius-xs);
+}
+
+#board.board-theme-shadow .cell.selected {
+    background: rgba(180, 50, 50, 0.25);
+    box-shadow: 0 0 0 2px rgba(180, 50, 50, 0.7), inset 0 0 8px rgba(180, 50, 50, 0.2);
+}
+
+#board.board-theme-shadow .cell.valid-target {
+    background: rgba(180, 50, 50, 0.15);
+}

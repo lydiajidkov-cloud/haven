@@ -326,6 +326,13 @@ var Hatchery = (function() {
                     card.style.borderColor = isFound ? colors.border : 'rgba(255,255,255,0.06)';
                     if (isFound) card.style.background = colors.bg;
 
+                    // Evolved visual indicator
+                    var creatureEvolved = isFound && typeof Creatures !== 'undefined' && Creatures.isEvolved(c.id);
+                    if (creatureEvolved) {
+                        card.style.borderColor = '#ffd700';
+                        card.style.boxShadow = '0 0 6px rgba(255,215,0,0.25)';
+                    }
+
                     var emoji = document.createElement('div');
                     emoji.className = 'hatchery-emoji';
                     emoji.textContent = isFound ? c.emoji : '?';
@@ -338,6 +345,7 @@ var Hatchery = (function() {
                     name.className = 'hatchery-name';
                     name.textContent = isFound ? c.name : '???';
                     if (!isFound) name.style.color = 'var(--text-secondary)';
+                    if (creatureEvolved) name.style.color = '#ffd700';
 
                     card.appendChild(emoji);
                     card.appendChild(name);
@@ -390,32 +398,85 @@ var Hatchery = (function() {
         var modal = document.getElementById('island-modal');
         if (!modal) return;
 
+        // Evolution state
+        var evolved = typeof Creatures !== 'undefined' && Creatures.isEvolved(creature.id);
+        var evolvedBadge = evolved ? ' <span style="color:#ffd700;font-size:10px;font-weight:700;background:rgba(255,215,0,0.15);padding:1px 6px;border-radius:8px;border:1px solid rgba(255,215,0,0.3);">EVOLVED</span>' : '';
+
         modal.innerHTML =
             '<div class="island-modal-card">' +
                 '<div class="modal-creature-emoji" style="font-size:48px;">' + creature.emoji + '</div>' +
-                '<h3>' + creature.name + '</h3>' +
+                '<h3>' + creature.name + evolvedBadge + '</h3>' +
                 '<p class="modal-species" style="color:' + colors.label + ';">' + creature.species + ' \u2022 ' + rarityLabel + '</p>' +
                 '<p style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">' + biomeInfo.icon + ' ' + biomeInfo.name + ' Biome</p>' +
                 '<p class="modal-desc">' + creature.desc + '</p>' +
                 (function() {
                     if (typeof Creatures === 'undefined') return '';
                     var al = Creatures.getAbilityLabel(creature.ability);
-                    var val = Creatures.formatBonus(creature.ability, creature.abilityValue);
+                    var baseVal = creature.abilityValue;
+                    var displayVal = evolved ? baseVal * 1.75 : baseVal;
+                    var val = Creatures.formatBonus(creature.ability, displayVal);
                     var html = '<p style="font-size:11px;margin-top:8px;color:' + colors.label + ';">' +
-                        al.icon + ' ' + al.label + ': ' + val + '</p>';
+                        al.icon + ' ' + al.label + ': ' + val;
+                    if (evolved) html += ' <span style="color:#ffd700;font-size:9px;">(1.75x evolved)</span>';
+                    html += '</p>';
                     if (creature.companionAbility) {
                         var cl = Creatures.getCompanionLabel(creature.companionAbility);
+                        var effTrig = Creatures.getEffectiveCompanionTrigger(creature);
                         html += '<p style="font-size:10px;color:var(--text-secondary);margin-top:4px;">' +
                             '\u2694\uFE0F Companion: ' + cl.label + ' \u2014 ' + cl.desc +
-                            ' (every ' + cl.trigger + ' merges)</p>';
+                            ' (every ' + effTrig + ' merges)';
+                        if (evolved) html += ' <span style="color:#ffd700;font-size:9px;">(faster)</span>';
+                        html += '</p>';
                     }
                     return html;
+                })() +
+                // Evolution button (only if not already evolved)
+                (function() {
+                    if (typeof Creatures === 'undefined') return '';
+                    if (evolved) return '';
+                    var cost = Creatures.getEvolutionCost(creature);
+                    var canAfford = Game.getGems() >= cost;
+                    return '<button id="evolve-creature-btn" class="modal-evolve-btn" style="' +
+                        'display:block;width:100%;margin-top:12px;padding:10px;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;' +
+                        'background:' + (canAfford ? 'linear-gradient(135deg, #ffd700, #f0a030)' : 'rgba(255,255,255,0.08)') + ';' +
+                        'color:' + (canAfford ? '#1a1a2e' : 'var(--text-secondary)') + ';' +
+                        'border:1px solid ' + (canAfford ? 'rgba(255,215,0,0.5)' : 'rgba(255,255,255,0.1)') + ';' +
+                        '">\u2728 Evolve \u2014 \u{1F48E} ' + cost + '</button>';
                 })() +
                 '<button class="modal-close-btn">Close</button>' +
             '</div>';
 
         modal.classList.remove('hidden');
         Sound.playTap();
+
+        // Evolution button handler
+        var evolveBtn = modal.querySelector('#evolve-creature-btn');
+        if (evolveBtn) {
+            evolveBtn.addEventListener('click', function() {
+                var cost = Creatures.getEvolutionCost(creature);
+                if (Game.getGems() < cost) {
+                    if (typeof Board !== 'undefined' && Board.showToast) {
+                        Board.showToast('Not enough gems!', typeof Board.TOAST_PRIORITY !== 'undefined' ? Board.TOAST_PRIORITY.HIGH : undefined);
+                    }
+                    Sound.playError();
+                    return;
+                }
+                var success = Creatures.evolveCreature(creature.id);
+                if (success) {
+                    if (typeof Celebration !== 'undefined') {
+                        Celebration.show('creatureDiscovery', {
+                            name: creature.name + ' Evolved!',
+                            emoji: creature.emoji,
+                            rarity: creature.rarity
+                        });
+                    }
+                    // Re-render detail modal with evolved state
+                    showCreatureDetail(creature);
+                    // Re-render collection to show evolved badge
+                    renderCollection(document.getElementById('hatchery-container'));
+                }
+            });
+        }
 
         modal.querySelector('.modal-close-btn').addEventListener('click', function() {
             modal.classList.add('hidden');

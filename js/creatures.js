@@ -344,6 +344,84 @@ var Creatures = (function() {
         return '+' + value.toFixed(1) + '%';
     }
 
+    // ─── EVOLUTION SYSTEM ────────────────────────────────────────────
+    // Evolved creatures get improved passive bonuses and reduced companion trigger counts.
+    // Cost scales by rarity: common 200, uncommon 350, rare 500, legendary 800.
+
+    var EVOLUTION_COST = { common: 200, uncommon: 350, rare: 500, legendary: 800 };
+    var EVOLUTION_BONUS_MULTIPLIER = 1.75; // evolved creatures give 1.75x passive bonus
+    var EVOLUTION_COMPANION_REDUCTION = 0.75; // companion triggers 25% faster (floor'd)
+
+    function getEvolutionCost(creature) {
+        return EVOLUTION_COST[creature.rarity] || 200;
+    }
+
+    function isEvolved(creatureId) {
+        var state = Game.getState();
+        return !!(state.evolvedCreatures && state.evolvedCreatures[creatureId]);
+    }
+
+    function evolveCreature(creatureId) {
+        var creature = getCreatureById(creatureId);
+        if (!creature) return false;
+        if (isEvolved(creatureId)) return false;
+
+        var cost = getEvolutionCost(creature);
+        if (Game.getGems() < cost) return false;
+
+        Game.addGems(-cost);
+
+        var state = Game.getState();
+        if (!state.evolvedCreatures) state.evolvedCreatures = {};
+        state.evolvedCreatures[creatureId] = { evolvedAt: Date.now() };
+        Game.save();
+
+        if (typeof Sound !== 'undefined' && Sound.playCelebration) {
+            Sound.playCelebration();
+        }
+        Game.vibrate([15, 30, 15, 30, 15]);
+
+        Game.emit('creatureEvolved', { creatureId: creatureId, creature: creature });
+        return true;
+    }
+
+    // Override calculatePassiveBonuses to account for evolution multiplier
+    var _baseCalcBonuses = calculatePassiveBonuses;
+    calculatePassiveBonuses = function(discoveredMap) {
+        var bonuses = {
+            gem_bonus: 0,
+            discovery_chance: 0,
+            energy_regen: 0,
+            xp_bonus: 0,
+            spawn_quality: 0
+        };
+        if (!discoveredMap) return bonuses;
+
+        var state = Game.getState();
+        var evolved = (state && state.evolvedCreatures) || {};
+
+        for (var k = 0; k < creatures.length; k++) {
+            var cr = creatures[k];
+            if (discoveredMap[cr.id]) {
+                var multiplier = evolved[cr.id] ? EVOLUTION_BONUS_MULTIPLIER : 1;
+                bonuses[cr.ability] += cr.abilityValue * multiplier;
+            }
+        }
+        return bonuses;
+    };
+
+    // Get effective companion trigger count (reduced if evolved)
+    function getEffectiveCompanionTrigger(creature) {
+        if (!creature || !creature.companionAbility) return 8;
+        var info = COMPANION_LABELS[creature.companionAbility];
+        if (!info) return 8;
+        var baseTrigger = info.trigger;
+        if (isEvolved(creature.id)) {
+            return Math.max(4, Math.floor(baseTrigger * EVOLUTION_COMPANION_REDUCTION));
+        }
+        return baseTrigger;
+    }
+
     // ─── Companion State ────────────────────────────────────────────
     var companionState = { slot1: null, slot2: null };
     var doubleRewardActive = false; // flag for double_reward companion effect
@@ -424,7 +502,8 @@ var Creatures = (function() {
 
             comp.mergeCount++;
 
-            if (comp.mergeCount >= info.trigger) {
+            var effectiveTrigger = getEffectiveCompanionTrigger(creature);
+            if (comp.mergeCount >= effectiveTrigger) {
                 comp.mergeCount = 0;
                 triggered.push({
                     slot: slot,
@@ -456,8 +535,8 @@ var Creatures = (function() {
             if (comp) {
                 var creature = getCreatureById(comp.creatureId);
                 if (!creature) continue;
-                var info = COMPANION_LABELS[creature.companionAbility] || { trigger: 8 };
-                var pct = Math.min(100, Math.round((comp.mergeCount / info.trigger) * 100));
+                var effectiveTrig = getEffectiveCompanionTrigger(creature);
+                var pct = Math.min(100, Math.round((comp.mergeCount / effectiveTrig) * 100));
                 var circum = 2 * Math.PI * 18;
                 var offset = ((100 - pct) / 100) * circum;
 
@@ -539,7 +618,9 @@ var Creatures = (function() {
                 html += '<span style="font-size:24px;">' + ac.emoji + '</span>';
                 html += '<div style="flex:1;"><div style="font-size:12px;font-weight:600;">' + ac.name + '</div>';
                 html += '<div style="font-size:10px;color:' + RARITY_COLORS[ac.rarity] + ';">' + rarityLabel + ' \u2022 ' + (cLabel.label || '') + '</div>';
-                html += '<div style="font-size:9px;color:var(--text-secondary);">' + (cLabel.desc || '') + ' (every ' + (cLabel.trigger || 8) + ' merges)</div></div>';
+                var effTrig = getEffectiveCompanionTrigger(ac);
+                var evolvedTag = isEvolved(ac.id) ? ' <span style="color:#ffd700;font-weight:700;">EVOLVED</span>' : '';
+                html += '<div style="font-size:9px;color:var(--text-secondary);">' + (cLabel.desc || '') + ' (every ' + effTrig + ' merges)' + evolvedTag + '</div></div>';
                 html += '</div>';
             }
             html += '</div>';
@@ -592,6 +673,11 @@ var Creatures = (function() {
         setDoubleReward: setDoubleReward,
         renderCompanionBar: renderCompanionBar,
         showCompanionModal: showCompanionModal,
+        evolveCreature: evolveCreature,
+        isEvolved: isEvolved,
+        getEvolutionCost: getEvolutionCost,
+        getEffectiveCompanionTrigger: getEffectiveCompanionTrigger,
+        EVOLUTION_COST: EVOLUTION_COST,
         creatures: creatures,
         biomes: biomes,
         ABILITY_LABELS: ABILITY_LABELS,

@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 3;
+    const SAVE_VERSION = 4;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const DEFAULT_ROWS = 8;
@@ -19,6 +19,14 @@ const Game = (() => {
         { rows: 10, cols: 6, cost: 1000, label: '6\u00D710' },
         { rows: 10, cols: 7, cost: 2000, label: '7\u00D710' }
     ];
+    // Cosmetic board themes: purchasable at 300 gems each
+    const BOARD_THEMES = [
+        { id: 'ocean',   name: 'Ocean Depths',    icon: '\u{1F30A}', cost: 300, desc: 'Deep blue tones of the abyss' },
+        { id: 'forest',  name: 'Enchanted Forest', icon: '\u{1F332}', cost: 300, desc: 'Lush green woodland hues' },
+        { id: 'crystal', name: 'Crystal Cavern',   icon: '\u{1F48E}', cost: 300, desc: 'Mystical purple crystal glow' },
+        { id: 'shadow',  name: 'Shadow Realm',     icon: '\u{1F311}', cost: 300, desc: 'Deep darkness with crimson accents' }
+    ];
+
     const ENERGY_REGEN_MS = 2 * 60 * 1000; // 2 minutes
 
     let state = null;
@@ -64,6 +72,9 @@ const Game = (() => {
                 powerupBar: false
             },
             discoveredItems: {},
+            evolvedCreatures: {},
+            boardTheme: null,
+            ownedThemes: {},
             soundEnabled: true,
             vibrationEnabled: true
         };
@@ -198,6 +209,13 @@ const Game = (() => {
                 }
             }
             data._saveVersion = 3;
+        }
+        // v3 → v4: Creature evolution + cosmetic tile themes
+        if (data._saveVersion < 4) {
+            if (!data.evolvedCreatures) data.evolvedCreatures = {};
+            if (!data.boardTheme) data.boardTheme = null;
+            if (!data.ownedThemes) data.ownedThemes = {};
+            data._saveVersion = 4;
         }
         return data;
     }
@@ -464,6 +482,43 @@ const Game = (() => {
         });
     }
 
+    // ─── BOARD THEMES ─────────────────────────────────────────
+
+    function purchaseBoardTheme(themeId) {
+        var theme = null;
+        for (var i = 0; i < BOARD_THEMES.length; i++) {
+            if (BOARD_THEMES[i].id === themeId) { theme = BOARD_THEMES[i]; break; }
+        }
+        if (!theme) return false;
+        if (state.ownedThemes && state.ownedThemes[themeId]) return false; // already owned
+        if (state.gems < theme.cost) return false;
+
+        addGems(-theme.cost);
+        if (!state.ownedThemes) state.ownedThemes = {};
+        state.ownedThemes[themeId] = { purchasedAt: Date.now() };
+        state.boardTheme = themeId;
+        save();
+        emit('boardThemeChanged', themeId);
+        return true;
+    }
+
+    function setBoardTheme(themeId) {
+        // themeId can be null (default) or an owned theme
+        if (themeId && !(state.ownedThemes && state.ownedThemes[themeId])) return false;
+        state.boardTheme = themeId;
+        save();
+        emit('boardThemeChanged', themeId);
+        return true;
+    }
+
+    function getBoardTheme() {
+        return state ? state.boardTheme : null;
+    }
+
+    function getOwnedThemes() {
+        return (state && state.ownedThemes) || {};
+    }
+
     var exports = {
         init: init,
         save: save,
@@ -491,7 +546,12 @@ const Game = (() => {
         DEFAULT_COLS: DEFAULT_COLS,
         BOARD_EXPANSIONS: BOARD_EXPANSIONS,
         getNextBoardExpansion: getNextBoardExpansion,
-        purchaseBoardExpansion: purchaseBoardExpansion
+        purchaseBoardExpansion: purchaseBoardExpansion,
+        BOARD_THEMES: BOARD_THEMES,
+        purchaseBoardTheme: purchaseBoardTheme,
+        setBoardTheme: setBoardTheme,
+        getBoardTheme: getBoardTheme,
+        getOwnedThemes: getOwnedThemes
     };
 
     // ROWS and COLS are dynamic (change on board expansion), so use getters

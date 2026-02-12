@@ -433,3 +433,67 @@
     - @keyframes expand-cell-pop: gold-to-default-bg animation for newly added cells.
     - CSS grid-template-columns/rows kept as defaults in CSS (6/8) but overridden by JS
       on init and expansion for variable board sizes.
+
+2026-02-12 — Task 12: Gem sinks: creature evolution + cosmetic tiles
+  Two new gem sink systems absorbing up to 2,400+ gems total per player. Combined with
+  Task 11's board expansion (3,500 gems), total gem sinks now exceed 5,900 gems across
+  all progression paths.
+
+  Files modified: js/creatures.js, js/hatchery.js, js/shop.js, js/game.js, js/board.js, css/tiles.css
+  Files modified (minor): PRD.md (marked task [x])
+
+  (a) Creature evolution system (creatures.js + hatchery.js):
+    - EVOLUTION_COST by rarity: common 200, uncommon 350, rare 500, legendary 800 gems.
+    - Evolved creatures get 1.75x passive bonus multiplier (gem_bonus, discovery_chance,
+      energy_regen, xp_bonus, spawn_quality all scaled).
+    - Evolved creatures get 25% faster companion trigger (trigger count * 0.75, floor'd,
+      minimum 4 merges). E.g., rare companion triggers every 6 instead of 8 merges.
+    - calculatePassiveBonuses() overridden to check evolvedCreatures{} in save state
+      and apply the 1.75x multiplier for evolved creatures.
+    - getEffectiveCompanionTrigger() computes reduced trigger count for evolved creatures.
+    - onCompanionMerge() uses effective trigger count instead of base trigger.
+    - renderCompanionBar() uses effective trigger count for cooldown ring display.
+    - Companion modal shows "EVOLVED" tag and effective trigger count for evolved creatures.
+    - Hatchery creature detail modal (hatchery.js showCreatureDetail):
+      Shows "EVOLVED" badge on creature name when evolved.
+      Displays evolved passive bonus value with "(1.75x evolved)" indicator.
+      Displays reduced companion trigger with "(faster)" indicator.
+      Shows golden "Evolve" button with gem cost when not yet evolved.
+      Button grayed out with secondary styling when player can't afford.
+      On successful evolution: plays celebration overlay, re-renders detail modal
+      and hatchery collection to show new evolved state.
+    - Hatchery collection grid: evolved creatures get gold border + subtle glow,
+      gold name color for visual distinction.
+    - State: evolvedCreatures{} keyed by creature ID → { evolvedAt: timestamp }.
+
+  (b) Cosmetic tile themes (game.js + board.js + tiles.css + shop.js):
+    - 4 purchasable board themes at 300 gems each (1,200 gems total):
+      Ocean Depths: deep blue (#0c2d48 / #143a52), cyan accents
+      Enchanted Forest: dark green (#1a2e1a / #1e3a1e), green accents
+      Crystal Cavern: deep purple (#1a1530 / #221a3e), purple accents
+      Shadow Realm: near-black (#0a0a14 / #121218), crimson accents
+    - Each theme overrides #board background, .cell background, .cell.selected glow,
+      and .cell.valid-target highlight via CSS class .board-theme-{id} on #board.
+    - BOARD_THEMES constant in game.js with id, name, icon, cost, desc per theme.
+    - purchaseBoardTheme() deducts gems, adds to ownedThemes, sets as active, emits event.
+    - setBoardTheme() switches between owned themes (including null for default).
+    - Board.init() applies saved theme on load via applyBoardTheme().
+    - Board listens for 'boardThemeChanged' event to apply theme changes live.
+    - applyBoardTheme() strips existing board-theme-* classes and adds new one.
+    - Shop displays theme section with default + 4 themes:
+      Owned themes show "Use" button or "ACTIVE" badge.
+      Unowned themes show gem cost purchase button.
+      Re-renders on 'boardThemeChanged' event to update active state.
+    - State: boardTheme (string|null), ownedThemes{} keyed by theme ID.
+
+  (c) Shop integration (shop.js):
+    - Creature Evolution section: shows up to 6 evolvable creatures sorted by rarity
+      (legendary first). Each row shows emoji, name, rarity, cost, and evolve button.
+      Hidden when no creatures are available to evolve.
+    - Board Themes section: shows default + 4 themes with purchase/use/active state.
+    - Shop re-renders on 'creatureEvolved' and 'boardThemeChanged' events.
+
+  (d) Save system (game.js):
+    - SAVE_VERSION bumped from 3 to 4.
+    - migrateState() v3→v4: adds evolvedCreatures{}, boardTheme null, ownedThemes{}.
+    - defaultState() includes all three new fields.
