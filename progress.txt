@@ -1036,3 +1036,44 @@
     - Sized at 52% of cell-size with object-fit: contain.
     - Drop shadow for depth. pointer-events: none to not interfere with interaction.
     - Placed alongside existing .item-symbol styling.
+
+2026-02-12 — Task 24: Performance mode auto-detection
+  Auto-detects device capability and reduces animations on weaker hardware.
+
+  Files created: js/performance.js
+  Files modified: css/animations.css, index.html
+
+  (a) Performance detection (js/performance.js):
+    - IIFE module with init(), getTier(), setTier() exports.
+    - Checks navigator.hardwareConcurrency (CPU cores).
+    - Runs 12ms canvas benchmark (fillRect + arc draws counted).
+    - Combined score: 30% cores + 70% benchmark.
+    - Three tiers: full (score >= 60), balanced (30-60), minimal (< 30).
+    - Also triggers minimal if prefers-reduced-motion is set.
+    - Result cached in localStorage (haven_perf_tier) — no re-benchmark.
+    - Applies CSS classes: body.perf-balanced and/or body.perf-minimal.
+    - Performance.init() called FIRST in init sequence (before Game.init).
+
+  (b) Balanced mode cuts (body.perf-balanced):
+    - Per-tier box-shadow pulse animations (tier 4-5).
+    - ::after sparkle particles (crystal, tier 8-9 legendary).
+    - Conic-gradient rainbow border animation (tier 8-9).
+    - Halo shimmer pulse on tier 6-7 (keeps static opacity).
+    - Event banner shimmer, welcome chest shimmer, celebration shimmer.
+    - Calendar and achievement decorative pulses.
+
+  (c) Minimal mode cuts (body.perf-minimal, also has balanced):
+    - ALL box-shadow glows replaced with simple shadow.
+    - ::before halo elements hidden entirely (tier 6-9).
+    - Power-up wand sparkle, nav badge pulse.
+    - Achievement icon glow, claim pulse.
+    - Shop first-purchase glow, pass timer pulse.
+    - Delivery glow pulse, surge board glow.
+
+  (d) NEVER cut (preserved in all modes):
+    - merge-flash (.cell.merging::after white flash).
+    - Particle bursts (canvas-based, not CSS).
+    - Combo escalation edge glow.
+    - Golden merge-target pulses (target-pulse).
+    - Purchase-moment animations.
+    - Selected-cell-glow (interaction feedback).

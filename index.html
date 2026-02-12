@@ -193,6 +193,7 @@
     </div>
 
     <!-- Scripts (order matters: dependencies first) -->
+    <script src="js/performance.js"></script>
     <script src="js/items.js"></script>
     <script src="js/audio.js"></script>
     <script src="js/particles.js"></script>
@@ -221,6 +222,9 @@
     // ─── INITIALIZATION ──────────────────────────────────────
     (function() {
         'use strict';
+
+        // Detect device performance tier and apply CSS classes
+        Performance.init();
 
         // Init core systems
         Game.init();

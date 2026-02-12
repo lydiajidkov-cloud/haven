@@ -910,3 +910,108 @@
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PERFORMANCE MODE: BALANCED
+   Cuts decorative animations while preserving core feedback.
+   Applied via body.perf-balanced class from performance.js
+   KEEPS: merge-flash, particles, combo escalation, target pulse,
+          purchase animations (piggy bank, pass unlock, deal reveal)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- Balanced: disable per-tier box-shadow pulse animations --- */
+.perf-balanced .item-tier-4,
+.perf-balanced .item-tier-5 {
+    animation: none !important;
+}
+
+/* --- Balanced: disable ::after sparkle particles --- */
+.perf-balanced .item-crystal::after,
+.perf-balanced .item-tier-8::after,
+.perf-balanced .item-tier-9::after {
+    animation: none !important;
+    opacity: 0 !important;
+}
+
+/* --- Balanced: disable conic-gradient rainbow border on legendary --- */
+.perf-balanced .item-tier-8::before,
+.perf-balanced .item-tier-9::before {
+    animation: none !important;
+}
+
+/* --- Balanced: disable halo shimmer on tier 6-7 --- */
+.perf-balanced .item-tier-6::before,
+.perf-balanced .item-tier-7::before {
+    animation: none !important;
+    opacity: 0.35 !important; /* static, no pulse */
+}
+
+/* --- Balanced: disable decorative shimmer overlays --- */
+.perf-balanced .event-banner::after,
+.perf-balanced .welcome-chest-shimmer,
+.perf-balanced .celeb-shimmer {
+    animation: none !important;
+    opacity: 0 !important;
+}
+
+/* --- Balanced: disable calendar and achievement decorative pulses --- */
+.perf-balanced .cal-current-glow,
+.perf-balanced .cal-jackpot-glow {
+    animation: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PERFORMANCE MODE: MINIMAL
+   Cuts everything except core merge feedback.
+   Applied via body.perf-minimal (also has .perf-balanced).
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- Minimal: disable ALL box-shadow glows (static + animated) --- */
+.perf-minimal .item-tier-4,
+.perf-minimal .item-tier-5,
+.perf-minimal .item-tier-6,
+.perf-minimal .item-tier-7,
+.perf-minimal .item-tier-8,
+.perf-minimal .item-tier-9 {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+}
+
+/* --- Minimal: remove ::before halo completely --- */
+.perf-minimal .item-tier-6::before,
+.perf-minimal .item-tier-7::before,
+.perf-minimal .item-tier-8::before,
+.perf-minimal .item-tier-9::before {
+    display: none !important;
+}
+
+/* --- Minimal: disable wand sparkle on power-up buttons --- */
+.perf-minimal .powerup-active {
+    animation: none !important;
+}
+
+/* --- Minimal: disable nav badge pulse --- */
+.perf-minimal .nav-btn.nav-badge-pulse::after {
+    animation: none !important;
+}
+
+/* --- Minimal: disable achievement icon glow & claim pulse --- */
+.perf-minimal .ach-icon-glow,
+.perf-minimal .ach-claim-pulse {
+    animation: none !important;
+}
+
+/* --- Minimal: disable shop first-purchase glow & pass timer pulse --- */
+.perf-minimal .first-purchase-glow,
+.perf-minimal .pass-timer-pulse {
+    animation: none !important;
+}
+
+/* --- Minimal: simplify delivery glow --- */
+.perf-minimal .delivery-glow-pulse {
+    animation: none !important;
+}
+
+/* --- Minimal: disable surge board glow (keep surge bar itself) --- */
+.perf-minimal .surge-board-glow {
+    animation: none !important;
+}
