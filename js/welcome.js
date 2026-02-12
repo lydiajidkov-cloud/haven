@@ -1,14 +1,22 @@
-// Haven - Welcome Back Screen: Offline earnings summary overlay
+// Haven - Welcome Back Screen: Offline earnings summary + scaled chest rewards
 'use strict';
 
 var Welcome = (function() {
 
     var MIN_AWAY_MS = 5 * 60 * 1000;       // 5 minutes minimum to trigger
     var MAX_OFFLINE_HOURS = 12;             // Cap offline earnings at 12h
-    var AUTO_DISMISS_MS = 10000;            // Auto-dismiss after 10 seconds
+    var AUTO_DISMISS_MS = 15000;            // Auto-dismiss after 15 seconds
     var COUNTUP_DURATION_MS = 1500;         // Animated countup duration
 
     var WORKER_INCOME = { common: 3, uncommon: 8, rare: 15, legendary: 30 }; // gems per hour (mirror island.js)
+
+    // Chest tiers scaled by time away
+    var CHEST_TIERS = [
+        { id: 'small',    minMs: 1 * 3600000, maxMs: 4 * 3600000,     label: 'Small Chest',    icon: '\uD83D\uDCE6', gems: 5,   energy: 10, item: null,   gradient: ['#6B4226', '#8B6340'] },
+        { id: 'medium',   minMs: 4 * 3600000, maxMs: 12 * 3600000,    label: 'Medium Chest',   icon: '\uD83C\uDF81', gems: 15,  energy: 25, item: 'random', gradient: ['#1E5F74', '#2E8B9E'] },
+        { id: 'large',    minMs: 12 * 3600000, maxMs: 7 * 24 * 3600000, label: 'Large Chest',  icon: '\uD83C\uDFC6', gems: 30,  energy: 100, item: 'rare',  gradient: ['#8B5A2B', '#D4A030'] },
+        { id: 'comeback', minMs: 7 * 24 * 3600000, maxMs: Infinity,   label: 'Comeback Chest', icon: '\u2728',       gems: 100, energy: 50, item: null,   gradient: ['#4B0082', '#8A2BE2'] }
+    ];
 
     var dismissTimer = null;
 
@@ -48,6 +56,48 @@ var Welcome = (function() {
         });
     }
 
+    // ─── CHEST TIER DETERMINATION ───────────────────────────────
+
+    function getChestTier(awayMs) {
+        for (var i = CHEST_TIERS.length - 1; i >= 0; i--) {
+            if (awayMs >= CHEST_TIERS[i].minMs) {
+                return CHEST_TIERS[i];
+            }
+        }
+        return null; // Away less than 1 hour, no chest
+    }
+
+    // ─── GRANT CHEST REWARDS ────────────────────────────────────
+
+    function grantChestRewards(chest) {
+        if (!chest) return;
+
+        // Grant gems
+        if (chest.gems > 0) {
+            Game.addGems(chest.gems);
+        }
+
+        // Grant energy
+        if (chest.energy > 0) {
+            Game.addEnergy(chest.energy);
+        }
+
+        // Grant item on board
+        if (chest.item && typeof Board !== 'undefined' && Board.spawnItemDirect) {
+            if (chest.item === 'rare') {
+                // Spawn a tier-3 random chain item (rare quality)
+                var chains = ['wood', 'stone', 'flora', 'crystal'];
+                var chain = chains[Math.floor(Math.random() * chains.length)];
+                Board.spawnItemDirect(chain, 3);
+            } else if (chest.item === 'random') {
+                // Spawn a tier-1 random chain item
+                var rChains = ['wood', 'stone', 'flora', 'crystal'];
+                var rChain = rChains[Math.floor(Math.random() * rChains.length)];
+                Board.spawnItemDirect(rChain, 1);
+            }
+        }
+    }
+
     // ─── CALCULATE OFFLINE EARNINGS ───────────────────────────
 
     function calculateOfflineData(awayMs) {
@@ -60,7 +110,8 @@ var Welcome = (function() {
             energyAfter: 0,
             maxEnergy: Game.getMaxEnergy(),
             passiveBonuses: null,
-            hasPassiveBonuses: false
+            hasPassiveBonuses: false,
+            chest: getChestTier(awayMs)
         };
 
         var state = Game.getState();
@@ -96,20 +147,14 @@ var Welcome = (function() {
         }
 
         // ─── Energy state (pre-regen snapshot vs current max) ───
-        // Energy regen happens in Game.init() before we show the overlay,
-        // so we calculate what it WAS before regen based on timestamps.
         var lastEnergyTime = state.lastEnergyTime || Date.now();
-        var energyAtSave = state.energy || 0;
 
-        // Since Game.init() already ran updateEnergy(), current state.energy
-        // is already the post-regen value. We estimate what it was before.
         var regenMs = Game.ENERGY_REGEN_MS;
         if (typeof Creatures !== 'undefined' && state.hatchery && state.hatchery.discovered) {
             var bonuses = Creatures.calculatePassiveBonuses(state.hatchery.discovered);
             regenMs = Math.max(60000, Game.ENERGY_REGEN_MS - Math.round(bonuses.energy_regen * 250));
         }
 
-        // Estimate pre-regen energy: reverse-calculate from elapsed time
         var elapsedSinceEnergy = Date.now() - lastEnergyTime;
         var energyGained = Math.floor(elapsedSinceEnergy / regenMs);
         var estimatedBefore = Math.max(0, state.energy - energyGained);
@@ -183,7 +228,6 @@ var Welcome = (function() {
     // ─── BUILD OVERLAY ────────────────────────────────────────
 
     function buildOverlay(data) {
-        // Create container
         var overlay = document.createElement('div');
         overlay.id = 'welcome-overlay';
         overlay.className = 'welcome-overlay';
@@ -191,23 +235,96 @@ var Welcome = (function() {
         var card = document.createElement('div');
         card.className = 'welcome-card';
 
-        // Header
+        var chest = data.chest;
+        var isComeback = chest && chest.id === 'comeback';
+
+        // Header with chest-aware messaging
         var header = document.createElement('div');
         header.className = 'welcome-header';
-        header.innerHTML = '<div class="welcome-sun">&#x2600;&#xFE0F;</div>' +
-            '<h2 class="welcome-title">Welcome Back!</h2>' +
-            '<p class="welcome-away">You were gone for <strong>' + data.awayText + '</strong></p>';
+
+        var headerIcon = '\u2600\uFE0F'; // sun
+        var headerTitle = 'Welcome Back!';
+        var headerSub = 'You were gone for <strong>' + data.awayText + '</strong>';
+
+        if (isComeback) {
+            headerIcon = '\uD83C\uDF1F'; // star
+            headerTitle = 'We Missed You!';
+            headerSub = 'It\'s been <strong>' + data.awayText + '</strong>. Here\'s a special gift!';
+        }
+
+        header.innerHTML = '<div class="welcome-sun">' + headerIcon + '</div>' +
+            '<h2 class="welcome-title">' + headerTitle + '</h2>' +
+            '<p class="welcome-away">' + headerSub + '</p>';
         card.appendChild(header);
 
-        // Divider
         card.appendChild(createDivider());
+
+        // ─── Chest Section (if player was away 1h+) ───
+        if (chest) {
+            var chestSection = document.createElement('div');
+            chestSection.className = 'welcome-section welcome-chest-section';
+
+            // Chest visual
+            var chestVisual = document.createElement('div');
+            chestVisual.className = 'welcome-chest';
+            chestVisual.setAttribute('data-chest', chest.id);
+
+            var chestIcon = document.createElement('div');
+            chestIcon.className = 'welcome-chest-icon';
+            chestIcon.textContent = chest.icon;
+            chestVisual.appendChild(chestIcon);
+
+            // Chest shimmer overlay
+            var chestShimmer = document.createElement('div');
+            chestShimmer.className = 'welcome-chest-shimmer';
+            chestVisual.appendChild(chestShimmer);
+
+            chestSection.appendChild(chestVisual);
+
+            // Chest label
+            var chestLabel = document.createElement('div');
+            chestLabel.className = 'welcome-chest-label';
+            chestLabel.textContent = chest.label;
+            chestSection.appendChild(chestLabel);
+
+            // Chest rewards preview (shown after opening)
+            var rewardsPreview = document.createElement('div');
+            rewardsPreview.className = 'welcome-chest-rewards';
+            rewardsPreview.id = 'welcome-chest-rewards';
+            rewardsPreview.style.display = 'none';
+
+            var rewardItems = [];
+            if (chest.gems > 0) {
+                rewardItems.push({ icon: '\uD83D\uDC8E', text: '+' + chest.gems, type: 'gems' });
+            }
+            if (chest.energy > 0) {
+                var energyLabel = chest.energy >= 100 ? 'Full' : '+' + chest.energy;
+                rewardItems.push({ icon: '\u26A1', text: energyLabel, type: 'energy' });
+            }
+            if (chest.item === 'random') {
+                rewardItems.push({ icon: '\uD83C\uDF1F', text: 'Item', type: 'item' });
+            } else if (chest.item === 'rare') {
+                rewardItems.push({ icon: '\u2B50', text: 'Rare Item', type: 'item' });
+            }
+
+            for (var ri = 0; ri < rewardItems.length; ri++) {
+                var rewardPill = document.createElement('div');
+                rewardPill.className = 'welcome-reward-pill welcome-reward-' + rewardItems[ri].type;
+                rewardPill.innerHTML = '<span class="welcome-reward-icon">' + rewardItems[ri].icon + '</span>' +
+                    '<span class="welcome-reward-text welcome-countup" data-target="0" data-suffix="">' + rewardItems[ri].text + '</span>';
+                rewardsPreview.appendChild(rewardPill);
+            }
+
+            chestSection.appendChild(rewardsPreview);
+            card.appendChild(chestSection);
+            card.appendChild(createDivider());
+        }
 
         // ─── Worker Income Section ───
         if (data.workerGems > 0) {
             var workerSection = document.createElement('div');
             workerSection.className = 'welcome-section';
 
-            // Worker creature row
             if (data.workerCreatures.length > 0) {
                 var creatureRow = document.createElement('div');
                 creatureRow.className = 'welcome-creature-row';
@@ -224,7 +341,7 @@ var Welcome = (function() {
             var gemLine = document.createElement('div');
             gemLine.className = 'welcome-stat-line';
             gemLine.innerHTML = '<span class="welcome-stat-label">Your workers earned</span>' +
-                '<span class="welcome-stat-value"><span class="welcome-countup" data-target="' + data.workerGems + '" data-suffix="">0</span> &#x1F48E;</span>';
+                '<span class="welcome-stat-value"><span class="welcome-countup" data-target="' + data.workerGems + '" data-suffix="">0</span> \uD83D\uDC8E</span>';
             workerSection.appendChild(gemLine);
 
             card.appendChild(workerSection);
@@ -242,12 +359,12 @@ var Welcome = (function() {
             energyLine.innerHTML = '<span class="welcome-stat-label">Energy restored</span>' +
                 '<span class="welcome-stat-value">' +
                 '<span class="welcome-energy-before">' + data.energyBefore + '</span>' +
-                ' &#x2192; ' +
+                ' \u2192 ' +
                 '<span class="welcome-countup welcome-energy-after" data-target="' + data.energyAfter + '" data-suffix="">' + data.energyBefore + '</span>' +
-                '/' + data.maxEnergy + ' &#x26A1;</span>';
+                '/' + data.maxEnergy + ' \u26A1</span>';
         } else {
             energyLine.innerHTML = '<span class="welcome-stat-label">Energy</span>' +
-                '<span class="welcome-stat-value">' + data.energyAfter + '/' + data.maxEnergy + ' &#x26A1; Full!</span>';
+                '<span class="welcome-stat-value">' + data.energyAfter + '/' + data.maxEnergy + ' \u26A1 Full!</span>';
         }
         energySection.appendChild(energyLine);
         card.appendChild(energySection);
@@ -269,26 +386,26 @@ var Welcome = (function() {
 
             var pb = data.passiveBonuses;
             if (pb.gem_bonus > 0) {
-                bonusList.appendChild(createBonusPill('+' + pb.gem_bonus.toFixed(1) + '% &#x1F48E;'));
+                bonusList.appendChild(createBonusPill('+' + pb.gem_bonus.toFixed(1) + '% \uD83D\uDC8E'));
             }
             if (pb.discovery_chance > 0) {
-                bonusList.appendChild(createBonusPill('+' + pb.discovery_chance.toFixed(1) + '% &#x1F50D;'));
+                bonusList.appendChild(createBonusPill('+' + pb.discovery_chance.toFixed(1) + '% \uD83D\uDD0D'));
             }
             if (pb.energy_regen > 0) {
-                bonusList.appendChild(createBonusPill('-' + (pb.energy_regen * 0.25).toFixed(1) + 's &#x26A1;'));
+                bonusList.appendChild(createBonusPill('-' + (pb.energy_regen * 0.25).toFixed(1) + 's \u26A1'));
             }
             if (pb.xp_bonus > 0) {
-                bonusList.appendChild(createBonusPill('+' + pb.xp_bonus.toFixed(1) + '% &#x1F4CA;'));
+                bonusList.appendChild(createBonusPill('+' + pb.xp_bonus.toFixed(1) + '% \uD83D\uDCCA'));
             }
             if (pb.spawn_quality > 0) {
-                bonusList.appendChild(createBonusPill('+' + pb.spawn_quality.toFixed(1) + '% &#x2728;'));
+                bonusList.appendChild(createBonusPill('+' + pb.spawn_quality.toFixed(1) + '% \u2728'));
             }
 
             bonusSection.appendChild(bonusList);
             card.appendChild(bonusSection);
         }
 
-        // ─── Collect Button ───
+        // ─── Claim Button ───
         card.appendChild(createDivider());
 
         var btnWrap = document.createElement('div');
@@ -296,7 +413,11 @@ var Welcome = (function() {
 
         var collectBtn = document.createElement('button');
         collectBtn.className = 'welcome-collect-btn';
-        collectBtn.innerHTML = 'Collect &amp; Play!';
+        if (chest) {
+            collectBtn.innerHTML = 'Open Chest &amp; Claim!';
+        } else {
+            collectBtn.innerHTML = 'Collect &amp; Play!';
+        }
         btnWrap.appendChild(collectBtn);
 
         // Auto-dismiss countdown bar
@@ -310,7 +431,7 @@ var Welcome = (function() {
         card.appendChild(btnWrap);
         overlay.appendChild(card);
 
-        return { overlay: overlay, collectBtn: collectBtn, countdownFill: countdownFill };
+        return { overlay: overlay, collectBtn: collectBtn, countdownFill: countdownFill, chest: chest };
     }
 
     function createDivider() {
@@ -326,6 +447,52 @@ var Welcome = (function() {
         return pill;
     }
 
+    // ─── CHEST OPENING ANIMATION ────────────────────────────────
+
+    function playChestOpenAnimation(overlay, chest) {
+        var chestEl = overlay.querySelector('.welcome-chest');
+        var rewardsEl = overlay.querySelector('#welcome-chest-rewards');
+        if (!chestEl) return;
+
+        // Add opening class for CSS animation
+        chestEl.classList.add('welcome-chest-opening');
+
+        // Play chest opening sound
+        if (typeof Sound !== 'undefined' && Sound.playChestOpen) {
+            Sound.playChestOpen(chest.id);
+        } else if (typeof Sound !== 'undefined') {
+            Sound.playCelebration();
+        }
+
+        // Haptic feedback
+        if (typeof Game !== 'undefined') {
+            Game.vibrate([50, 30, 80]);
+        }
+
+        // After lid animation, show rewards
+        setTimeout(function() {
+            chestEl.classList.add('welcome-chest-opened');
+
+            // Show reward pills with stagger
+            if (rewardsEl) {
+                rewardsEl.style.display = '';
+                var pills = rewardsEl.querySelectorAll('.welcome-reward-pill');
+                for (var p = 0; p < pills.length; p++) {
+                    (function(pill, idx) {
+                        setTimeout(function() {
+                            pill.classList.add('welcome-reward-visible');
+                        }, idx * 200);
+                    })(pills[p], p);
+                }
+            }
+
+            // Play reward sound for each pill
+            setTimeout(function() {
+                if (typeof Sound !== 'undefined') Sound.playWorkerCollect();
+            }, 200);
+        }, 600);
+    }
+
     // ─── SHOW / DISMISS ───────────────────────────────────────
 
     function show(data) {
@@ -333,22 +500,26 @@ var Welcome = (function() {
         var overlay = parts.overlay;
         var collectBtn = parts.collectBtn;
         var countdownFill = parts.countdownFill;
+        var chest = parts.chest;
 
         var app = document.getElementById('app');
         if (!app) return;
 
         app.appendChild(overlay);
 
+        var chestOpened = false;
+
         // Trigger entrance animation after DOM paint
         requestAnimationFrame(function() {
             requestAnimationFrame(function() {
                 overlay.classList.add('welcome-visible');
 
-                // Start animated countups
+                // Start animated countups (worker gems, energy)
                 var countups = overlay.querySelectorAll('.welcome-countup');
                 for (var i = 0; i < countups.length; i++) {
                     var el = countups[i];
-                    var target = parseInt(el.getAttribute('data-target'), 10) || 0;
+                    var target = parseInt(el.getAttribute('data-target'), 10);
+                    if (isNaN(target)) continue;
                     var suffix = el.getAttribute('data-suffix') || '';
                     animateCountUp(el, target, COUNTUP_DURATION_MS, suffix);
                 }
@@ -365,6 +536,13 @@ var Welcome = (function() {
                 clearTimeout(dismissTimer);
                 dismissTimer = null;
             }
+
+            // Grant chest rewards on dismiss if not yet opened
+            if (chest && !chestOpened) {
+                chestOpened = true;
+                grantChestRewards(chest);
+            }
+
             overlay.classList.remove('welcome-visible');
             overlay.classList.add('welcome-exit');
             setTimeout(function() {
@@ -373,6 +551,27 @@ var Welcome = (function() {
         }
 
         collectBtn.addEventListener('click', function() {
+            if (chest && !chestOpened) {
+                chestOpened = true;
+                grantChestRewards(chest);
+                playChestOpenAnimation(overlay, chest);
+
+                // Change button text after opening
+                collectBtn.innerHTML = 'Play!';
+
+                // Reset auto-dismiss to give time to see rewards
+                if (dismissTimer) {
+                    clearTimeout(dismissTimer);
+                }
+                dismissTimer = setTimeout(dismiss, 5000);
+
+                // Allow second tap to dismiss
+                collectBtn.addEventListener('click', function() {
+                    dismiss();
+                    if (typeof Sound !== 'undefined') Sound.playTap();
+                }, { once: true });
+                return;
+            }
             dismiss();
             if (typeof Sound !== 'undefined') Sound.playTap();
         });

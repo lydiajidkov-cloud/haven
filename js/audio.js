@@ -688,6 +688,54 @@ const Sound = (() => {
         playNoise(0.04, 0.04, 0.15);
     }
 
+    function playChestOpen(tier) {
+        // Satisfying chest opening — creak + burst + coin cascade
+        // Scales with tier: small = modest, comeback = grand
+        if (!enabled) return;
+
+        // Wooden creak (low noise + tone sweep)
+        playNoise(0.1, 0.06, 0);
+        playTone(150, 0.12, 'triangle', 0.08, 0.02);
+        playTone(180, 0.1, 'triangle', 0.06, 0.06);
+
+        // Lid burst
+        playNoise(0.06, 0.08, 0.12);
+        playTone(400, 0.08, 'sine', 0.1, 0.12);
+
+        // Ascending sparkle reveal
+        var baseVol = 0.06;
+        var notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
+        for (var i = 0; i < notes.length; i++) {
+            playTone(notes[i], 0.15, 'sine', baseVol + i * 0.01, 0.18 + i * 0.06);
+        }
+
+        // Tier scaling: bigger chests get richer sounds
+        if (tier === 'medium' || tier === 'large' || tier === 'comeback') {
+            // Coin cascade
+            var coinFreqs = [1800, 2100, 1600, 2400, 1900, 2200];
+            for (var c = 0; c < coinFreqs.length; c++) {
+                playTone(coinFreqs[c], 0.05, 'sine', 0.04, 0.3 + c * 0.03);
+            }
+            playNoise(0.04, 0.02, 0.4);
+        }
+
+        if (tier === 'large' || tier === 'comeback') {
+            // Grand chord
+            playTone(523, 0.25, 'sine', 0.08, 0.35);
+            playTone(659, 0.22, 'sine', 0.07, 0.37);
+            playTone(784, 0.2, 'sine', 0.06, 0.39);
+            playTone(262, 0.2, 'triangle', 0.06, 0.35); // bass
+        }
+
+        if (tier === 'comeback') {
+            // Extra shimmer + triumphant swell for comeback
+            playTone(1568, 0.12, 'sine', 0.04, 0.45);
+            playTone(2093, 0.1, 'sine', 0.03, 0.48);
+            playNoise(0.08, 0.03, 0.45);
+            playTone(1047, 0.3, 'triangle', 0.05, 0.5);
+        }
+    }
+
     function setEnabled(val) {
         enabled = val;
     }
@@ -724,6 +772,7 @@ const Sound = (() => {
         playSurgeMilestone,
         playSurgeEnd,
         playBoardFull,
+        playChestOpen,
         setEnabled,
         isEnabled,
         getMergeStreak: function() { return mergeStreak; }

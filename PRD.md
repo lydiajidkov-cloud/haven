@@ -84,7 +84,7 @@ Specific numbers from playtest analysis. All changes work together — sinks inc
 
 ## Phase 5: Retention & Return
 
-- [ ] **18. Welcome-back chest (scaled)** — Enhance `welcome.js`. Scale reward by time away: 1-4h = small chest (5 gems + 10 energy), 4-12h = medium (15 gems + 25 energy + random item), 12-24h = large (30 gems + full energy + rare item), 7+ days = comeback chest (100 gems + 50 energy — special message to win back lapsed players). Show chest with satisfying opening animation and "claim" tap.
+- [x] **18. Welcome-back chest (scaled)** — Enhance `welcome.js`. Scale reward by time away: 1-4h = small chest (5 gems + 10 energy), 4-12h = medium (15 gems + 25 energy + random item), 12-24h = large (30 gems + full energy + rare item), 7+ days = comeback chest (100 gems + 50 energy — special message to win back lapsed players). Show chest with satisfying opening animation and "claim" tap.
 
 - [ ] **19. Streak system overhaul** — Three changes: (a) At 20 hours since last claim, show warning banner: "Your X-day streak expires in Y hours!" with urgency colour. (b) When streak breaks, show acknowledgment screen (not silent reset): "Your X-day streak has ended" with encouragement. (c) Add streak-save option: spend 50 gems OR watch ad to preserve streak for 24 more hours. Cap at 1 save per week. All departments agreed silent resets are hostile design.
 

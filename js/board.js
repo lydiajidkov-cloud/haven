@@ -1562,6 +1562,33 @@ const Board = (() => {
 
     // ─── UTILITIES ───────────────────────────────────────────────
 
+    // Spawn a specific item at a specific tier without using energy (used by chest rewards)
+    function spawnItemDirect(chain, tier) {
+        var empty = getRandomEmptyCell();
+        if (!empty) return false;
+
+        var item = Items.createItem(chain, tier);
+        items[empty.row][empty.col] = item;
+        renderCell(empty.row, empty.col);
+
+        var itemEl = grid[empty.row][empty.col].querySelector('.item');
+        if (itemEl) {
+            itemEl.classList.add('spawn-in');
+            setTimeout(function() { itemEl.classList.remove('spawn-in'); }, 300);
+        }
+
+        Sound.playSpawn();
+        var def = Items.getItemDef(chain, item.tier);
+        emitParticlesAtCell(empty.row, empty.col, 'spawn', {
+            color: def ? def.glow : '#FFD700'
+        });
+
+        Game.emit('itemSpawned', { chain: chain, tier: item.tier });
+        checkItemDiscovery(chain, item.tier, empty.row, empty.col);
+        syncToGameState();
+        return true;
+    }
+
     function getRandomEmptyCell() {
         var empty = [];
         for (var r = 0; r < ROWS; r++) {
@@ -2280,6 +2307,7 @@ const Board = (() => {
     return {
         init: init,
         spawnItem: spawnItem,
+        spawnItemDirect: spawnItemDirect,
         spawnStarterItems: spawnStarterItems,
         setForcedSpawnTier: function(t) { forcedSpawnTier = t; },
         clearForcedSpawnTier: function() { forcedSpawnTier = null; },
