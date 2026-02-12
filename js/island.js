@@ -9,31 +9,31 @@ var Island = (function() {
         {
             name: 'The Shore', icon: '\u{1F3D6}\uFE0F', color: '#4ECDC4',
             nodes: [
-                { stars: 2,  gems: 10 },
-                { stars: 4,  gems: 12 },
-                { stars: 6,  gems: 15 },
-                { stars: 8,  gems: 18 },
-                { stars: 10, gems: 50, boss: true, creature: { name: 'Lumina', species: 'Seahorse', emoji: '\u{1F41F}' }, story: 'The shore was once a thriving refuge. Lumina has waited here, guiding lost creatures back with her bioluminescent light.' }
+                { stars: 2,  gems: 5 },
+                { stars: 4,  gems: 6 },
+                { stars: 6,  gems: 8 },
+                { stars: 8,  gems: 10 },
+                { stars: 10, gems: 25, boss: true, creature: { name: 'Lumina', species: 'Seahorse', emoji: '\u{1F41F}' }, story: 'The shore was once a thriving refuge. Lumina has waited here, guiding lost creatures back with her bioluminescent light.' }
             ]
         },
         {
             name: 'Whispering Woods', icon: '\u{1F332}', color: '#2D5F2D',
             nodes: [
-                { stars: 12, gems: 15 },
-                { stars: 15, gems: 18 },
-                { stars: 18, gems: 20 },
-                { stars: 21, gems: 22 },
-                { stars: 24, gems: 25 },
-                { stars: 27, gems: 50, boss: true, creature: { name: 'Whisper', species: 'Deer', emoji: '\u{1F98C}' }, story: 'The ancient pines remember everything. Whisper can hear the island\'s heartbeat in the trees.' }
+                { stars: 12, gems: 8 },
+                { stars: 15, gems: 10 },
+                { stars: 18, gems: 10 },
+                { stars: 21, gems: 12 },
+                { stars: 24, gems: 12 },
+                { stars: 27, gems: 25, boss: true, creature: { name: 'Whisper', species: 'Deer', emoji: '\u{1F98C}' }, story: 'The ancient pines remember everything. Whisper can hear the island\'s heartbeat in the trees.' }
             ]
         },
         {
             name: 'Sunlit Meadows', icon: '\u{1F33B}', color: '#98D87E',
             nodes: [
-                { stars: 30, gems: 20 },
-                { stars: 34, gems: 22 },
-                { stars: 38, gems: 25 },
-                { stars: 42, gems: 28 },
+                { stars: 30, gems: 10 },
+                { stars: 34, gems: 12 },
+                { stars: 38, gems: 12 },
+                { stars: 42, gems: 15 },
                 { stars: 46, gems: 30 },
                 { stars: 50, gems: 50, boss: true, creature: { name: 'Bloom', species: 'Butterfly', emoji: '\u{1F98B}' }, story: 'The meadow was the heart of celebrations. Bloom\'s wings shimmer with every colour, and where she flies, flowers grow.' }
             ]

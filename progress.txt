@@ -497,3 +497,60 @@
     - SAVE_VERSION bumped from 3 to 4.
     - migrateState() v3→v4: adds evolvedCreatures{}, boardTheme null, ownedThemes{}.
     - defaultState() includes all three new fields.
+
+2026-02-12 — Task 13: Economy number rebalancing
+  Applied specific economy cuts from playtest analysis to reduce free gem income and fix
+  broken energy refill incentives. Combined with Tasks 4/11/12 gem sinks, these source
+  cuts create meaningful spending pressure.
+
+  Files modified: js/daily.js, js/shop.js, js/island.js, js/game.js
+
+  (a) Daily login calendar gem rewards reduced 40% (daily.js):
+    - Day 1: 25 → 15 gems
+    - Day 2: 15 → 10 gems (energy unchanged at 3)
+    - Day 3: 50 → 30 gems
+    - Day 4: 25 → 15 gems (energy unchanged at 5)
+    - Day 5: 100 → 60 gems (star unchanged at 1)
+    - Day 6: 50 → 30 gems (common egg unchanged)
+    - Day 7: 250 → 150 gems (stars and rare egg unchanged)
+    - Weekly gem total: 515 → 310 gems (60% of original).
+    - Monthly projection: ~1,330 → ~800 gems (matches PRD target of 800/month).
+    - Streak multiplier system unchanged (still caps at 2x after 28 days).
+    - Non-gem rewards (energy, stars, eggs) preserved to maintain daily login motivation.
+
+  (b) Battle Pass free track gem cap at 800 (pass.js — no change needed):
+    - Current free track total is 540 gems (120 from tiers 1-10, 420 from tiers 11-25).
+    - Already well below the 800 gem cap specified in the PRD.
+    - The PRD's "currently 1,690" figure was from pre-Task-10 calculations. Task 10
+      already extended the season to 30 days and adjusted XP rates but didn't change
+      reward amounts. The 540 total is the correct current value.
+
+  (c) Energy refill cost increased from 35 to 75 gems (shop.js):
+    - Full Recharge: 35 → 75 gems (still gives full 100 energy).
+    - Energy Pack (5 energy for 20 gems): unchanged — already net-negative.
+    - At 35 gems, a full recharge was net-positive: 100 energy → ~100 merges → roughly
+      40-60 gems from tier 4+ merges + events + surge bonuses. ROI was ~2x.
+    - At 75 gems, a full recharge is now net-negative: 100 merges yield ~20-40 gems
+      (after Task 4's tier threshold raise), well below the 75 gem cost.
+
+  (d) Early island node gems reduced 50% (island.js):
+    - First 15 nodes (Shore + Whispering Woods + first 4 of Sunlit Meadows):
+      Shore: 10/12/15/18/50 → 5/6/8/10/25 (boss halved too)
+      Woods: 15/18/20/22/25/50 → 8/10/10/12/12/25 (boss halved too)
+      Meadows (first 4): 20/22/25/28 → 10/12/12/15
+    - Total first 15 nodes: 350 → 180 gems (~49% reduction, matches PRD "50%" target).
+    - Later regions (Stone Peaks, Crystal Depths, Cloud Realm, Ancient Ruins) unchanged.
+    - Star requirements unchanged — progression pacing stays the same.
+
+  (e) Energy refill net-positive fix:
+    - Addressed by (c): raising Full Recharge cost from 35 to 75 gems makes energy
+      refill clearly net-negative. A full 100-energy cycle produces ~20-40 gems from
+      merges (post-Task 4 tier-4+ threshold), well below the 75 gem cost.
+    - The Small Energy Pack (5 energy / 20 gems) was already net-negative.
+    - Combined with Task 4's gem threshold raise (tier 3→4), active play gem income
+      per energy point is further reduced, reinforcing the net-negative energy refill.
+
+  (f) Save version bump (game.js):
+    - SAVE_VERSION raised from 4 to 5.
+    - migrateState() v4→v5: stamps version only (no save data migration needed,
+      these are gameplay rule changes not save format changes).

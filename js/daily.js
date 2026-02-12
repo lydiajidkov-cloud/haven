@@ -3,14 +3,15 @@
 
 const Daily = (() => {
     // ─── 7-DAY ROLLING CALENDAR REWARDS ─────────────────────
+    // Gem rewards reduced 40% from original (was 515/week, now 310/week ≈ 800/month)
     const CALENDAR_REWARDS = [
-        { day: 1, rewards: { gems: 25 },                              label: '25 gems',           icons: '\uD83D\uDC8E 25' },
-        { day: 2, rewards: { energy: 3, gems: 15 },                   label: '3 energy + 15 gems', icons: '\u26A1 3 + \uD83D\uDC8E 15' },
-        { day: 3, rewards: { gems: 50 },                              label: '50 gems',           icons: '\uD83D\uDC8E 50' },
-        { day: 4, rewards: { energy: 5, gems: 25 },                   label: '5 energy + 25 gems', icons: '\u26A1 5 + \uD83D\uDC8E 25' },
-        { day: 5, rewards: { gems: 100, stars: 1 },                   label: '100 gems + 1 star', icons: '\uD83D\uDC8E 100 + \u2B50 1' },
-        { day: 6, rewards: { gems: 50, egg: 'common' },               label: 'Common Egg + 50 gems', icons: '\uD83E\uDD5A + \uD83D\uDC8E 50' },
-        { day: 7, rewards: { gems: 250, stars: 3, egg: 'rare' },      label: '250 gems + 3 stars + Rare Egg', icons: '\uD83C\uDF81 JACKPOT' }
+        { day: 1, rewards: { gems: 15 },                              label: '15 gems',           icons: '\uD83D\uDC8E 15' },
+        { day: 2, rewards: { energy: 3, gems: 10 },                   label: '3 energy + 10 gems', icons: '\u26A1 3 + \uD83D\uDC8E 10' },
+        { day: 3, rewards: { gems: 30 },                              label: '30 gems',           icons: '\uD83D\uDC8E 30' },
+        { day: 4, rewards: { energy: 5, gems: 15 },                   label: '5 energy + 15 gems', icons: '\u26A1 5 + \uD83D\uDC8E 15' },
+        { day: 5, rewards: { gems: 60, stars: 1 },                    label: '60 gems + 1 star',  icons: '\uD83D\uDC8E 60 + \u2B50 1' },
+        { day: 6, rewards: { gems: 30, egg: 'common' },               label: 'Common Egg + 30 gems', icons: '\uD83E\uDD5A + \uD83D\uDC8E 30' },
+        { day: 7, rewards: { gems: 150, stars: 3, egg: 'rare' },      label: '150 gems + 3 stars + Rare Egg', icons: '\uD83C\uDF81 JACKPOT' }
     ];
 
     // ─── DAILY QUESTS ───────────────────────────────────────

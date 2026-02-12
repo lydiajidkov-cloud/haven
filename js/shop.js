@@ -6,7 +6,7 @@ const Shop = (() => {
         // Energy
         { id: 'energy5',   name: 'Energy Pack',      desc: '5 Energy refill',             price: 20,  icon: '⚡', category: 'energy',
           action: function() { Game.addEnergy(5); } },
-        { id: 'energy_full', name: 'Full Recharge',   desc: 'Fully recharge energy',       price: 35,  icon: '🔋', category: 'energy',
+        { id: 'energy_full', name: 'Full Recharge',   desc: 'Fully recharge energy',       price: 75,  icon: '🔋', category: 'energy',
           action: function() { Game.addEnergy(Game.MAX_ENERGY); } },
 
         // Boosts
