@@ -44,7 +44,7 @@
 
 - [x] **3. Harden save system** — Implement: (a) 200ms debounce on `Game.save()` with `beforeunload` flush for safety, (b) save format version number in state for future migration, (c) backup to a second localStorage key (`haven-backup`) on each save, (d) try/catch around save/load with fallback to backup if primary is corrupted, (e) quota check before save (warn if approaching 5MB localStorage limit). Must ship before any economy changes.
 
-- [ ] **4. Raise thresholds: merge gems + MIN_MERGE** — Two related changes: (a) Raise the minimum tier that awards gems from tier 3 to tier 4 (~30% reduction in free gem income). (b) Raise MIN_MERGE from 2 to 3 (currently players can merge just 2 items, which eliminates strategic tension). This also makes the "Merge Mania" event (min-merge reduced to 2) actually meaningful instead of being a no-op. DEPENDS ON: Task 3 (save versioning).
+- [x] **4. Raise thresholds: merge gems + MIN_MERGE** — Two related changes: (a) Raise the minimum tier that awards gems from tier 3 to tier 4 (~30% reduction in free gem income). (b) Raise MIN_MERGE from 2 to 3 (currently players can merge just 2 items, which eliminates strategic tension). This also makes the "Merge Mania" event (min-merge reduced to 2) actually meaningful instead of being a no-op. DEPENDS ON: Task 3 (save versioning).
 
 ## Phase 2: Addiction & Engagement Amplifiers
 

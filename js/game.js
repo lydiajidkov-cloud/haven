@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 1;
+    const SAVE_VERSION = 2;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const ROWS = 8;
@@ -159,10 +159,14 @@ const Game = (() => {
     }
 
     function migrateState(data) {
-        // Future version migrations go here
-        // if (!data._saveVersion || data._saveVersion < 2) { ... migrate to v2 ... }
         if (!data._saveVersion) {
-            data._saveVersion = SAVE_VERSION;
+            data._saveVersion = 1;
+        }
+        // v1 → v2: MIN_MERGE raised from 2 to 3, gem threshold from tier 3 to tier 4.
+        // No save state changes needed — these are gameplay rule changes, not data format changes.
+        // Version stamp ensures future migrations can detect pre-v2 saves if needed.
+        if (data._saveVersion < 2) {
+            data._saveVersion = 2;
         }
         return data;
     }

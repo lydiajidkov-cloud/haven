@@ -89,3 +89,37 @@
       and emits saveQuotaWarning event with byte counts for future UI display.
     - Does not block the save — just warns. The actual QuotaExceededError from
       localStorage.setItem() is caught by the existing try/catch.
+
+2026-02-12 — Task 4: Raise thresholds: merge gems + MIN_MERGE
+  Two related economy tightening changes that reduce free gem income ~30% and add strategic
+  tension to merging. Both were agreed in the Phase 2 compromise (sinks before source cuts).
+
+  Files modified: js/board.js, js/game.js
+
+  (a) Raise gem-award tier from 3 to 4 (board.js:912):
+    - Changed `if (nextTier >= 3)` to `if (nextTier >= 4)` in executeMerge().
+    - Rebased gem formula from `Math.pow(1.8, nextTier - 3)` to `Math.pow(1.8, nextTier - 4)`
+      so tier 4 now gets the base reward (1 gem) that tier 3 used to get.
+    - Tier 3 merges no longer award gems at all — they still get screen-shake celebration
+      (line 906, unchanged) but no gem reward.
+    - Max-tier merge gems (line 829) were already tier-agnostic (flat 10 gems) — unchanged.
+    - double_reward companion ability now naturally persists through tier 3 merges (they no
+      longer enter the gem block, so the flag isn't consumed until a tier 4+ merge awards gems).
+    - Event gem_multiplier still applies to the new tier 4+ rewards — no change needed.
+
+  (b) Raise MIN_MERGE from 2 to 3 (board.js:7):
+    - Changed `var MIN_MERGE = 2` to `var MIN_MERGE = 3`.
+    - Players must now merge 3+ matching items instead of 2. This eliminates the trivial
+      "pair merge" that removed strategic tension (flagged in PRD).
+    - The Merge Mania event (min_merge_override: 2) now becomes a meaningful bonus — during
+      the event, players CAN merge pairs again, which was previously a no-op.
+    - All 10 usages of MIN_MERGE already go through getEffectiveMinMerge() (from Task 2),
+      so the event override system works correctly with the new base value.
+    - Affects: attemptMerge, swipe-merge, chain reactions, auto-merges, mass match,
+      shuffle scan, companion pair finding, lucky auto-merge, near-miss highlighting.
+
+  (c) Save version bump (game.js):
+    - SAVE_VERSION raised from 1 to 2.
+    - migrateState() updated: v1 saves are stamped to v2 on load. No data migration
+      needed — these are gameplay rule changes, not save format changes.
+    - defaultState() will now stamp new saves as v2.

@@ -4,7 +4,7 @@
 const Board = (() => {
     const ROWS = Game.ROWS;
     const COLS = Game.COLS;
-    var MIN_MERGE = 2;
+    var MIN_MERGE = 3;
 
     // Query current effective MIN_MERGE (may be overridden by event modifier)
     function getEffectiveMinMerge() {
@@ -908,9 +908,9 @@ const Board = (() => {
                 setTimeout(function() { boardEl.classList.remove('screen-shake'); }, 250);
             }
 
-            // Gem rewards — exponential scaling, starts at tier 3
-            if (nextTier >= 3) {
-                var gemReward = Math.max(1, Math.floor(Math.pow(1.8, nextTier - 3)));
+            // Gem rewards — exponential scaling, starts at tier 4
+            if (nextTier >= 4) {
+                var gemReward = Math.max(1, Math.floor(Math.pow(1.8, nextTier - 4)));
                 // Random multiplier — variable ratio reinforcement
                 var roll = Math.random();
                 var gemMultiplier = 1;
