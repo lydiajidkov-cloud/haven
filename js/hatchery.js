@@ -383,6 +383,15 @@ var Hatchery = (function() {
                     card.appendChild(emoji);
                     card.appendChild(name);
 
+                    // EXCLUSIVE badge for event-only creatures
+                    var eventExclusiveIds = typeof Events !== 'undefined' ? Events.getExclusiveCreatureIds() : {};
+                    if (eventExclusiveIds[c.id] || (isFound && discovered[c.id] && discovered[c.id].eventExclusive)) {
+                        var badge = document.createElement('div');
+                        badge.className = 'hatchery-exclusive-badge';
+                        badge.textContent = 'EXCLUSIVE';
+                        card.appendChild(badge);
+                    }
+
                     if (isFound) {
                         (function(creature) {
                             card.addEventListener('click', function() {

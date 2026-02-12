@@ -1112,3 +1112,27 @@
   (e) Exports added to Sound module:
     - playMusic, stopMusic, setMusicEnabled, isMusicEnabled.
     - setMusicVolume, getMusicVolume.
+
+2026-02-12 — Task 26: FOMO moderate messaging + micro-text fix
+  EXCLUSIVE badges on event creatures, countdown text verified, minimum 11px fonts.
+
+  Files modified: js/hatchery.js, js/events.js, css/island.css, css/style.css,
+    css/achievements.css, css/ad-adapter.css, css/daily.css, css/events.css,
+    css/recipes.css, css/shop.css, css/tutorial.css
+
+  (a) EXCLUSIVE gold badges on event-only creatures:
+    - Events.getExclusiveCreatureIds() returns set of all event creature IDs.
+    - Hatchery renderCollection() checks both eventExclusive in discovered state
+      AND the Events exclusive creature ID set (so badge shows even if undiscovered).
+    - .hatchery-exclusive-badge CSS: gold gradient background, dark text, uppercase.
+
+  (b) Countdown text on time-limited deals/events (already present):
+    - Flash sale: "Xh left" in shop deal header.
+    - Daily deals: "Refreshes in Xh" in deal section header.
+    - Event banner: countdown timer already implemented with formatTimeRemaining().
+
+  (c) Minimum 11px font-size audit:
+    - Fixed 43 font-size declarations across 9 CSS files.
+    - All 8px, 9px, and 10px values raised to 11px minimum.
+    - Includes responsive media query overrides (max-height, max-width, min-width).
+    - Tier dots (.tier-dot) increased from 3px to 4px (width + height).

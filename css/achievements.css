@@ -26,7 +26,7 @@
     border-radius: 8px;
     background: var(--accent-red);
     color: #fff;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -258,7 +258,7 @@
 }
 
 .achievement-desc {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-secondary);
     margin-bottom: 4px;
     line-height: 1.3;
@@ -286,7 +286,7 @@
 }
 
 .achievement-progress-text {
-    font-size: 9px;
+    font-size: 11px;
     color: var(--text-secondary);
     font-weight: 600;
 }
@@ -302,7 +302,7 @@
 }
 
 .achievement-reward-preview {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-secondary);
     text-align: center;
     line-height: 1.4;
@@ -384,7 +384,7 @@
 }
 
 .achievement-toast-label {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;

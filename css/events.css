@@ -50,7 +50,7 @@
 }
 
 .event-banner-timer {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
 }
@@ -354,7 +354,7 @@
 }
 
 .exclusive-tag {
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 700;
     color: #f87171;
     background: rgba(248,113,113,0.15);
@@ -399,7 +399,7 @@
         font-size: 11px;
     }
     .event-banner-timer {
-        font-size: 9px;
+        font-size: 11px;
     }
     .event-banner-progress-wrap {
         width: 40px;
@@ -416,7 +416,7 @@
         font-size: 14px;
     }
     .event-banner-name {
-        font-size: 10px;
+        font-size: 11px;
     }
     .event-modal-card {
         padding: 14px 12px;

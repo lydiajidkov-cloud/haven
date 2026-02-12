@@ -667,6 +667,17 @@ const Events = (() => {
         );
     }
 
+    // Returns set of creature IDs that are event-exclusive
+    function getExclusiveCreatureIds() {
+        var ids = {};
+        for (var i = 0; i < eventPool.length; i++) {
+            if (eventPool[i].exclusiveCreature) {
+                ids[eventPool[i].exclusiveCreature.id] = true;
+            }
+        }
+        return ids;
+    }
+
     // ─── PUBLIC API ────────────────────────────────────────────
 
     return {
@@ -678,6 +689,7 @@ const Events = (() => {
         getModifierValue: getModifierValue,
         getTimeRemaining: getTimeRemaining,
         openChallengeModal: openChallengeModal,
-        closeChallengeModal: closeChallengeModal
+        closeChallengeModal: closeChallengeModal,
+        getExclusiveCreatureIds: getExclusiveCreatureIds
     };
 })();
