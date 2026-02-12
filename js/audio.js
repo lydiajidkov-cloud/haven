@@ -625,6 +625,52 @@ const Sound = (() => {
         playTone(420, 0.15, 'triangle', 0.05, 0.06);
     }
 
+    function playSurgeActivate() {
+        // Whoosh + bright flash — distinct surge activation moment
+        // Designed to cut through fast-merge audio and signal "something special started"
+        if (!enabled) return;
+        // Whoosh: filtered noise sweep (low → high)
+        playNoise(0.18, 0.1, 0);
+        // Impact thump at moment of activation
+        playTone(120, 0.1, 'triangle', 0.14, 0.04);
+        // Bright flash: fast ascending power chord
+        playTone(440, 0.12, 'sine', 0.12, 0.06);
+        playTone(554, 0.11, 'sine', 0.1, 0.08);    // C#5
+        playTone(659, 0.1, 'sine', 0.1, 0.1);      // E5
+        playTone(880, 0.15, 'sine', 0.08, 0.12);    // A5
+        // High shimmer ring-out
+        playTone(1760, 0.1, 'sine', 0.04, 0.14);
+        playTone(2200, 0.08, 'sine', 0.03, 0.16);
+        playNoise(0.06, 0.02, 0.18);
+    }
+
+    function playSurgeMilestone(milestone) {
+        // Surge escalation milestone hit — scaling intensity
+        // 5 merges = quick ding, 10 = brighter, 20 = triumphant
+        if (!enabled) return;
+        if (milestone >= 20) {
+            // Grand milestone — full triumphant burst
+            playTone(523, 0.2, 'sine', 0.12);         // C5
+            playTone(659, 0.18, 'sine', 0.1, 0.04);   // E5
+            playTone(784, 0.16, 'sine', 0.1, 0.08);   // G5
+            playTone(1047, 0.2, 'sine', 0.08, 0.12);  // C6
+            playTone(1319, 0.15, 'sine', 0.06, 0.16); // E6
+            playNoise(0.08, 0.04, 0.14);
+            // Bass anchor
+            playTone(262, 0.2, 'triangle', 0.08, 0.04);
+        } else if (milestone >= 10) {
+            // Medium milestone — bright ascending chime
+            playTone(659, 0.15, 'sine', 0.1);         // E5
+            playTone(784, 0.13, 'sine', 0.09, 0.04);  // G5
+            playTone(1047, 0.15, 'sine', 0.08, 0.08); // C6
+            playNoise(0.05, 0.03, 0.1);
+        } else {
+            // 5-merge milestone — quick double-ding
+            playTone(880, 0.08, 'sine', 0.08);         // A5
+            playTone(1047, 0.1, 'sine', 0.08, 0.06);   // C6
+        }
+    }
+
     function playSurgeEnd() {
         // Descending 3-note phrase — winding down cue
         if (!enabled) return;
@@ -674,6 +720,8 @@ const Sound = (() => {
         playStreakMilestone,
         playItemDiscovery,
         playNearMiss,
+        playSurgeActivate,
+        playSurgeMilestone,
         playSurgeEnd,
         playBoardFull,
         setEnabled,

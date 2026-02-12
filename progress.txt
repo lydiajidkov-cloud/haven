@@ -297,3 +297,48 @@
     - Stars are now visible on the main board screen at all times — previously only
       visible in Island/Quest tabs. This was flagged as a critical gap: stars are
       the primary progression currency but were invisible during core gameplay.
+
+2026-02-12 — Task 9: Surge system improvements
+  Three improvements to the surge system that make it more visible, more satisfying to
+  activate, and create "just 3 more merges to hit the next milestone" compulsion.
+
+  Files modified: js/board.js, js/audio.js, css/style.css
+
+  (a) Surge bar height increase (css/style.css):
+    - Increased #surge-bar height from 18px to 24px (33% larger, easier to notice during
+      fast play as flagged in the PRD).
+    - Updated border-radius from 9px to 12px to maintain proportional rounding.
+    - Updated #surge-fill border-radius to match at 12px.
+    - Increased #surge-label font-size from 10px to 11px to scale with the taller bar.
+
+  (b) Distinct surge activation sound (audio.js):
+    - Added playSurgeActivate(): whoosh (filtered noise sweep) + impact thump + fast
+      ascending A major power chord (A4-C#5-E5-A5) + high shimmer ring-out. Designed
+      to cut through fast-merge audio and clearly signal "something special started."
+    - Replaced the generic playCelebration() call in board.js activateSurge() with
+      the new playSurgeActivate() sound. Falls back to playCelebration() if the new
+      function isn't available (typeof guard for safety).
+    - Also added playSurgeMilestone(milestone): scaling intensity sound for escalation
+      milestones. 5 merges = quick double-ding, 10 merges = bright ascending chime,
+      20 merges = grand triumphant burst with bass anchor.
+
+  (c) Surge escalation milestones with scaling rewards (board.js):
+    - SURGE_MILESTONES data structure defines 3 tiers:
+      5 merges during surge = +10 gems
+      10 merges during surge = +25 gems + 1 star
+      20 merges during surge = +50 gems + rare creature egg (tier 3 creature item spawned)
+    - surgeHighestMilestone variable tracks the highest milestone reached in the current
+      surge, preventing duplicate rewards. Reset on surge activation and deactivation.
+    - checkSurgeMilestone() called on every merge during surge. Iterates milestones
+      from highest to lowest, fires the first unawarded milestone that has been reached.
+    - Each milestone triggers: gem reward, optional star/egg, floating text with reward
+      summary, haptic feedback, surge milestone sound, HIGH priority toast, particle burst
+      (legendary particles for 20-merge, chain particles for lower milestones).
+    - Rare egg (20-merge): spawns a tier-3 creature item on an empty board cell with
+      legendary purple particles and spawn-in animation. Tier 3 creature items have
+      a meaningful discovery chance when merged, fulfilling the "rare egg" reward.
+    - Surge bar label now shows progress toward next milestone during surge:
+      "SURGE 3/5", "SURGE 7/10", "SURGE 15/20". After all milestones reached,
+      shows "SURGE 23⚡" (count + lightning bolt).
+    - Existing end-of-surge flat bonus (surgeMergeCount * 1.5 + 2 gems) is preserved
+      as an additional reward on top of milestone rewards.

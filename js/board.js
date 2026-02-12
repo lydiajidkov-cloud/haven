@@ -25,6 +25,7 @@ const Board = (() => {
     var surgeActive = false;
     var surgeDecayTimer = null;
     var surgeMergeCount = 0;      // merges during current surge
+    var surgeHighestMilestone = 0; // highest milestone reached this surge (5/10/20)
     var SURGE_ACTIVATE = 30;      // level to activate (was 40 — easier to trigger)
     var SURGE_DEACTIVATE = 5;     // level to deactivate (was 10 — stays active longer)
     var SURGE_PER_MERGE = 35;     // added per merge (was 30 — one merge nearly triggers)
@@ -614,18 +615,90 @@ const Board = (() => {
 
         if (surgeActive) {
             surgeMergeCount++;
+            checkSurgeMilestone();
         }
 
         renderSurgeBar();
         startSurgeDecay();
     }
 
+    // Surge escalation milestones: scaling rewards for sustained surge play
+    // 5 merges = +10 gems, 10 merges = +25 gems + star, 20 merges = +50 gems + rare egg
+    var SURGE_MILESTONES = [
+        { count: 5,  gems: 10, star: false, egg: false, label: '5 SURGE MERGES!' },
+        { count: 10, gems: 25, star: true,  egg: false, label: '10 SURGE MERGES!' },
+        { count: 20, gems: 50, star: false, egg: true,  label: '20 SURGE MERGES!' }
+    ];
+
+    function checkSurgeMilestone() {
+        for (var i = SURGE_MILESTONES.length - 1; i >= 0; i--) {
+            var m = SURGE_MILESTONES[i];
+            if (surgeMergeCount >= m.count && surgeHighestMilestone < m.count) {
+                surgeHighestMilestone = m.count;
+
+                // Award gems
+                Game.addGems(m.gems);
+
+                // Award star at 10-merge milestone
+                if (m.star) {
+                    Game.addStars(1);
+                }
+
+                // Award rare egg at 20-merge milestone: spawn a high-tier creature item
+                if (m.egg) {
+                    var eggCell = getRandomEmptyCell();
+                    if (eggCell && typeof Items !== 'undefined') {
+                        var eggItem = Items.createItem('creature', 3); // tier 3 = rare discovery chance
+                        items[eggCell.row][eggCell.col] = eggItem;
+                        renderCell(eggCell.row, eggCell.col);
+                        var eggEl = grid[eggCell.row][eggCell.col].querySelector('.item');
+                        if (eggEl) {
+                            eggEl.classList.add('spawn-in');
+                            setTimeout(function() { eggEl.classList.remove('spawn-in'); }, 300);
+                        }
+                        emitParticlesAtCell(eggCell.row, eggCell.col, 'legendary', {
+                            color: '#a855f7', count: 20
+                        });
+                    }
+                }
+
+                // Visual feedback
+                showFloatingText(3, 2, '\u26A1 ' + m.label + ' +' + m.gems + ' \u{1F48E}' + (m.star ? ' +\u2B50' : '') + (m.egg ? ' +\u{1F95A}' : ''));
+                Game.vibrate([20, 40, 30, 40, 20]);
+
+                // Sound
+                if (typeof Sound !== 'undefined' && Sound.playSurgeMilestone) {
+                    Sound.playSurgeMilestone(m.count);
+                }
+
+                // Show milestone toast
+                var toastMsg = '\u26A1 ' + m.label + ' +' + m.gems + ' gems';
+                if (m.star) toastMsg += ' +1 star';
+                if (m.egg) toastMsg += ' +rare egg';
+                showToast(toastMsg, TOAST_PRIORITY.HIGH);
+
+                // Particles burst for milestone
+                emitParticlesAtCell(3, 2, m.count >= 20 ? 'legendary' : 'chain', {
+                    color: '#f97316',
+                    count: m.count >= 20 ? 30 : (m.count >= 10 ? 20 : 15)
+                });
+
+                break; // Only fire one milestone per merge
+            }
+        }
+    }
+
     function activateSurge() {
         surgeActive = true;
         surgeMergeCount = 0;
+        surgeHighestMilestone = 0;
         boardEl.classList.add('surge-active');
         Game.vibrate([15, 30, 20, 30, 15]);
-        Sound.playCelebration();
+        if (typeof Sound !== 'undefined' && Sound.playSurgeActivate) {
+            Sound.playSurgeActivate();
+        } else {
+            Sound.playCelebration();
+        }
         showToast('\u26A1 SURGE MODE!', TOAST_PRIORITY.HIGH);
         Game.emit('surgeActivated');
 
@@ -646,7 +719,7 @@ const Board = (() => {
         surgeActive = false;
         boardEl.classList.remove('surge-active');
 
-        // End-of-surge bonus
+        // End-of-surge summary (replaces old flat bonus — milestones now handle rewards)
         if (surgeMergeCount >= 3) {
             var bonus = Math.floor(surgeMergeCount * 1.5) + 2;
             Game.addGems(bonus);
@@ -655,6 +728,7 @@ const Board = (() => {
         }
 
         surgeMergeCount = 0;
+        surgeHighestMilestone = 0;
         Sound.playSurgeEnd();
         Game.emit('surgeEnded');
     }
@@ -688,7 +762,21 @@ const Board = (() => {
         if (surgeActive) {
             bar.classList.add('surge-on');
             bar.classList.remove('surge-almost');
-            if (label) label.textContent = 'SURGE!';
+            if (label) {
+                // Show merge count and next milestone target during surge
+                var nextMilestone = null;
+                for (var mi = 0; mi < SURGE_MILESTONES.length; mi++) {
+                    if (surgeMergeCount < SURGE_MILESTONES[mi].count) {
+                        nextMilestone = SURGE_MILESTONES[mi].count;
+                        break;
+                    }
+                }
+                if (nextMilestone) {
+                    label.textContent = 'SURGE ' + surgeMergeCount + '/' + nextMilestone;
+                } else {
+                    label.textContent = 'SURGE ' + surgeMergeCount + '\u26A1';
+                }
+            }
         } else if (!surgeActive && surgeLevel >= SURGE_ACTIVATE * 0.7) {
             bar.classList.remove('surge-on');
             bar.classList.add('surge-almost');
