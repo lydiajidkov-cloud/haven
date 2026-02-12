@@ -326,6 +326,9 @@ const Quests = (() => {
                 });
             })(claimBtns[j]);
         }
+
+        // Update red dot on quests nav button
+        updateQuestNotificationDot();
     }
 
     function saveQuestState() {
@@ -339,6 +342,23 @@ const Quests = (() => {
 
     function getActiveQuests() { return activeQuests; }
     function getCompletedCount() { return completedIds.length; }
+
+    function updateQuestNotificationDot() {
+        var questNavBtn = document.querySelector('[data-screen="quest"]');
+        if (!questNavBtn) return;
+        var hasClaimable = false;
+        for (var i = 0; i < activeQuests.length; i++) {
+            if (activeQuests[i].completed && !activeQuests[i].claimed) {
+                hasClaimable = true;
+                break;
+            }
+        }
+        if (hasClaimable) {
+            questNavBtn.classList.add('nav-badge-pulse');
+        } else {
+            questNavBtn.classList.remove('nav-badge-pulse');
+        }
+    }
 
     return {
         init: init,

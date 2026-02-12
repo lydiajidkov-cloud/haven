@@ -324,9 +324,14 @@ const Game = (() => {
         const gained = Math.floor(elapsed / regenMs);
 
         if (gained > 0) {
+            var wasBelowMax = state.energy < state.maxEnergy;
             state.energy = Math.min(state.maxEnergy, state.energy + gained);
             state.lastEnergyTime = now - (elapsed % regenMs);
             emit('energyChanged', state.energy);
+            // Notify when energy reaches full from auto-regen
+            if (wasBelowMax && state.energy >= state.maxEnergy) {
+                emit('energyFull');
+            }
             save();
         }
 

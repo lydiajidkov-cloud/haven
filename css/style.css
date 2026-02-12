@@ -581,6 +581,18 @@ body {
     50%      { opacity: 1; }
 }
 
+/* ─── PIGGY BANK SURGE INDICATOR ──────────────────────────── */
+
+#piggy-surge-indicator {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-gold);
+    padding: 2px 0;
+    opacity: 0.8;
+    letter-spacing: 0.5px;
+}
+
 /* ─── NEAR-MATCH SPAWN PULSE ─────────────────────────────── */
 
 .near-match-pulse {
@@ -1068,6 +1080,13 @@ body {
 
 .hidden {
     display: none !important;
+}
+
+/* Small screens: increase cell gap for better touch distinction */
+@media (max-width: 400px) {
+    :root {
+        --cell-gap: 4px;
+    }
 }
 
 /* Responsive: small height (laptop/desktop browser with chrome) */

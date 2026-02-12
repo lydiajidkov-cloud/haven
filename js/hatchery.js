@@ -59,6 +59,7 @@ var Hatchery = (function() {
 
     var discovered = {};
     var collapsedBiomes = {}; // track collapsed state per biome
+    var hasNewCreature = false; // true when creature discovered but hatchery not viewed
 
     // ─── INIT ───────────────────────────────────────────────────
 
@@ -100,6 +101,33 @@ var Hatchery = (function() {
                 Game.emit('creatureDiscovered', { creature: candidate.id, rarity: candidate.rarity, biome: candidate.biome, total: Object.keys(discovered).length });
             }
         });
+
+        // Listen for creature discoveries to show NEW badge on hatchery tab
+        Game.on('creatureDiscovered', function() {
+            hasNewCreature = true;
+            updateHatcheryBadge();
+        });
+    }
+
+    function updateHatcheryBadge() {
+        var tab = document.querySelector('[data-island-tab="hatchery"]');
+        if (!tab) return;
+        if (hasNewCreature) {
+            if (!tab.querySelector('.hatchery-new-badge')) {
+                var badge = document.createElement('span');
+                badge.className = 'hatchery-new-badge';
+                badge.textContent = 'NEW';
+                tab.appendChild(badge);
+            }
+        } else {
+            var existing = tab.querySelector('.hatchery-new-badge');
+            if (existing) existing.remove();
+        }
+    }
+
+    function clearNewBadge() {
+        hasNewCreature = false;
+        updateHatcheryBadge();
     }
 
     // ─── DISCOVERY MECHANIC ─────────────────────────────────────
@@ -368,10 +396,10 @@ var Hatchery = (function() {
 
                     var emoji = document.createElement('div');
                     emoji.className = 'hatchery-emoji';
-                    emoji.textContent = isFound ? c.emoji : '?';
+                    emoji.textContent = c.emoji; // always show emoji (silhouette if undiscovered)
                     if (!isFound) {
-                        emoji.style.opacity = '0.3';
-                        emoji.style.filter = 'grayscale(1)';
+                        emoji.style.opacity = '0.35';
+                        emoji.style.filter = 'grayscale(1) brightness(0.3) contrast(2)';
                     }
 
                     var name = document.createElement('div');
@@ -561,6 +589,7 @@ var Hatchery = (function() {
     return {
         init: init,
         renderCollection: renderCollection,
+        clearNewBadge: clearNewBadge,
         getDiscoveredCount: getDiscoveredCount,
         getTotalCount: getTotalCount,
         getPityCounter: getPityCounter,

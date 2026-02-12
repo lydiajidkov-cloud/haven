@@ -58,6 +58,7 @@
                     <div id="surge-fill"></div>
                     <span id="surge-label"></span>
                 </div>
+                <div id="piggy-surge-indicator" class="hidden">🐷 <span id="piggy-surge-count">0</span> 💎</div>
                 <div id="powerup-bar"></div>
                 <div id="orders-panel"></div>
                 <div id="board-wrapper">
@@ -271,6 +272,12 @@
             }
         });
 
+        Game.on('energyFull', function() {
+            if (typeof Board !== 'undefined' && Board.showToast) {
+                Board.showToast('\u26A1 Energy fully recharged!', Board.TOAST_PRIORITY.NORMAL);
+            }
+        });
+
         Game.on('energyTimer', function(ms) {
             var timerEl = document.getElementById('energy-timer');
             if (ms === null || ms <= 0) {
@@ -290,6 +297,25 @@
             var el = document.getElementById('gems-display');
             el.style.transform = 'scale(1.1)';
             setTimeout(function() { el.style.transform = ''; }, 150);
+        });
+
+        // Piggy bank surge indicator — show gem count during surge only
+        var piggyIndicator = document.getElementById('piggy-surge-indicator');
+        var piggyCount = document.getElementById('piggy-surge-count');
+        Game.on('surgeActivated', function() {
+            if (typeof Shop !== 'undefined') {
+                piggyCount.textContent = Shop.getPiggyGems();
+                piggyIndicator.classList.remove('hidden');
+            }
+        });
+        Game.on('surgeEnded', function() {
+            piggyIndicator.classList.add('hidden');
+        });
+        // Update piggy count during surge when gems accumulate
+        Game.on('gemsChanged', function() {
+            if (!piggyIndicator.classList.contains('hidden') && typeof Shop !== 'undefined') {
+                piggyCount.textContent = Shop.getPiggyGems();
+            }
         });
 
         // Board hint — hide after 3 spawns
@@ -386,6 +412,7 @@
                 // Render hatchery when switching to it
                 if (tabName === 'hatchery') {
                     Hatchery.renderCollection(document.getElementById('hatchery-container'));
+                    Hatchery.clearNewBadge();
                 }
             });
         }

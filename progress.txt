@@ -1183,3 +1183,44 @@
   (d) CSS (.share-brag-btn):
     - Gold gradient border and text, dark background.
     - Active state with scale-down feedback.
+
+2026-02-12 — Task 29: UI polish pass
+  Seven high-impact UI fixes from playtest reports.
+
+  Files modified: css/tiles.css, css/island.css, css/style.css,
+    js/hatchery.js, js/quests.js, js/game.js, index.html
+
+  (a) Creature egg pulsing gold glow:
+    - .item-creature.item-tier-0 gets egg-glow-pulse animation.
+    - 2s ease-in-out infinite: gold box-shadow pulses 0.2→0.4 opacity.
+    - Makes creature eggs visually distinct from other tier-0 items.
+
+  (b) "NEW" badge on Hatchery tab:
+    - hasNewCreature flag in hatchery.js set on 'creatureDiscovered' event.
+    - updateHatcheryBadge() adds/removes .hatchery-new-badge span on tab.
+    - clearNewBadge() called when user switches to hatchery tab.
+    - Red badge with pulse animation, positioned top-right of tab.
+
+  (c) Quest completion notification dot:
+    - updateQuestNotificationDot() in quests.js checks for claimable quests.
+    - Adds/removes nav-badge-pulse class on Quests nav button.
+    - Called at the end of every renderQuestPanel().
+
+  (d) Energy refill notification toast:
+    - game.js emits 'energyFull' when auto-regen fills energy to max.
+    - index.html listener shows toast: "Energy fully recharged!"
+
+  (e) Creature silhouettes for undiscovered:
+    - Hatchery cards now show actual creature emoji for undiscovered (not "?").
+    - Filter: grayscale(1) brightness(0.3) contrast(2) creates dark silhouette.
+    - Names still show "???" for mystery.
+
+  (f) Cell gap increase on small screens:
+    - @media (max-width: 400px) sets --cell-gap: 4px (from default 3px).
+    - Better touch distinction on 5.5" screens.
+
+  (g) Piggy bank surge-only indicator:
+    - HTML: #piggy-surge-indicator element near surge bar, hidden by default.
+    - JS: Shows with pig emoji + gem count on 'surgeActivated', hides on 'surgeEnded'.
+    - Updates count on 'gemsChanged' during surge via Shop.getPiggyGems().
+    - Reduces HUD clutter — only visible when it matters.
