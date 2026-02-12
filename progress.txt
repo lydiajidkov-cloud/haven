@@ -381,3 +381,55 @@
   CSS (style.css):
     - Added .floating-text.xp-float class: 13px font, #7dd3fc light blue color,
       visually distinct from gold gem floating text.
+
+2026-02-12 — Task 11: Gem sinks: board expansion
+  Purchasable board expansion: 6x8 → 6x9 (500 gems) → 6x10 (1000 gems) → 7x10 (2000 gems).
+  This is the single most important monetization lever in merge games, creating a meaningful
+  gem sink that absorbs 3,500 total gems across all 3 tiers.
+
+  Files modified: js/game.js, js/board.js, js/shop.js, css/style.css
+
+  Architecture (game.js):
+    - ROWS and COLS changed from const to var, initialized from DEFAULT_ROWS/DEFAULT_COLS (8/6).
+    - On Game.init(), ROWS/COLS are loaded from save state (boardRows/boardCols fields).
+    - Game.ROWS and Game.COLS exposed as Object.defineProperty getters so they always
+      return the current mutable values (other modules reading Game.ROWS after expansion
+      get the updated dimensions).
+    - BOARD_EXPANSIONS array defines 3 tiers: {rows, cols, cost, label}.
+    - getNextBoardExpansion() returns the next available expansion or null if fully expanded.
+    - purchaseBoardExpansion() deducts gems, updates ROWS/COLS, expands the board array
+      in state (adds rows, pads columns), saves, and emits 'boardExpanded' event.
+    - SAVE_VERSION bumped from 2 to 3. migrateState() v2→v3 adds boardRows/boardCols
+      fields to old saves and pads the board array to match.
+    - resetGame() resets ROWS/COLS back to defaults.
+
+  Board expansion UI (board.js):
+    - Board.init() reads Game.ROWS/COLS and applies CSS grid dimensions via JS
+      (overriding the CSS defaults), so expanded boards render correctly on reload.
+    - renderExpandButton() creates a subtle dashed-border "Expand to NxM 💎 cost" button
+      below the board inside #board-wrapper. Removed when fully expanded.
+    - confirmBoardExpansion() (from board button): checks gems, shows confirm() dialog,
+      calls Game.purchaseBoardExpansion(), then adds new DOM cells to the grid, re-orders
+      them in row-major order for CSS grid, recaches grid layout, plays purchase sound,
+      and animates the new cells with a gold pop animation.
+    - confirmBoardExpansionDirect() (from shop): skips the confirm dialog since the shop
+      already confirmed. Navigates to board screen and executes the expansion.
+    - New cells are added by padding existing rows (for column increases) and appending
+      new rows (for row increases). DOM children are re-ordered to ensure CSS grid renders
+      correctly after adding cells out of order.
+
+  Shop integration (shop.js):
+    - Board expansion section added to shop above "Energy & Boosts", showing the next
+      available expansion with gem cost. Hidden when fully expanded.
+    - purchaseBoardExpansionFromShop() navigates to board screen and emits 'shopExpandRequest'
+      event, which Board handles via confirmBoardExpansionDirect().
+    - Shop re-renders on 'boardExpanded' event to update/remove the expansion option.
+
+  CSS (style.css):
+    - #board-wrapper changed to flex-direction: column so expand button appears below board.
+    - .board-expand-btn: subtle dashed-border pill, gold text, gems-color cost badge.
+      Hover/active states with opacity and scale transitions.
+    - .expand-cost styled in --gems-color (purple) for visual consistency with gem prices.
+    - @keyframes expand-cell-pop: gold-to-default-bg animation for newly added cells.
+    - CSS grid-template-columns/rows kept as defaults in CSS (6/8) but overridden by JS
+      on init and expansion for variable board sizes.

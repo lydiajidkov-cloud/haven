@@ -4,12 +4,21 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 2;
+    const SAVE_VERSION = 3;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
-    const ROWS = 8;
-    const COLS = 6;
+    const DEFAULT_ROWS = 8;
+    const DEFAULT_COLS = 6;
+    var ROWS = DEFAULT_ROWS;
+    var COLS = DEFAULT_COLS;
     const MAX_ENERGY = 100;
+
+    // Board expansion tiers: [rows, cols, gem cost]
+    const BOARD_EXPANSIONS = [
+        { rows: 9,  cols: 6, cost: 500,  label: '6\u00D79' },
+        { rows: 10, cols: 6, cost: 1000, label: '6\u00D710' },
+        { rows: 10, cols: 7, cost: 2000, label: '7\u00D710' }
+    ];
     const ENERGY_REGEN_MS = 2 * 60 * 1000; // 2 minutes
 
     let state = null;
@@ -20,14 +29,16 @@ const Game = (() => {
 
     function defaultState() {
         const board = [];
-        for (let r = 0; r < ROWS; r++) {
+        for (let r = 0; r < DEFAULT_ROWS; r++) {
             board[r] = [];
-            for (let c = 0; c < COLS; c++) {
+            for (let c = 0; c < DEFAULT_COLS; c++) {
                 board[r][c] = null;
             }
         }
         return {
             _saveVersion: SAVE_VERSION,
+            boardRows: DEFAULT_ROWS,
+            boardCols: DEFAULT_COLS,
             energy: MAX_ENERGY,
             maxEnergy: MAX_ENERGY,
             lastEnergyTime: Date.now(),
@@ -61,6 +72,10 @@ const Game = (() => {
     function init() {
         const loaded = load();
         state = loaded || defaultState();
+
+        // Apply dynamic board dimensions from save state
+        ROWS = state.boardRows || DEFAULT_ROWS;
+        COLS = state.boardCols || DEFAULT_COLS;
 
         if (loaded) {
             state.stats.playCount = (state.stats.playCount || 0) + 1;
@@ -164,10 +179,25 @@ const Game = (() => {
             data._saveVersion = 1;
         }
         // v1 → v2: MIN_MERGE raised from 2 to 3, gem threshold from tier 3 to tier 4.
-        // No save state changes needed — these are gameplay rule changes, not data format changes.
-        // Version stamp ensures future migrations can detect pre-v2 saves if needed.
         if (data._saveVersion < 2) {
             data._saveVersion = 2;
+        }
+        // v2 → v3: Board expansion support. Add boardRows/boardCols if missing.
+        if (data._saveVersion < 3) {
+            if (!data.boardRows) data.boardRows = DEFAULT_ROWS;
+            if (!data.boardCols) data.boardCols = DEFAULT_COLS;
+            // Ensure board array matches declared dimensions (pad rows/cols if needed)
+            while (data.board.length < data.boardRows) {
+                var newRow = [];
+                for (var nc = 0; nc < data.boardCols; nc++) newRow.push(null);
+                data.board.push(newRow);
+            }
+            for (var mr = 0; mr < data.board.length; mr++) {
+                while ((data.board[mr] || []).length < data.boardCols) {
+                    data.board[mr].push(null);
+                }
+            }
+            data._saveVersion = 3;
         }
         return data;
     }
@@ -333,11 +363,53 @@ const Game = (() => {
     function getStars() { return state ? state.stars : 0; }
 
     function resetGame() {
+        ROWS = DEFAULT_ROWS;
+        COLS = DEFAULT_COLS;
         state = defaultState();
         flushSave();
         emit('stateChanged', state);
         emit('energyChanged', state.energy);
         emit('gemsChanged', state.gems);
+    }
+
+    function getNextBoardExpansion() {
+        for (var i = 0; i < BOARD_EXPANSIONS.length; i++) {
+            var exp = BOARD_EXPANSIONS[i];
+            if (ROWS < exp.rows || (ROWS === exp.rows && COLS < exp.cols)) {
+                return exp;
+            }
+        }
+        return null; // fully expanded
+    }
+
+    function purchaseBoardExpansion() {
+        var exp = getNextBoardExpansion();
+        if (!exp) return false;
+        if (state.gems < exp.cost) return false;
+
+        addGems(-exp.cost);
+
+        // Update dimensions
+        ROWS = exp.rows;
+        COLS = exp.cols;
+        state.boardRows = ROWS;
+        state.boardCols = COLS;
+
+        // Expand board array: add new rows and pad existing rows to new column count
+        while (state.board.length < ROWS) {
+            var newRow = [];
+            for (var c = 0; c < COLS; c++) newRow.push(null);
+            state.board.push(newRow);
+        }
+        for (var r = 0; r < state.board.length; r++) {
+            while ((state.board[r] || []).length < COLS) {
+                state.board[r].push(null);
+            }
+        }
+
+        save();
+        emit('boardExpanded', { rows: ROWS, cols: COLS });
+        return true;
     }
 
     // ─── EXIT HOOK: "Come back" message when player leaves ──────
@@ -392,7 +464,7 @@ const Game = (() => {
         });
     }
 
-    return {
+    var exports = {
         init: init,
         save: save,
         flushSave: flushSave,
@@ -412,10 +484,19 @@ const Game = (() => {
         getGems: getGems,
         getStars: getStars,
         initExitHook: initExitHook,
-        ROWS: ROWS,
-        COLS: COLS,
         MAX_ENERGY: MAX_ENERGY,
         ENERGY_REGEN_MS: ENERGY_REGEN_MS,
-        SAVE_VERSION: SAVE_VERSION
+        SAVE_VERSION: SAVE_VERSION,
+        DEFAULT_ROWS: DEFAULT_ROWS,
+        DEFAULT_COLS: DEFAULT_COLS,
+        BOARD_EXPANSIONS: BOARD_EXPANSIONS,
+        getNextBoardExpansion: getNextBoardExpansion,
+        purchaseBoardExpansion: purchaseBoardExpansion
     };
+
+    // ROWS and COLS are dynamic (change on board expansion), so use getters
+    Object.defineProperty(exports, 'ROWS', { get: function() { return ROWS; } });
+    Object.defineProperty(exports, 'COLS', { get: function() { return COLS; } });
+
+    return exports;
 })();

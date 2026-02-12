@@ -66,7 +66,7 @@ These features directly increase the "one more merge" compulsion loop and player
 
 Specific numbers from playtest analysis. All changes work together — sinks increase spending pressure while source cuts reduce free income.
 
-- [ ] **11. Gem sinks: board expansion** — Add purchasable board expansion: 6x8→6x9 (500 gems), 6x9→6x10 (1000 gems), 6x10→7x10 (2000 gems). Add a subtle "Expand" button at the board edge, purchase confirmation, persist expansion in save state. Update board rendering and CSS grid to handle variable dimensions. This is the single most important monetization lever in merge games. DEPENDS ON: Task 3 (save versioning).
+- [x] **11. Gem sinks: board expansion** — Add purchasable board expansion: 6x8→6x9 (500 gems), 6x9→6x10 (1000 gems), 6x10→7x10 (2000 gems). Add a subtle "Expand" button at the board edge, purchase confirmation, persist expansion in save state. Update board rendering and CSS grid to handle variable dimensions. This is the single most important monetization lever in merge games. DEPENDS ON: Task 3 (save versioning).
 
 - [ ] **12. Gem sinks: creature evolution + cosmetic tiles** — (a) Creature evolution: spend gems (200-800 by rarity) to evolve creatures to a higher form with improved companion abilities. Add evolution UI to creature detail view. (b) Cosmetic tile themes: 3-4 purchasable board themes (ocean, forest, crystal, shadow) at 300 gems each. Add to shop. Both persist in save state. DEPENDS ON: Task 3.
 

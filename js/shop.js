@@ -157,6 +157,11 @@ const Shop = (() => {
             saveShopState();
         });
 
+        // Re-render shop when board is expanded (update/remove expand option)
+        Game.on('boardExpanded', function() {
+            renderShop();
+        });
+
         renderShop();
     }
 
@@ -347,6 +352,19 @@ const Shop = (() => {
         html += '<button class="shop-buy-btn iap-btn" ' + (piggyGems <= 0 ? 'disabled' : '') + '>$2.99</button>';
         html += '</div></div>';
 
+        // Board Expansion
+        var nextExp = Game.getNextBoardExpansion();
+        if (nextExp) {
+            html += '<div class="shop-section">';
+            html += '<h3 class="shop-section-title">\u{1F4D0} Board Expansion</h3>';
+            html += '<div class="shop-item" id="shop-expand">';
+            html += '<span class="shop-item-icon">\u2795</span>';
+            html += '<div class="shop-item-info"><span class="shop-item-name">Expand to ' + nextExp.label + '</span>';
+            html += '<span class="shop-item-desc">More space for items and merges!</span></div>';
+            html += '<button class="shop-buy-btn gem-btn">\u{1F48E} ' + nextExp.cost + '</button>';
+            html += '</div></div>';
+        }
+
         // Energy & Boosts
         html += '<div class="shop-section">';
         html += '<h3 class="shop-section-title">⚡ Energy & Boosts</h3>';
@@ -430,6 +448,11 @@ const Shop = (() => {
         var piggyBtn = document.getElementById('shop-piggy');
         if (piggyBtn) piggyBtn.querySelector('.shop-buy-btn').addEventListener('click', breakPiggyBank);
 
+        var expandBtn = document.getElementById('shop-expand');
+        if (expandBtn) expandBtn.querySelector('.shop-buy-btn').addEventListener('click', function() {
+            purchaseBoardExpansionFromShop();
+        });
+
         // Daily deal buttons
         container.querySelectorAll('.deal-item[data-deal]').forEach(function(el) {
             var btn = el.querySelector('.deal-btn');
@@ -453,6 +476,29 @@ const Shop = (() => {
             el.classList.remove('toast-show');
             setTimeout(function() { el.remove(); }, 300);
         }, 2000);
+    }
+
+    function purchaseBoardExpansionFromShop() {
+        var exp = Game.getNextBoardExpansion();
+        if (!exp) return;
+        if (Game.getGems() < exp.cost) {
+            showShopToast('Not enough gems!');
+            Sound.playError();
+            return;
+        }
+        var confirmed = confirm('Expand board to ' + exp.label + ' for ' + exp.cost + ' gems?');
+        if (!confirmed) return;
+
+        // Navigate to board screen first so expansion is visible
+        var navBtns = document.querySelectorAll('.nav-btn');
+        for (var j = 0; j < navBtns.length; j++) navBtns[j].classList.remove('active');
+        var boardNav = document.querySelector('[data-screen="board"]');
+        if (boardNav) boardNav.classList.add('active');
+        document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+        document.getElementById('board-screen').classList.add('active');
+
+        // Emit event for Board to handle the expansion
+        Game.emit('shopExpandRequest', { expansion: exp });
     }
 
     function saveShopState() {

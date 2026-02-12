@@ -2,8 +2,9 @@
 'use strict';
 
 const Board = (() => {
-    const ROWS = Game.ROWS;
-    const COLS = Game.COLS;
+    // Board dimensions — initialized from Game, updated on expansion
+    var ROWS = Game.ROWS;
+    var COLS = Game.COLS;
     var MIN_MERGE = 3;
 
     // Query current effective MIN_MERGE (may be overridden by event modifier)
@@ -71,6 +72,13 @@ const Board = (() => {
         containerEl = document.getElementById('board-container');
         boardEl = document.getElementById('board');
 
+        // Read dynamic dimensions (may have been expanded in a previous session)
+        ROWS = Game.ROWS;
+        COLS = Game.COLS;
+
+        // Apply CSS grid dimensions
+        updateBoardGridCSS();
+
         // Create grid cells
         for (let r = 0; r < ROWS; r++) {
             grid[r] = [];
@@ -106,6 +114,14 @@ const Board = (() => {
 
         // Check clutter state on load
         updateClutterIndicator();
+
+        // Board expansion button
+        renderExpandButton();
+
+        // Listen for shop-initiated expansion requests
+        Game.on('shopExpandRequest', function() {
+            confirmBoardExpansionDirect();
+        });
 
         // Cache grid layout for touch coordinate math
         requestAnimationFrame(function() { cacheGridLayout(); });
@@ -2088,6 +2104,139 @@ const Board = (() => {
                 break;
         }
 
+        syncToGameState();
+    }
+
+    // ─── BOARD EXPANSION ───────────────────────────────────────
+    // Purchasable board expansion: 6x8 → 6x9 → 6x10 → 7x10
+
+    function updateBoardGridCSS() {
+        boardEl.style.gridTemplateColumns = 'repeat(' + COLS + ', var(--cell-size))';
+        boardEl.style.gridTemplateRows = 'repeat(' + ROWS + ', var(--cell-size))';
+    }
+
+    function renderExpandButton() {
+        // Remove existing expand button if any
+        var existing = document.getElementById('board-expand-btn');
+        if (existing) existing.remove();
+
+        var exp = Game.getNextBoardExpansion();
+        if (!exp) return; // fully expanded
+
+        var btn = document.createElement('button');
+        btn.id = 'board-expand-btn';
+        btn.className = 'board-expand-btn';
+        btn.innerHTML = '\u2795 Expand to ' + exp.label + ' <span class="expand-cost">\u{1F48E} ' + exp.cost + '</span>';
+        btn.addEventListener('click', function() {
+            confirmBoardExpansion();
+        });
+
+        // Place below the board inside the board-wrapper
+        var wrapper = document.getElementById('board-wrapper');
+        if (wrapper) {
+            wrapper.appendChild(btn);
+        }
+    }
+
+    function confirmBoardExpansion() {
+        var exp = Game.getNextBoardExpansion();
+        if (!exp) return;
+
+        if (Game.getGems() < exp.cost) {
+            showToast('Not enough gems! Need \u{1F48E}' + exp.cost, TOAST_PRIORITY.HIGH);
+            Sound.playError();
+            return;
+        }
+
+        var confirmed = confirm('Expand board to ' + exp.label + ' for ' + exp.cost + ' gems?');
+        if (!confirmed) return;
+
+        executeBoardExpansion(exp);
+    }
+
+    // Called from shop (confirmation already done there)
+    function confirmBoardExpansionDirect() {
+        var exp = Game.getNextBoardExpansion();
+        if (!exp) return;
+        executeBoardExpansion(exp);
+    }
+
+    function executeBoardExpansion(exp) {
+        // Remember old dimensions before expansion
+        var oldRows = ROWS;
+        var oldCols = COLS;
+
+        var success = Game.purchaseBoardExpansion();
+        if (!success) return;
+
+        // Read the new dimensions
+        var newRows = Game.ROWS;
+        var newCols = Game.COLS;
+
+        // Add new cells to the grid
+        // First, pad existing rows if columns increased
+        for (var r = 0; r < ROWS; r++) {
+            while ((grid[r] || []).length < newCols) {
+                var c = grid[r].length;
+                var cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                boardEl.appendChild(cell);
+                grid[r][c] = cell;
+                items[r][c] = null;
+            }
+        }
+        // Then add new rows
+        for (var nr = ROWS; nr < newRows; nr++) {
+            grid[nr] = [];
+            items[nr] = [];
+            for (var nc = 0; nc < newCols; nc++) {
+                var newCell = document.createElement('div');
+                newCell.className = 'cell';
+                newCell.dataset.row = nr;
+                newCell.dataset.col = nc;
+                boardEl.appendChild(newCell);
+                grid[nr][nc] = newCell;
+                items[nr][nc] = null;
+            }
+        }
+
+        ROWS = newRows;
+        COLS = newCols;
+
+        // Update CSS grid
+        updateBoardGridCSS();
+
+        // Re-order DOM children to match row-major order (grid needs cells in order)
+        for (var gr = 0; gr < ROWS; gr++) {
+            for (var gc = 0; gc < COLS; gc++) {
+                boardEl.appendChild(grid[gr][gc]);
+            }
+        }
+
+        // Recache grid layout
+        requestAnimationFrame(function() { cacheGridLayout(); });
+
+        // Visual feedback
+        Sound.playPurchase();
+        Game.vibrate([15, 30, 15]);
+        showToast('\u2705 Board expanded to ' + exp.label + '!', TOAST_PRIORITY.HIGH);
+
+        // Animate only the newly added cells (beyond old dimensions)
+        for (var ar = 0; ar < ROWS; ar++) {
+            for (var ac = 0; ac < COLS; ac++) {
+                if (ar >= oldRows || ac >= oldCols) {
+                    grid[ar][ac].classList.add('expand-new-cell');
+                    (function(el) {
+                        setTimeout(function() { el.classList.remove('expand-new-cell'); }, 600);
+                    })(grid[ar][ac]);
+                }
+            }
+        }
+
+        // Update expand button (next tier or remove)
+        renderExpandButton();
         syncToGameState();
     }
 
