@@ -1,37 +1,30 @@
-# Haven - Session State
+# Session State — Haven
+**Last checkpoint:** 2026-02-12
 
-## Current Status: ALL 4 PHASES COMPLETE
+## Current Goal
+Pre-soft-launch sprint: working through PRD.md tasks sequentially (Phase 0 → Phase 8).
 
-## What Was Built
-- **Phase 1:** Core merge gameplay — 6x8 board, 5 chains, drag-merge, particles, audio, energy
-- **Phase 2:** Quest system (25+ quests) + island map (12 areas with creatures/story)
-- **Phase 3:** Shop, Haven Pass (40-tier battle pass), daily login streak, daily quests, gem currency
-- **Phase 4:** PWA manifest, settings panel, sound/vibration toggles, stats display, reset
-
-## Files (16 total, 4,749 lines)
-- `index.html` — single-page app with all screens
-- `css/style.css`, `animations.css`, `island.css`, `shop.css`
-- `js/items.js`, `audio.js`, `particles.js`, `game.js`, `board.js`
-- `js/quests.js`, `island.js`, `shop.js`, `pass.js`, `daily.js`
-- `manifest.json`, `README.md`
-
-## Git History
-1. `832f358` Phase 1: Core merge gameplay
-2. `c6b3c35` Phase 2: Quest system + Island map
-3. `fb453ce` Phase 3: Shop, Haven Pass, daily login streak
-4. `c76bba5` Phase 4: PWA manifest, settings panel
-5. `c89d091` Add project README
-
-## Research Completed (in parallel)
-- `research/research-game-audio-sfx.md` — game audio best practices
-- `research/research-game-visual-styles.md` — visual design guide
-- `research/research-mobile-game-marketing.md` — marketing strategies
-
-## How to Test
-Open `C:\Users\lydia\Documents\Claude\haven\index.html` in Chrome.
-For mobile testing: serve with `python -m http.server 8000` and open on phone.
+## Completed Steps
+- Task 1: Fix 3 critical bugs
+  - (a) Audio clipping: Verified DynamicsCompressorNode already in place in js/audio.js — no change needed
+  - (b) Worker/companion mutual exclusion: Added guard in `assignWorker()` (js/island.js:531) and `equipCompanion()` (js/creatures.js:369)
+  - (c) double_reward wasting: Fixed max-tier merge path (js/board.js:812) to check and consume double_reward flag
 
 ## Next Steps
-- Playtest and iterate on game feel
-- Apply insights from research files to polish audio/visuals
-- Consider deploying to GitHub Pages for easy sharing
+- Task 2: Wire event modifiers into gameplay (js/events.js → js/board.js + js/game.js)
+- Task 3: Harden save system
+- Continue through PRD.md task list in order
+
+## Files Modified
+- `js/board.js` — max-tier merge path now applies double_reward companion bonus
+- `js/creatures.js` — equipCompanion() rejects creatures assigned as workers
+- `js/island.js` — assignWorker() rejects creatures assigned as companions
+- `PRD.md` — Task 1 marked [x]
+- `progress.txt` — Task 1 logged with details
+
+## Test Results / Status
+- All 3 JS files verified syntactically correct (matching braces, proper guards)
+- Current state: working
+
+## Resume Command
+Open `index.html` in browser to test. Next Ralph Loop iteration picks up Task 2.

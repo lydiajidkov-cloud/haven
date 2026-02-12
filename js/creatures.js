@@ -367,6 +367,11 @@ var Creatures = (function() {
     }
 
     function equipCompanion(slot, creatureId) {
+        // Prevent equipping a creature that is currently a worker
+        if (typeof Island !== 'undefined' && Island.getAssignedCreatureIds) {
+            var workerIds = Island.getAssignedCreatureIds();
+            if (workerIds[creatureId]) return;
+        }
         companionState[slot] = { creatureId: creatureId, mergeCount: 0 };
         saveCompanionState();
         renderCompanionBar();

@@ -103,6 +103,10 @@ var Hatchery = (function() {
                 chance = Math.min(1, chance * (1 + bonuses.discovery_chance / 100));
             }
         }
+        // Event modifier: discovery_boost (e.g., Discovery Week 2x creature discovery)
+        if (typeof Events !== 'undefined' && Events.hasModifier('discovery_boost', 'creature')) {
+            chance = Math.min(1, chance * Events.getModifierValue('discovery_boost', 'creature'));
+        }
         if (Math.random() > chance) return;
 
         // Get available biomes for this tier

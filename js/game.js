@@ -119,6 +119,10 @@ const Game = (() => {
             var bonuses = Creatures.calculatePassiveBonuses(state.hatchery.discovered);
             regenMs = Math.max(60000, ENERGY_REGEN_MS - Math.round(bonuses.energy_regen * 250));
         }
+        // Event modifier: energy_regen_multiplier (e.g., Speed Demon 2x faster regen)
+        if (typeof Events !== 'undefined' && Events.hasModifier('energy_regen_multiplier')) {
+            regenMs = Math.max(30000, Math.floor(regenMs / Events.getModifierValue('energy_regen_multiplier')));
+        }
 
         const now = Date.now();
         const elapsed = now - state.lastEnergyTime;

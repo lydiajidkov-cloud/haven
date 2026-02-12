@@ -529,6 +529,10 @@ var Island = (function() {
     // ─── WORKER FUNCTIONS ─────────────────────────────────────────
 
     function assignWorker(nodeIndex, creatureId) {
+        // Prevent assigning a creature that is currently a companion
+        if (typeof Creatures !== 'undefined' && Creatures.isCreatureCompanion && Creatures.isCreatureCompanion(creatureId)) {
+            return;
+        }
         workers[nodeIndex] = {
             creatureId: creatureId,
             lastCollected: Date.now()

@@ -1,0 +1,50 @@
+2026-02-12 — Task 1: Fix 3 critical bugs
+  (a) Audio clipping: DynamicsCompressorNode was already in place in js/audio.js (lines 15-26).
+      Compressor chain: oscillators → compressor (threshold -12dB, ratio 8:1) → masterGain (0.85) → destination.
+      No change needed — verified working.
+  (b) Worker/companion mutual exclusion: Added guard in assignWorker() (js/island.js:531) to reject
+      creatures that are currently companions. Added reverse guard in equipCompanion() (js/creatures.js:369)
+      to reject creatures that are currently workers. Both UI modals already filtered correctly; these
+      guards protect the function-level API from bypasses.
+  (c) double_reward companion ability: Fixed max-tier merge path (js/board.js:812) which previously
+      gave hardcoded 10 gems without checking/consuming the double_reward flag. Now applies 2x multiplier
+      and shows "2x COMPANION!" floating text. The flag already correctly persists past tier 1-2 merges
+      (those merges don't enter the gem-reward block and don't consume the flag).
+
+2026-02-12 — Task 2: Wire event modifiers into gameplay
+  All 8 event modifier types are now read by gameplay code at their respective insertion points.
+  Previously, Events module defined modifiers but no other module queried them — they were dead code.
+
+  Files modified: js/board.js, js/game.js, js/hatchery.js
+
+  Insertion point 1 — Gem rewards (board.js):
+    - gem_multiplier: Applied to both regular merge gems (tier 3+) and max-tier merge gems.
+      Chain-specific: only activates for the matching chain (e.g., Crystal Rush → crystal merges only).
+    - crosschain_reward_multiplier: Added base gem reward for cross-chain merges (tier-scaled),
+      then multiplied by event value (e.g., Chain Master 3x).
+
+  Insertion point 2 — Item spawning (board.js + hatchery.js):
+    - spawn_tier_boost: After normal spawn tier calculation (including creature spawn quality bonus),
+      adds the event boost value to the spawn tier, capped at max tier. Chain-specific.
+    - discovery_boost: Applied in hatchery.js onItemProduced() — multiplies creature discovery
+      chance by event value (e.g., Discovery Week 2x). Applied after creature passive bonuses.
+
+  Insertion point 3 — Merge count thresholds (board.js):
+    - min_merge_override: Replaced all 10 usages of the MIN_MERGE constant with getEffectiveMinMerge()
+      which queries Events for an active min_merge_override. Affects: attemptMerge, swipe-merge,
+      chain reactions, auto-merges, mass match, shuffle scan, companion pair finding.
+      Makes Merge Mania ("All merges need only 2 items!") functional.
+
+  Insertion point 4 — Energy regeneration (game.js):
+    - energy_regen_multiplier: Divides regen interval by event value (e.g., Speed Demon halves
+      the time). Applied after creature passive energy regen bonus. Floor of 30s minimum.
+
+  Additional insertion points:
+    - surge_boost: feedSurge() now accepts a chain parameter. When Stone Surge is active,
+      surge gain is multiplied by event value for matching chain merges.
+    - chain_reaction_boost: checkChainReaction() now gives a 50% bonus roll when connected
+      items are 1 below the merge threshold during an active chain_reaction_boost event for
+      the matching chain. This makes chain reactions "2x more likely" for Flora Festival.
+
+  All event queries use typeof guards (typeof Events !== 'undefined') for safety.
+  Events.hasModifier(type, chain) and Events.getModifierValue(type, chain) are the query API.

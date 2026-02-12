@@ -4,7 +4,15 @@
 const Board = (() => {
     const ROWS = Game.ROWS;
     const COLS = Game.COLS;
-    const MIN_MERGE = 2;
+    var MIN_MERGE = 2;
+
+    // Query current effective MIN_MERGE (may be overridden by event modifier)
+    function getEffectiveMinMerge() {
+        if (typeof Events !== 'undefined' && Events.hasModifier('min_merge_override')) {
+            return Events.getModifierValue('min_merge_override');
+        }
+        return MIN_MERGE;
+    }
 
     let boardEl, containerEl;
     let grid = [];   // DOM elements [row][col]
@@ -291,7 +299,7 @@ const Board = (() => {
             var chain = swipeChain.slice(); // copy
             endSwipe();
 
-            if (chain.length >= MIN_MERGE) {
+            if (chain.length >= getEffectiveMinMerge()) {
                 var firstCell = chain[0];
                 var item = items[firstCell.row][firstCell.col];
                 executeMerge(chain, item.chain, item.tier, chain[chain.length - 1].row, chain[chain.length - 1].col, chain.length);
@@ -592,8 +600,13 @@ const Board = (() => {
 
     // ─── SURGE FUNCTIONS ────────────────────────────────────────────
 
-    function feedSurge() {
-        surgeLevel = Math.min(100, surgeLevel + SURGE_PER_MERGE);
+    function feedSurge(chain) {
+        var surgeGain = SURGE_PER_MERGE;
+        // Event modifier: surge_boost (e.g., Stone Surge 2x surge fill for stone)
+        if (typeof Events !== 'undefined' && Events.hasModifier('surge_boost', chain)) {
+            surgeGain = Math.floor(surgeGain * Events.getModifierValue('surge_boost', chain));
+        }
+        surgeLevel = Math.min(100, surgeLevel + surgeGain);
 
         if (!surgeActive && surgeLevel >= SURGE_ACTIVATE) {
             activateSurge();
@@ -703,7 +716,7 @@ const Board = (() => {
         // +1 for the dragged item
         const totalCount = connected.length + 1;
 
-        if (totalCount >= MIN_MERGE) {
+        if (totalCount >= getEffectiveMinMerge()) {
             executeMerge(connected, chain, tier, toRow, toCol, totalCount);
         } else {
             // Not enough — put item back
@@ -776,7 +789,7 @@ const Board = (() => {
         lockCell(targetRow, targetCol);
 
         // Feed the surge meter
-        feedSurge();
+        feedSurge(chain);
 
         // Surge bonus: extra gems per merge while active
         if (surgeActive) {
@@ -813,7 +826,17 @@ const Board = (() => {
                 Sound.playCelebration();
                 Game.vibrate([20, 40, 30, 40, 20]);
                 emitParticlesAtCell(targetRow, targetCol, 'legendary');
-                Game.addGems(10);
+                var maxTierGems = 10;
+                // Apply double_reward companion bonus to max-tier merges
+                if (typeof Creatures !== 'undefined' && Creatures.isDoubleRewardActive()) {
+                    maxTierGems *= 2;
+                }
+                // Event modifier: gem_multiplier (e.g., Crystal Rush 2x gems)
+                if (typeof Events !== 'undefined' && Events.hasModifier('gem_multiplier', chain)) {
+                    maxTierGems = Math.floor(maxTierGems * Events.getModifierValue('gem_multiplier', chain));
+                }
+                showFloatingText(targetRow, targetCol, '+' + maxTierGems + ' \u{1F48E}');
+                Game.addGems(maxTierGems);
                 Game.addStars(1);
                 unlockCell(targetRow, targetCol);
                 syncToGameState();
@@ -901,6 +924,11 @@ const Board = (() => {
                 if (typeof Creatures !== 'undefined' && Creatures.isDoubleRewardActive()) {
                     gemReward *= 2;
                 }
+                // Event modifier: gem_multiplier (e.g., Crystal Rush 2x gems)
+                if (typeof Events !== 'undefined' && Events.hasModifier('gem_multiplier', chain)) {
+                    var eventGemMult = Events.getModifierValue('gem_multiplier', chain);
+                    gemReward = Math.floor(gemReward * eventGemMult);
+                }
                 // Show appropriate floating text + distinct haptics per multiplier
                 if (gemMultiplier === 3) {
                     showFloatingText(targetRow, targetCol, '3x JACKPOT! +' + gemReward + ' \u{1F48E}');
@@ -944,7 +972,17 @@ const Board = (() => {
         }
 
         var connected = findConnected(row, col, item.chain, item.tier);
-        if (connected.length >= MIN_MERGE) {
+        var minMerge = getEffectiveMinMerge();
+        // Event modifier: chain_reaction_boost — near-misses get a bonus roll
+        var chainReactionTriggered = connected.length >= minMerge;
+        if (!chainReactionTriggered && connected.length === minMerge - 1 &&
+            typeof Events !== 'undefined' && Events.hasModifier('chain_reaction_boost', item.chain)) {
+            // "2x more likely" = 50% chance to chain when 1 item short
+            if (Math.random() < 0.5) {
+                chainReactionTriggered = true;
+            }
+        }
+        if (chainReactionTriggered) {
             // Chain reaction bonus — exponential scaling for jackpot feel!
             var chainGems = Math.floor(depth * depth * 2);
             var chainEnergy = Math.min(depth, 3);
@@ -956,7 +994,7 @@ const Board = (() => {
             Sound.playChain(depth);
             Game.updateStat('chainRecord', function(v) { return Math.max(v || 0, depth); });
             executeMerge(connected, item.chain, item.tier, row, col, connected.length);
-        } else if (connected.length === MIN_MERGE - 1) {
+        } else if (connected.length === minMerge - 1) {
             // Near-miss! One more match would have chained
             showFloatingText(row, col, 'Almost chain...');
             Game.vibrate([5]);
@@ -976,7 +1014,7 @@ const Board = (() => {
         lockCell(toRow, toCol);
 
         // Feed surge meter
-        feedSurge();
+        feedSurge(recipe.chain);
         if (surgeActive) Game.addGems(1);
 
         // Flash both cells
@@ -1006,6 +1044,15 @@ const Board = (() => {
 
             Game.emit('itemProduced', { chain: recipe.chain, tier: recipe.tier });
             Game.emit('crossChainMerge', { chain: recipe.chain, tier: recipe.tier });
+
+            // Cross-chain gem reward (base: tier-scaled)
+            var crossGems = Math.max(2, Math.floor(Math.pow(1.5, recipe.tier)));
+            // Event modifier: crosschain_reward_multiplier (e.g., Chain Master 3x)
+            if (typeof Events !== 'undefined' && Events.hasModifier('crosschain_reward_multiplier')) {
+                crossGems = Math.floor(crossGems * Events.getModifierValue('crosschain_reward_multiplier'));
+            }
+            Game.addGems(crossGems);
+            showFloatingText(toRow, toCol, '+' + crossGems + ' \u{1F48E}');
 
             // Pop animation + particles
             var newEl = grid[toRow][toCol].querySelector('.item');
@@ -1103,7 +1150,7 @@ const Board = (() => {
                         if (visitedCells[ek] || !items[er][ec]) continue;
                         var cluster = findConnected(er, ec, items[er][ec].chain, items[er][ec].tier);
                         for (var ci = 0; ci < cluster.length; ci++) { visitedCells[cluster[ci].row + ',' + cluster[ci].col] = true; }
-                        if (cluster.length >= MIN_MERGE) availableMerges++;
+                        if (cluster.length >= getEffectiveMinMerge()) availableMerges++;
                     }
                 }
                 if (availableMerges > 0) {
@@ -1177,6 +1224,12 @@ const Board = (() => {
                     }
                 }
             }
+            // Event modifier: spawn_tier_boost (e.g., Timber Time +1 tier for wood)
+            if (typeof Events !== 'undefined' && Events.hasModifier('spawn_tier_boost', chain)) {
+                var boostAmt = Events.getModifierValue('spawn_tier_boost', chain);
+                var spawnMax = Items.getMaxTier(chain);
+                item.tier = Math.min(spawnMax, item.tier + boostAmt);
+            }
         }
         items[empty.row][empty.col] = item;
         renderCell(empty.row, empty.col);
@@ -1200,7 +1253,7 @@ const Board = (() => {
 
         // Check if spawn created an auto-merge
         var connected = autoMergeSuppressed ? [] : findConnected(empty.row, empty.col, item.chain, item.tier);
-        if (connected.length >= MIN_MERGE) {
+        if (connected.length >= getEffectiveMinMerge()) {
             // Lucky auto-merge bonus!
             var luckyGems = 2 + connected.length;
             Game.addGems(luckyGems);
@@ -1442,7 +1495,7 @@ const Board = (() => {
 
         Object.keys(groups).forEach(function(key) {
             var cells = groups[key];
-            if (cells.length < MIN_MERGE) return;
+            if (cells.length < getEffectiveMinMerge()) return;
 
             // Find connected clusters within this group
             var visited = {};
@@ -1455,7 +1508,7 @@ const Board = (() => {
                 var cluster = findConnected(pos.row, pos.col, item.chain, item.tier);
                 cluster.forEach(function(cp) { visited[cp.row + ',' + cp.col] = true; });
 
-                if (cluster.length >= MIN_MERGE) {
+                if (cluster.length >= getEffectiveMinMerge()) {
                     anyMerged = true;
                     var target = cluster[cluster.length - 1];
                     setTimeout(function() {
@@ -1670,7 +1723,7 @@ const Board = (() => {
                 var cluster = findConnected(r, c, item.chain, item.tier);
                 cluster.forEach(function(cp) { visited[cp.row + ',' + cp.col] = true; });
 
-                if (cluster.length >= MIN_MERGE) {
+                if (cluster.length >= getEffectiveMinMerge()) {
                     var target = cluster[cluster.length - 1];
                     (function(cl, ch, ti, tr, tc, cnt, delay) {
                         setTimeout(function() {
@@ -1692,7 +1745,7 @@ const Board = (() => {
                 if (!items[r][c] || isCellLocked(r, c)) continue;
                 var it = items[r][c];
                 var cluster = findConnected(r, c, it.chain, it.tier);
-                if (cluster.length >= MIN_MERGE) {
+                if (cluster.length >= getEffectiveMinMerge()) {
                     return { from: cluster[0], to: cluster[1] };
                 }
             }
