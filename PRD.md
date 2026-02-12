@@ -72,7 +72,7 @@ Specific numbers from playtest analysis. All changes work together — sinks inc
 
 - [x] **13. Economy number rebalancing** — Apply the specific cuts from playtest analysis: (a) Reduce daily login calendar gem rewards by 40% (1,340→800/month). (b) Cap Battle Pass free track total at 800 gems (currently 1,690). (c) Increase energy refill cost from 35 gems to 75 gems (current ROI is 2x — broken incentive where spending gems on energy returns MORE gems). (d) Reduce early island node gems by 50% (first 15 nodes: 500→250 total). (e) Fix energy refill being net-positive. DEPENDS ON: Task 3.
 
-- [ ] **14. Pity timer for creature eggs + legendary weight** — (a) Add a pity counter: guaranteed legendary creature every 30 egg discoveries (currently players can spend 3,300 gems and miss all legendaries). (b) Increase legendary discovery weight from 3% to 8% (current 3% means ~767 discoveries needed for all 23 legendaries — that's 85-130 hours, too punishing). (c) Add "Undiscovered Biome Egg" to shop at 2x price of regular biome egg, guaranteeing an undiscovered creature.
+- [x] **14. Pity timer for creature eggs + legendary weight** — (a) Add a pity counter: guaranteed legendary creature every 30 egg discoveries (currently players can spend 3,300 gems and miss all legendaries). (b) Increase legendary discovery weight from 3% to 8% (current 3% means ~767 discoveries needed for all 23 legendaries — that's 85-130 hours, too punishing). (c) Add "Undiscovered Biome Egg" to shop at 2x price of regular biome egg, guaranteeing an undiscovered creature.
 
 ## Phase 4: Monetization Infrastructure
 

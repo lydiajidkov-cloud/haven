@@ -554,3 +554,55 @@
     - SAVE_VERSION raised from 4 to 5.
     - migrateState() v4→v5: stamps version only (no save data migration needed,
       these are gameplay rule changes not save format changes).
+
+2026-02-12 — Task 14: Pity timer for creature eggs + legendary weight
+  Three changes to improve creature discovery fairness and reduce frustration for
+  players who spend gems on creature eggs without seeing legendaries.
+
+  Files modified: js/hatchery.js, js/shop.js, js/game.js
+
+  (a) Pity counter: guaranteed legendary every 30 egg discoveries (hatchery.js):
+    - PITY_THRESHOLD constant set to 30.
+    - pityCounter tracked in save state at state.hatchery.pityCounter.
+    - On every creature discovery (via merge, order bonus, shop biome egg, or
+      undiscovered biome egg), the pity counter increments by 1.
+    - When a legendary creature is discovered (by any means), the counter resets to 0.
+    - When the counter reaches 29 (i.e., 29 non-legendary discoveries), the next
+      discovery from a tier 4+ merge (where legendary rarity is accessible) is
+      forced to legendary rarity. If no undiscovered legendary exists in available
+      biomes, falls back to other rarities.
+    - getPityCounter() and setPityCounter() helper functions read/write from
+      Game.getState().hatchery.pityCounter.
+    - saveState() now preserves pityCounter alongside discovered map.
+    - Pity counter is lazily initialized to 0 for existing saves (in init() and
+      in migrateState v5→v6).
+    - Exposed via Hatchery.getPityCounter() and Hatchery.PITY_THRESHOLD for
+      future UI display (e.g., "Legendary guaranteed in X more discoveries").
+
+  (b) Legendary discovery weight increased from 3% to 8% (hatchery.js):
+    - RARITY_WEIGHTS.legendary changed from 3 to 8.
+    - RARITY_WEIGHTS.common reduced from 60 to 55 to compensate (total stays 100).
+    - At 3%, players needed ~767 discoveries for all 23 legendaries (85-130 hours).
+    - At 8%, expected discoveries per legendary drops from ~33 to ~12.5.
+    - Combined with the pity timer (guaranteed at 30), the worst-case scenario
+      is now 30 discoveries per legendary instead of theoretically infinite.
+
+  (c) Undiscovered Biome Egg added to shop (shop.js):
+    - 5 new shop items in 'undiscovered_eggs' category, one per biome:
+      Meadow (500g), Forest (500g), Ocean (700g), Enchanted (1200g), Celestial (1800g).
+    - Each is priced at 2x the regular biome egg for the same biome.
+    - discoverUndiscoveredBiomeCreature() function: picks a random undiscovered
+      creature from the specified biome. Guarantees the player gets a creature
+      they haven't found yet (unlike regular biome eggs which can pick any creature).
+    - Shop rendering: "Undiscovered Biome Eggs" section shown only for biomes
+      that still have undiscovered creatures. Each item shows remaining count
+      (e.g., "Guaranteed new Meadow creature (12 left)").
+    - Section hidden entirely when all biomes are fully discovered.
+    - Shop re-renders on 'creatureDiscovered' event to keep counts current.
+    - Both discoverBiomeCreature() and discoverUndiscoveredBiomeCreature()
+      update the pity counter (reset on legendary, increment otherwise).
+
+  (d) Save version bump (game.js):
+    - SAVE_VERSION raised from 5 to 6.
+    - migrateState() v5→v6: adds pityCounter to hatchery state if missing,
+      initializes to 0.

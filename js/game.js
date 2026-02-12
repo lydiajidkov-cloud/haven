@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 5;
+    const SAVE_VERSION = 6;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const DEFAULT_ROWS = 8;
@@ -220,6 +220,13 @@ const Game = (() => {
         // v4 → v5: Economy rebalancing (reduced login gems, island gems, energy refill cost)
         if (data._saveVersion < 5) {
             data._saveVersion = 5;
+        }
+        // v5 → v6: Pity timer for creature eggs (add pityCounter to hatchery state)
+        if (data._saveVersion < 6) {
+            if (data.hatchery && typeof data.hatchery.pityCounter !== 'number') {
+                data.hatchery.pityCounter = 0;
+            }
+            data._saveVersion = 6;
         }
         return data;
     }

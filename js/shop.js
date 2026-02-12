@@ -54,6 +54,18 @@ const Shop = (() => {
         { id: 'egg_celestial', name: 'Celestial Egg',  desc: 'Discover a Celestial creature',  price: 900, icon: '\u{1F4AB}', category: 'biome_eggs',
           action: function() { discoverBiomeCreature('celestial'); } },
 
+        // Undiscovered Biome Eggs (2x price, guarantees undiscovered creature)
+        { id: 'egg_undiscovered_meadow',    name: 'Undiscovered Meadow Egg',   desc: 'Guaranteed new Meadow creature',     price: 500,  icon: '\u{1F33E}', category: 'undiscovered_eggs',
+          action: function() { discoverUndiscoveredBiomeCreature('meadow'); } },
+        { id: 'egg_undiscovered_forest',    name: 'Undiscovered Forest Egg',   desc: 'Guaranteed new Forest creature',     price: 500,  icon: '\u{1F332}', category: 'undiscovered_eggs',
+          action: function() { discoverUndiscoveredBiomeCreature('forest'); } },
+        { id: 'egg_undiscovered_ocean',     name: 'Undiscovered Ocean Egg',    desc: 'Guaranteed new Ocean creature',      price: 700,  icon: '\u{1F30A}', category: 'undiscovered_eggs',
+          action: function() { discoverUndiscoveredBiomeCreature('ocean'); } },
+        { id: 'egg_undiscovered_enchanted', name: 'Undiscovered Enchanted Egg', desc: 'Guaranteed new Enchanted creature', price: 1200, icon: '\u2728', category: 'undiscovered_eggs',
+          action: function() { discoverUndiscoveredBiomeCreature('enchanted'); } },
+        { id: 'egg_undiscovered_celestial', name: 'Undiscovered Celestial Egg', desc: 'Guaranteed new Celestial creature', price: 1800, icon: '\u{1F4AB}', category: 'undiscovered_eggs',
+          action: function() { discoverUndiscoveredBiomeCreature('celestial'); } },
+
         // Gem bundles (simulated IAP)
         { id: 'gems_small',  name: 'Gem Pouch',       desc: '100 Gems',                    price: -1, priceLabel: '$0.99',  icon: '\u{1F48E}', category: 'gems', gems: 100 },
         { id: 'gems_medium', name: 'Gem Chest',       desc: '500 Gems + bonus',            price: -1, priceLabel: '$4.99',  icon: '\u{1F48E}', category: 'gems', gems: 550 },
@@ -162,9 +174,10 @@ const Shop = (() => {
             renderShop();
         });
 
-        // Re-render shop when a creature is evolved or theme changes
+        // Re-render shop when a creature is evolved, theme changes, or creature discovered
         Game.on('creatureEvolved', function() { renderShop(); });
         Game.on('boardThemeChanged', function() { renderShop(); });
+        Game.on('creatureDiscovered', function() { renderShop(); });
 
         renderShop();
     }
@@ -255,6 +268,39 @@ const Shop = (() => {
         }, 3000);
     }
 
+    function discoverUndiscoveredBiomeCreature(biomeId) {
+        // Guaranteed undiscovered creature from a specific biome
+        var creatures = CreatureData.creatures;
+        var state = Game.getState();
+        var discovered = (state.hatchery && state.hatchery.discovered) || {};
+        var pool = [];
+        for (var i = 0; i < creatures.length; i++) {
+            if (creatures[i].biome === biomeId && !discovered[creatures[i].id]) {
+                pool.push(creatures[i]);
+            }
+        }
+        if (pool.length === 0) {
+            showShopToast('All ' + biomeId + ' creatures already discovered!');
+            return;
+        }
+        var picked = pool[Math.floor(Math.random() * pool.length)];
+        discovered[picked.id] = { discoveredAt: Date.now(), tier: 0 };
+
+        // Update pity counter: reset on legendary, increment otherwise
+        var pityCounter = (state.hatchery && typeof state.hatchery.pityCounter === 'number') ? state.hatchery.pityCounter : 0;
+        if (picked.rarity === 'legendary') {
+            pityCounter = 0;
+        } else {
+            pityCounter++;
+        }
+
+        state.hatchery = { discovered: discovered, pityCounter: pityCounter };
+        Game.save();
+        Game.emit('creatureDiscovered', { creature: picked.id, rarity: picked.rarity, biome: picked.biome });
+        showShopToast(picked.emoji + ' Discovered ' + picked.name + '!');
+        Sound.playCreatureDiscover();
+    }
+
     function discoverBiomeCreature(biomeId) {
         // Force a hatchery discovery from a specific biome
         var creatures = CreatureData.creatures;
@@ -272,7 +318,16 @@ const Shop = (() => {
         }
         var picked = pool[Math.floor(Math.random() * pool.length)];
         discovered[picked.id] = { discoveredAt: Date.now(), tier: 0 };
-        state.hatchery = { discovered: discovered };
+
+        // Update pity counter: reset on legendary, increment otherwise
+        var pityCounter = (state.hatchery && typeof state.hatchery.pityCounter === 'number') ? state.hatchery.pityCounter : 0;
+        if (picked.rarity === 'legendary') {
+            pityCounter = 0;
+        } else {
+            pityCounter++;
+        }
+
+        state.hatchery = { discovered: discovered, pityCounter: pityCounter };
         Game.save();
         Game.emit('creatureDiscovered', { creature: picked.id, rarity: picked.rarity, biome: picked.biome });
         showShopToast(picked.emoji + ' Discovered ' + picked.name + '!');
@@ -495,6 +550,38 @@ const Shop = (() => {
             html += '</div>';
         });
         html += '</div>';
+
+        // Undiscovered Biome Eggs (only show biomes with undiscovered creatures)
+        var undiscoveredEggs = shopItems.filter(function(i) { return i.category === 'undiscovered_eggs'; });
+        var discoveredCreatures = (state.hatchery && state.hatchery.discovered) || {};
+        var hasAnyUndiscovered = false;
+        var undiscoveredEggHtml = '';
+        undiscoveredEggs.forEach(function(item) {
+            // Extract biome from item id: egg_undiscovered_BIOME
+            var biomeId = item.id.replace('egg_undiscovered_', '');
+            var undiscoveredCount = 0;
+            for (var ci = 0; ci < CreatureData.creatures.length; ci++) {
+                if (CreatureData.creatures[ci].biome === biomeId && !discoveredCreatures[CreatureData.creatures[ci].id]) {
+                    undiscoveredCount++;
+                }
+            }
+            if (undiscoveredCount > 0) {
+                hasAnyUndiscovered = true;
+                undiscoveredEggHtml += '<div class="shop-item" data-item="' + item.id + '">';
+                undiscoveredEggHtml += '<span class="shop-item-icon">' + item.icon + '</span>';
+                undiscoveredEggHtml += '<div class="shop-item-info"><span class="shop-item-name">' + item.name + '</span>';
+                undiscoveredEggHtml += '<span class="shop-item-desc">' + item.desc + ' (' + undiscoveredCount + ' left)</span></div>';
+                undiscoveredEggHtml += '<button class="shop-buy-btn gem-btn">\u{1F48E} ' + item.price + '</button>';
+                undiscoveredEggHtml += '</div>';
+            }
+        });
+        if (hasAnyUndiscovered) {
+            html += '<div class="shop-section">';
+            html += '<h3 class="shop-section-title">\u{1F50D} Undiscovered Biome Eggs</h3>';
+            html += '<p style="font-size:10px;color:var(--text-secondary);padding:0 12px 8px;">Guaranteed new creature you haven\'t found yet!</p>';
+            html += undiscoveredEggHtml;
+            html += '</div>';
+        }
 
         // Gem Bundles
         html += '<div class="shop-section">';

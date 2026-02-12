@@ -7,10 +7,10 @@ var Hatchery = (function() {
     var biomes = CreatureData.biomes;
 
     var RARITY_WEIGHTS = {
-        common:    60,
+        common:    55,
         uncommon:  25,
         rare:      12,
-        legendary: 3
+        legendary: 8
     };
 
     var RARITY_COLORS = {
@@ -55,6 +55,8 @@ var Hatchery = (function() {
         7: 1.00
     };
 
+    var PITY_THRESHOLD = 30; // guaranteed legendary every 30 egg discoveries
+
     var discovered = {};
     var collapsedBiomes = {}; // track collapsed state per biome
 
@@ -66,6 +68,15 @@ var Hatchery = (function() {
             discovered = state.hatchery.discovered;
         } else {
             discovered = {};
+        }
+
+        // Initialize pity counter from save state (lazy init for existing saves)
+        if (state.hatchery && typeof state.hatchery.pityCounter === 'number') {
+            // pity counter already in state
+        } else {
+            // Ensure pity counter exists in state
+            if (!state.hatchery) state.hatchery = { discovered: discovered };
+            if (typeof state.hatchery.pityCounter !== 'number') state.hatchery.pityCounter = 0;
         }
 
         Game.on('itemProduced', onItemProduced);
@@ -81,6 +92,9 @@ var Hatchery = (function() {
                             pickUndiscovered('uncommon', availableBiomes);
             if (candidate) {
                 discovered[candidate.id] = { discoveredAt: Date.now(), tier: 0 };
+                // Pity counter: increment (order bonus doesn't discover legendaries)
+                var pc = getPityCounter();
+                setPityCounter(pc + 1);
                 saveState();
                 showDiscoveryModal(candidate);
                 Game.emit('creatureDiscovered', { creature: candidate.id, rarity: candidate.rarity, biome: candidate.biome, total: Object.keys(discovered).length });
@@ -113,14 +127,24 @@ var Hatchery = (function() {
         var availableBiomes = TIER_BIOME_ACCESS[Math.min(tier, 7)] || [];
         if (availableBiomes.length === 0) return;
 
-        // Roll for rarity
+        // Roll for rarity (with pity timer)
         var availableRarities = TIER_RARITY_ACCESS[Math.min(tier, 7)] || ['common'];
-        var rarity = rollRarity(availableRarities);
+        var pityCounter = getPityCounter();
+        var pityForced = false;
+        var rarity;
+
+        // Pity timer: if counter reaches threshold and legendary is accessible, force legendary
+        if (pityCounter >= PITY_THRESHOLD - 1 && availableRarities.indexOf('legendary') !== -1) {
+            rarity = 'legendary';
+            pityForced = true;
+        } else {
+            rarity = rollRarity(availableRarities);
+        }
 
         // Pick undiscovered creature of that rarity from available biomes
         var candidate = pickUndiscovered(rarity, availableBiomes);
 
-        // Fallback to other rarities
+        // Fallback to other rarities (if pity-forced legendary has none left, try others)
         if (!candidate) {
             for (var i = 0; i < availableRarities.length; i++) {
                 candidate = pickUndiscovered(availableRarities[i], availableBiomes);
@@ -134,6 +158,14 @@ var Hatchery = (function() {
             discoveredAt: Date.now(),
             tier: tier
         };
+
+        // Update pity counter: reset on legendary discovery, increment otherwise
+        if (candidate.rarity === 'legendary') {
+            setPityCounter(0);
+        } else {
+            setPityCounter(pityCounter + 1);
+        }
+
         saveState();
 
         showDiscoveryModal(candidate);
@@ -142,7 +174,8 @@ var Hatchery = (function() {
             creature: candidate.id,
             rarity: candidate.rarity,
             biome: candidate.biome,
-            total: Object.keys(discovered).length
+            total: Object.keys(discovered).length,
+            pityForced: pityForced
         });
     }
 
@@ -486,11 +519,25 @@ var Hatchery = (function() {
         });
     }
 
+    // ─── PITY COUNTER ────────────────────────────────────────────
+
+    function getPityCounter() {
+        var state = Game.getState();
+        return (state.hatchery && typeof state.hatchery.pityCounter === 'number') ? state.hatchery.pityCounter : 0;
+    }
+
+    function setPityCounter(value) {
+        var state = Game.getState();
+        if (!state.hatchery) state.hatchery = { discovered: discovered };
+        state.hatchery.pityCounter = value;
+    }
+
     // ─── STATE ──────────────────────────────────────────────────
 
     function saveState() {
         var state = Game.getState();
-        state.hatchery = { discovered: discovered };
+        var currentPity = (state.hatchery && typeof state.hatchery.pityCounter === 'number') ? state.hatchery.pityCounter : 0;
+        state.hatchery = { discovered: discovered, pityCounter: currentPity };
         Game.save();
     }
 
@@ -507,6 +554,8 @@ var Hatchery = (function() {
         renderCollection: renderCollection,
         getDiscoveredCount: getDiscoveredCount,
         getTotalCount: getTotalCount,
+        getPityCounter: getPityCounter,
+        PITY_THRESHOLD: PITY_THRESHOLD,
         creatures: creatures
     };
 
