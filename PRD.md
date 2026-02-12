@@ -88,7 +88,7 @@ Specific numbers from playtest analysis. All changes work together — sinks inc
 
 - [x] **19. Streak system overhaul** — Three changes: (a) At 20 hours since last claim, show warning banner: "Your X-day streak expires in Y hours!" with urgency colour. (b) When streak breaks, show acknowledgment screen (not silent reset): "Your X-day streak has ended" with encouragement. (c) Add streak-save option: spend 50 gems OR watch ad to preserve streak for 24 more hours. Cap at 1 save per week. All departments agreed silent resets are hostile design.
 
-- [ ] **20. Push notification infrastructure** — Add `sw.js` (service worker) with push notification support. Request permission after 3rd session OR first creature discovery (whichever first). Frame as: "Get notified when your creatures earn gems?" Triggers: (a) event launches, (b) streak-at-risk at 20 hours, (c) worker gem earnings ready, (d) battle pass about to expire, (e) energy full. Frequency cap: max 3/day. Marketing and Live Ops jointly own trigger catalogue.
+- [x] **20. Push notification infrastructure** — Add `sw.js` (service worker) with push notification support. Request permission after 3rd session OR first creature discovery (whichever first). Frame as: "Get notified when your creatures earn gems?" Triggers: (a) event launches, (b) streak-at-risk at 20 hours, (c) worker gem earnings ready, (d) battle pass about to expire, (e) energy full. Frequency cap: max 3/day. Marketing and Live Ops jointly own trigger catalogue.
 
 ## Phase 6: Content Pipeline
 

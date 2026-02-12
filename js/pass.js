@@ -90,6 +90,9 @@ const Pass = (() => {
             addXP(1, false); // silent — too frequent for floating text
         });
 
+        // Check if pass is about to expire (emit for push notifications)
+        checkPassExpiry();
+
         renderPass();
     }
 
@@ -239,6 +242,18 @@ const Pass = (() => {
             Game.vibrate([20, 40, 30]);
             savePassState();
             renderPass();
+        }
+    }
+
+    // ─── PASS EXPIRY CHECK (for push notifications) ───────────
+    function checkPassExpiry() {
+        if (!seasonStartTime) return;
+        var seasonEnd = seasonStartTime + SEASON_DURATION_MS;
+        var timeLeft = seasonEnd - Date.now();
+        var daysLeft = Math.ceil(timeLeft / (24 * 60 * 60 * 1000));
+        // Emit if 3 days or fewer remain
+        if (daysLeft > 0 && daysLeft <= 3) {
+            Game.emit('passExpiringSoon', { daysLeft: daysLeft });
         }
     }
 

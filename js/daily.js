@@ -210,6 +210,9 @@ const Daily = (() => {
 
             showStreakWarningBanner(calendar.streak, timeStr);
 
+            // Emit streakAtRisk event for push notifications
+            Game.emit('streakAtRisk', { streak: calendar.streak, hoursLeft: hLeft });
+
             // Also show a toast on the board (once per session)
             showStreakWarningToast(calendar.streak, timeStr);
         } else {

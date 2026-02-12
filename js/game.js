@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 9;
+    const SAVE_VERSION = 10;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const DEFAULT_ROWS = 8;
@@ -246,6 +246,13 @@ const Game = (() => {
                 data.daily.lastStreakSaveDate = null;
             }
             data._saveVersion = 9;
+        }
+        // v9 → v10: Push notification state
+        if (data._saveVersion < 10) {
+            if (!data.notifications) {
+                data.notifications = { todayCount: 0, todayDate: '', lastNotifTimes: {} };
+            }
+            data._saveVersion = 10;
         }
         return data;
     }

@@ -211,6 +211,8 @@ const Events = (() => {
                 claimed: { bronze: false, silver: false, gold: false }
             };
             saveEventState();
+            // Emit event for push notification
+            Game.emit('eventStarted', { name: eventDef.name, id: eventDef.id });
         }
 
         // Subscribe to game events for challenge tracking

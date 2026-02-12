@@ -919,3 +919,33 @@
     - .streak-save-gems / .streak-save-ad: distinct button styles
       (purple for gems, green for ad).
     - prefers-reduced-motion: disables all streak animations.
+
+2026-02-12 — Task 20: Push notification infrastructure
+  Service worker + Notification API module with 5 trigger types and 3/day cap.
+
+  Files created: sw.js, js/notifications.js
+  Files modified: index.html, js/daily.js, js/events.js, js/pass.js, js/game.js
+
+  (a) Service worker (sw.js):
+    - Registered at root scope for notification click handling.
+    - notificationclick handler focuses existing window or opens new one.
+    - push event handler for future server-sent push integration.
+    - Minimal install/activate with skipWaiting + clients.claim.
+
+  (b) Notifications IIFE module (js/notifications.js):
+    - Permission request flow: asks after 3rd session OR first creature discovery
+      (whichever comes first). 5-second delay so it doesn't interrupt gameplay.
+    - In-game permission prompt: friendly overlay card before browser prompt.
+      "Get notified when your creatures earn gems?" framing.
+    - 3/day frequency cap: todayCount tracked in save state, resets daily.
+    - 30-minute dedup per trigger type to prevent spam.
+    - Only sends notifications when tab is backgrounded (visibilityState !== visible).
+
+  (c) 5 trigger types wired:
+    - EVENT_LAUNCH: Events.js emits 'eventStarted' on new week detection.
+    - STREAK_AT_RISK: Daily.js emits 'streakAtRisk' in checkStreakWarning().
+    - WORKER_EARNINGS: Listens for 'workerEarningsReady' event.
+    - PASS_EXPIRING: Pass.js checkPassExpiry() emits when <= 3 days remain.
+    - ENERGY_FULL: Tracks energy transitions from below-max to max.
+
+  (d) Save version bump: SAVE_VERSION 9 → 10, migration adds notifications state.
