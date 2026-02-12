@@ -3,6 +3,10 @@
 
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
+    const BACKUP_KEY = 'haven-backup';
+    const SAVE_VERSION = 1;
+    const SAVE_DEBOUNCE_MS = 200;
+    const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const ROWS = 8;
     const COLS = 6;
     const MAX_ENERGY = 100;
@@ -11,6 +15,8 @@ const Game = (() => {
     let state = null;
     let listeners = {};
     let updateTimer = null;
+    let saveTimer = null;
+    let savePending = false;
 
     function defaultState() {
         const board = [];
@@ -21,6 +27,7 @@ const Game = (() => {
             }
         }
         return {
+            _saveVersion: SAVE_VERSION,
             energy: MAX_ENERGY,
             maxEnergy: MAX_ENERGY,
             lastEnergyTime: Date.now(),
@@ -65,43 +72,137 @@ const Game = (() => {
             updateEnergy();
         }, 1000);
 
+        // Flush any pending save on page close/navigation
+        window.addEventListener('beforeunload', function() {
+            flushSave();
+        });
+
         emit('stateChanged', state);
         emit('energyChanged', state.energy);
         emit('gemsChanged', state.gems);
     }
 
+    // ─── SAVE SYSTEM (debounced, versioned, backed up) ──────
+
     function save() {
+        // Debounced save: coalesces rapid save calls into one write per 200ms
+        savePending = true;
+        if (saveTimer) return;
+        saveTimer = setTimeout(function() {
+            saveTimer = null;
+            flushSave();
+        }, SAVE_DEBOUNCE_MS);
+    }
+
+    function flushSave() {
+        if (!savePending || !state) return;
+        savePending = false;
+        if (saveTimer) {
+            clearTimeout(saveTimer);
+            saveTimer = null;
+        }
+
+        // Stamp version on every save
+        state._saveVersion = SAVE_VERSION;
+
         try {
-            localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+            var json = JSON.stringify(state);
+
+            // Quota check: warn if approaching 5MB localStorage limit
+            var totalBytes = estimateLocalStorageUsage();
+            if (totalBytes + json.length * 2 > QUOTA_WARN_BYTES) {
+                console.warn('Haven: localStorage approaching quota limit (' +
+                    Math.round(totalBytes / 1024) + 'KB used, save is ' +
+                    Math.round(json.length * 2 / 1024) + 'KB)');
+                emit('saveQuotaWarning', { usedBytes: totalBytes, saveBytes: json.length * 2 });
+            }
+
+            localStorage.setItem(SAVE_KEY, json);
+
+            // Backup to secondary key after successful primary save
+            try {
+                localStorage.setItem(BACKUP_KEY, json);
+            } catch (backupErr) {
+                console.warn('Haven backup save failed:', backupErr);
+            }
         } catch (e) {
             console.warn('Haven save failed:', e);
+            emit('saveFailed', { error: e });
         }
     }
 
-    function load() {
+    function estimateLocalStorageUsage() {
+        var total = 0;
         try {
-            const raw = localStorage.getItem(SAVE_KEY);
-            if (!raw) return null;
-            const data = JSON.parse(raw);
+            for (var i = 0; i < localStorage.length; i++) {
+                var key = localStorage.key(i);
+                total += key.length * 2; // UTF-16
+                total += (localStorage.getItem(key) || '').length * 2;
+            }
+        } catch (e) {
+            // If we can't enumerate, return 0 (don't block saves)
+        }
+        return total;
+    }
 
+    function loadFromKey(key) {
+        try {
+            var raw = localStorage.getItem(key);
+            if (!raw) return null;
+            var data = JSON.parse(raw);
             // Validate basic structure
             if (!data.board || !data.stats) return null;
-
-            // Restore item ID counter
-            let maxId = 0;
-            for (let r = 0; r < data.board.length; r++) {
-                for (let c = 0; c < (data.board[r] || []).length; c++) {
-                    const item = data.board[r][c];
-                    if (item && item.id > maxId) maxId = item.id;
-                }
-            }
-            Items.setNextId(maxId + 1);
-
             return data;
         } catch (e) {
-            console.warn('Haven load failed:', e);
             return null;
         }
+    }
+
+    function migrateState(data) {
+        // Future version migrations go here
+        // if (!data._saveVersion || data._saveVersion < 2) { ... migrate to v2 ... }
+        if (!data._saveVersion) {
+            data._saveVersion = SAVE_VERSION;
+        }
+        return data;
+    }
+
+    function restoreItemIdCounter(data) {
+        var maxId = 0;
+        for (var r = 0; r < data.board.length; r++) {
+            for (var c = 0; c < (data.board[r] || []).length; c++) {
+                var item = data.board[r][c];
+                if (item && item.id > maxId) maxId = item.id;
+            }
+        }
+        Items.setNextId(maxId + 1);
+    }
+
+    function load() {
+        // Try primary save first
+        var data = loadFromKey(SAVE_KEY);
+        if (data) {
+            data = migrateState(data);
+            restoreItemIdCounter(data);
+            return data;
+        }
+
+        // Primary corrupted or missing — try backup
+        console.warn('Haven: primary save missing or corrupted, trying backup...');
+        data = loadFromKey(BACKUP_KEY);
+        if (data) {
+            console.warn('Haven: restored from backup successfully');
+            data = migrateState(data);
+            restoreItemIdCounter(data);
+            // Heal primary from backup
+            try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+            } catch (e) { /* best-effort heal */ }
+            return data;
+        }
+
+        console.warn('Haven: no valid save data found');
+        return null;
     }
 
     function updateEnergy() {
@@ -228,7 +329,7 @@ const Game = (() => {
 
     function resetGame() {
         state = defaultState();
-        save();
+        flushSave();
         emit('stateChanged', state);
         emit('energyChanged', state.energy);
         emit('gemsChanged', state.gems);
@@ -289,6 +390,7 @@ const Game = (() => {
     return {
         init: init,
         save: save,
+        flushSave: flushSave,
         resetGame: resetGame,
         useEnergy: useEnergy,
         addEnergy: addEnergy,
@@ -308,6 +410,7 @@ const Game = (() => {
         ROWS: ROWS,
         COLS: COLS,
         MAX_ENERGY: MAX_ENERGY,
-        ENERGY_REGEN_MS: ENERGY_REGEN_MS
+        ENERGY_REGEN_MS: ENERGY_REGEN_MS,
+        SAVE_VERSION: SAVE_VERSION
     };
 })();

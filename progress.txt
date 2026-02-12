@@ -48,3 +48,44 @@
 
   All event queries use typeof guards (typeof Events !== 'undefined') for safety.
   Events.hasModifier(type, chain) and Events.getModifierValue(type, chain) are the query API.
+
+2026-02-12 — Task 3: Harden save system
+  All 5 requirements implemented in js/game.js. No other files modified — the public API
+  (Game.save()) is unchanged so all 21 external call sites work without modification.
+
+  Files modified: js/game.js
+
+  (a) 200ms debounce on Game.save() with beforeunload flush:
+    - save() now sets a savePending flag and starts a 200ms setTimeout. Rapid calls within
+      the window are coalesced into a single write. This prevents the 3-5 writes/sec during
+      fast merging that Engineering flagged (synthesis score: 2/5 for save robustness).
+    - flushSave() performs the actual write immediately and clears the timer.
+    - beforeunload listener registered in init() calls flushSave() to ensure no pending
+      state is lost when the player closes the tab or navigates away.
+    - resetGame() calls flushSave() directly (not debounced) since a full state reset
+      must be written immediately.
+
+  (b) Save format version number:
+    - Added _saveVersion: 1 to defaultState() and stamped on every flushSave().
+    - migrateState() function ready for future version migrations (e.g., when Task 4
+      changes MIN_MERGE or Task 11 adds board expansion, save format can be migrated).
+    - SAVE_VERSION constant exported as Game.SAVE_VERSION for other modules.
+
+  (c) Backup to haven-backup key:
+    - After every successful primary write to 'haven_save', the same JSON is written
+      to 'haven-backup'. Backup failure is logged but doesn't block the primary save.
+
+  (d) Try/catch with fallback to backup:
+    - load() tries primary key first via loadFromKey(). If primary is missing or corrupted
+      (parse error, missing board/stats), falls back to loadFromKey(BACKUP_KEY).
+    - On successful backup restore, heals the primary key from backup data.
+    - Both loadFromKey() and flushSave() are fully wrapped in try/catch.
+    - saveFailed event emitted on write failure for future UI notification.
+
+  (e) Quota check before save:
+    - estimateLocalStorageUsage() enumerates all localStorage keys and sums their
+      UTF-16 byte sizes. Called before each write in flushSave().
+    - If total usage + save size exceeds 4.5MB (QUOTA_WARN_BYTES), logs a warning
+      and emits saveQuotaWarning event with byte counts for future UI display.
+    - Does not block the save — just warns. The actual QuotaExceededError from
+      localStorage.setItem() is caught by the existing try/catch.
