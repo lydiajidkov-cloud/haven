@@ -104,7 +104,7 @@ These tasks prepare the code for AI-generated assets. Lydia generates the actual
 
 - [x] **24. Performance mode auto-detection** — Add auto-detection on first load via `navigator.hardwareConcurrency` + a quick canvas benchmark. Two tiers: "Balanced" (cuts decorative animations: per-tier box-shadow pulse, ::after sparkles, conic-gradient rainbow) and "Minimal" (cuts everything except core merge feedback). NEVER cut: merge-flash, particle bursts, combo escalation, golden merge-target pulses, purchase-moment animations (piggy bank break, battle pass unlock, deal reveal). No player-visible toggle — automatic.
 
-- [ ] **25. Audio upgrade prep** — (a) Add an audio asset loading system that can play pre-recorded audio files (MP3/OGG) alongside or instead of procedural Web Audio sounds. Create `data/audio.json` mapping sound events to file paths, with fallback to procedural generation if no file exists. (b) Add background music support: a looping ambient track with volume control (separate from SFX volume). (c) Add a music toggle to the settings panel. This prepares for AI-generated SFX and music.
+- [x] **25. Audio upgrade prep** — (a) Add an audio asset loading system that can play pre-recorded audio files (MP3/OGG) alongside or instead of procedural Web Audio sounds. Create `data/audio.json` mapping sound events to file paths, with fallback to procedural generation if no file exists. (b) Add background music support: a looping ambient track with volume control (separate from SFX volume). (c) Add a music toggle to the settings panel. This prepares for AI-generated SFX and music.
 
 ## Phase 8: Polish & Launch Features
 

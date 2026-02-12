@@ -173,6 +173,10 @@
                     <label class="toggle"><input type="checkbox" id="setting-sound" checked><span class="toggle-slider"></span></label>
                 </div>
                 <div class="settings-row">
+                    <span>🎵 Music</span>
+                    <label class="toggle"><input type="checkbox" id="setting-music" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="settings-row">
                     <span>📳 Vibration</span>
                     <label class="toggle"><input type="checkbox" id="setting-vibration" checked><span class="toggle-slider"></span></label>
                 </div>
@@ -434,6 +438,7 @@
 
             // Set toggle states
             document.getElementById('setting-sound').checked = Sound.isEnabled();
+            document.getElementById('setting-music').checked = Sound.isMusicEnabled();
             document.getElementById('setting-vibration').checked = Game.getState().vibrationEnabled !== false;
         });
 
@@ -445,6 +450,13 @@
             Sound.setEnabled(this.checked);
             var state = Game.getState();
             state.soundEnabled = this.checked;
+            Game.save();
+        });
+
+        document.getElementById('setting-music').addEventListener('change', function() {
+            Sound.setMusicEnabled(this.checked);
+            var state = Game.getState();
+            state.musicEnabled = this.checked;
             Game.save();
         });
 

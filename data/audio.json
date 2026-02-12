@@ -1,0 +1,10 @@
+{
+  "_schema": "Haven Audio Mapping — maps sound events to audio file paths",
+  "_notes": "If a file path exists for an event, Sound module plays the file instead of procedural audio. Paths relative to project root. Set to null or omit for procedural fallback. Supported formats: mp3, ogg, wav.",
+  "_example": "To add an audio file: set 'merge_crystal': 'assets/audio/sfx/merge_crystal.mp3'",
+  "sfx": {},
+  "music": {
+    "_notes": "Background music tracks. 'default' plays on the main board. Others can be triggered by events.",
+    "tracks": {}
+  }
+}

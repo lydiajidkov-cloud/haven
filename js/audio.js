@@ -1,4 +1,4 @@
-// Haven - Procedural Sound Effects (Web Audio API)
+// Haven - Procedural Sound Effects (Web Audio API) + Audio Asset System
 'use strict';
 
 const Sound = (() => {
@@ -6,6 +6,151 @@ const Sound = (() => {
     let masterOut = null; // compressor → destination (prevents clipping)
     let enabled = true;
     let initialized = false;
+
+    // ─── Audio asset system ────────────────────────────────────
+    var audioMap = null;          // loaded from data/audio.json
+    var audioCache = {};          // event name → AudioBuffer (decoded)
+    var musicEnabled = true;
+    var musicVolume = 0.3;        // 0.0 – 1.0
+    var sfxVolume = 1.0;          // master SFX multiplier
+    var musicSource = null;       // currently playing music BufferSource
+    var musicGainNode = null;     // gain node for music volume control
+    var currentMusicTrack = null; // name of currently playing track
+
+    function loadAudioMap() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'data/audio.json', true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    audioMap = data;
+                    // Pre-load any defined SFX files
+                    if (data.sfx) {
+                        Object.keys(data.sfx).forEach(function(key) {
+                            if (data.sfx[key]) preloadAudio(key, data.sfx[key]);
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Haven: audio.json parse error', e);
+                }
+            }
+        };
+        xhr.onerror = function() {};
+        xhr.send();
+    }
+
+    function preloadAudio(name, path) {
+        if (!ctx || audioCache[name]) return;
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', path, true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                ctx.decodeAudioData(xhr.response, function(buffer) {
+                    audioCache[name] = buffer;
+                }, function() {
+                    console.warn('Haven: failed to decode audio:', name);
+                });
+            }
+        };
+        xhr.onerror = function() {};
+        xhr.send();
+    }
+
+    // Play a pre-recorded sound file if available; returns true if played
+    function playFile(eventName, volume) {
+        if (!enabled || !ctx) return false;
+        var buffer = audioCache[eventName];
+        if (!buffer) return false;
+
+        ensureContext();
+        var source = ctx.createBufferSource();
+        source.buffer = buffer;
+
+        var gain = ctx.createGain();
+        gain.gain.setValueAtTime((volume || 1.0) * sfxVolume, ctx.currentTime);
+
+        source.connect(gain);
+        gain.connect(masterOut || ctx.destination);
+        source.start(0);
+        return true;
+    }
+
+    // ─── Background Music ──────────────────────────────────────
+
+    function playMusic(trackName) {
+        if (!ctx || !musicEnabled) return;
+        ensureContext();
+
+        trackName = trackName || 'default';
+
+        // Check if track file exists in audio map
+        if (!audioMap || !audioMap.music || !audioMap.music.tracks || !audioMap.music.tracks[trackName]) return;
+
+        var path = audioMap.music.tracks[trackName];
+        if (!path) return;
+
+        // Stop current music if playing
+        stopMusic();
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', path, true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload = function() {
+            if (xhr.status === 200 && ctx) {
+                ctx.decodeAudioData(xhr.response, function(buffer) {
+                    if (!musicEnabled) return; // user toggled off while loading
+
+                    musicSource = ctx.createBufferSource();
+                    musicSource.buffer = buffer;
+                    musicSource.loop = true;
+
+                    musicGainNode = ctx.createGain();
+                    musicGainNode.gain.setValueAtTime(musicVolume, ctx.currentTime);
+
+                    musicSource.connect(musicGainNode);
+                    musicGainNode.connect(ctx.destination); // bypass compressor for music
+                    musicSource.start(0);
+                    currentMusicTrack = trackName;
+                });
+            }
+        };
+        xhr.onerror = function() {};
+        xhr.send();
+    }
+
+    function stopMusic() {
+        if (musicSource) {
+            try { musicSource.stop(); } catch(e) {}
+            musicSource = null;
+        }
+        currentMusicTrack = null;
+    }
+
+    function setMusicEnabled(val) {
+        musicEnabled = val;
+        if (!val) {
+            stopMusic();
+        } else if (audioMap && audioMap.music && audioMap.music.tracks && audioMap.music.tracks['default']) {
+            playMusic('default');
+        }
+    }
+
+    function isMusicEnabled() {
+        return musicEnabled;
+    }
+
+    function setMusicVolume(vol) {
+        musicVolume = Math.max(0, Math.min(1, vol));
+        if (musicGainNode && ctx) {
+            musicGainNode.gain.setValueAtTime(musicVolume, ctx.currentTime);
+        }
+    }
+
+    function getMusicVolume() {
+        return musicVolume;
+    }
 
     function init() {
         if (initialized) return;
@@ -24,6 +169,23 @@ const Sound = (() => {
             masterGain.connect(ctx.destination);
             masterOut = compressor;
             initialized = true;
+
+            // Load audio asset map
+            loadAudioMap();
+
+            // Restore music preference from game state
+            var state = Game.getState();
+            if (state.musicEnabled === false) {
+                musicEnabled = false;
+            }
+            if (typeof state.musicVolume === 'number') {
+                musicVolume = state.musicVolume;
+            }
+
+            // Start background music if available (after short delay for map to load)
+            setTimeout(function() {
+                if (musicEnabled) playMusic('default');
+            }, 1000);
         } catch (e) {
             console.warn('Web Audio not supported:', e);
             enabled = false;
@@ -183,7 +345,16 @@ const Sound = (() => {
         }
         lastMergeTime = now;
 
-        // Material-specific sound character
+        // Try file-based audio first (e.g. 'merge_crystal', 'merge_wood')
+        var fileKey = 'merge_' + chain;
+        if (playFile(fileKey)) {
+            // File played — still layer streak sounds on top
+            if (mergeStreak >= 3) playStreakLayer(mergeStreak);
+            if (mergeStreak > 0 && mergeStreak % 5 === 0) playStreakMilestone(mergeStreak);
+            return;
+        }
+
+        // Fallback to procedural — material-specific sound character
         switch (chain) {
             case 'crystal':
             case 'arcane':
@@ -775,6 +946,13 @@ const Sound = (() => {
         playChestOpen,
         setEnabled,
         isEnabled,
-        getMergeStreak: function() { return mergeStreak; }
+        getMergeStreak: function() { return mergeStreak; },
+        // Music controls
+        playMusic,
+        stopMusic,
+        setMusicEnabled,
+        isMusicEnabled,
+        setMusicVolume,
+        getMusicVolume
     };
 })();

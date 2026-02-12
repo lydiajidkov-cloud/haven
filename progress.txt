@@ -1077,3 +1077,38 @@
     - Golden merge-target pulses (target-pulse).
     - Purchase-moment animations.
     - Selected-cell-glow (interaction feedback).
+
+2026-02-12 — Task 25: Audio upgrade prep
+  Audio asset loading system + background music support + music toggle.
+
+  Files created: data/audio.json
+  Files modified: js/audio.js, index.html
+
+  (a) Audio asset mapping (data/audio.json):
+    - Maps sound event names to audio file paths (MP3/OGG/WAV).
+    - Separate sections for SFX and music tracks.
+    - Empty by default — Lydia adds paths as AI audio is generated.
+
+  (b) File-based audio playback (js/audio.js):
+    - loadAudioMap() fetches data/audio.json at init via XHR.
+    - preloadAudio() decodes files into AudioBuffer cache.
+    - playFile(eventName, volume) plays cached buffer through Web Audio.
+    - playMerge() tries file-based 'merge_[chain]' before procedural fallback.
+    - All SFX defined in audio.json are pre-loaded at init.
+
+  (c) Background music system (js/audio.js):
+    - playMusic(trackName) loads and loops a music track.
+    - Separate musicGainNode bypasses SFX compressor.
+    - Volume control via setMusicVolume() (0.0–1.0, default 0.3).
+    - stopMusic() stops current track cleanly.
+    - Auto-starts 'default' track 1s after init if music is enabled.
+    - musicEnabled state persisted in Game state.
+
+  (d) Music toggle (index.html):
+    - New "Music" toggle row added to settings panel (between Sound and Vibration).
+    - Toggle calls Sound.setMusicEnabled() and persists to Game state.
+    - Toggle state restored when settings panel opens.
+
+  (e) Exports added to Sound module:
+    - playMusic, stopMusic, setMusicEnabled, isMusicEnabled.
+    - setMusicVolume, getMusicVolume.
