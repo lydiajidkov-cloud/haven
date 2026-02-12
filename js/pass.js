@@ -5,14 +5,21 @@ const Pass = (() => {
     const TOTAL_TIERS = 40;
     const SEASON_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30-day season
     var seasonStartTime = 0;
-    // Graduated XP curve — fast early tiers, challenging late tiers
+    // Graduated XP curve — fast early tiers, significantly harder final stretch
+    // Tuned for ~30 day completion at normal play intensity
     function xpForTier(tier) {
-        if (tier <= 5) return 60;       // Quick wins for new players
-        if (tier <= 15) return 80;      // Moderate mid-game
-        if (tier <= 30) return 100;     // Standard late
-        return 130;                      // Challenging final stretch
+        if (tier <= 5) return 150;       // Quick wins for new players
+        if (tier <= 15) return 400;      // Moderate mid-game
+        if (tier <= 25) return 800;      // Standard late
+        if (tier <= 30) return 1200;     // Harder — urgency builds
+        return 2500;                      // Last 10 tiers: significantly more XP required
     }
-    var XP_PER_TIER = 100; // fallback default
+    var XP_PER_TIER = 800; // fallback default
+
+    // XP floating text throttle — don't spam on every spawn
+    var lastXPFloatTime = 0;
+    var XP_FLOAT_COOLDOWN = 2000; // 2s between floating XP indicators
+    var pendingXPDisplay = 0;     // accumulate small XP gains to show as batch
 
     // Tier rewards: free and premium track
     function getTierReward(tier) {
@@ -72,21 +79,21 @@ const Pass = (() => {
             seasonStartTime = Date.now();
         }
 
-        // Earn XP from game actions
+        // Earn XP from game actions (tuned for ~30 day season completion)
         Game.on('mergeCompleted', function(data) {
-            addXP(10 + (data.tier || 0) * 5);
+            addXP(3 + (data.tier || 0) * 2, true);
         });
         Game.on('questCompleted', function() {
-            addXP(50);
+            addXP(25, true);
         });
         Game.on('itemSpawned', function() {
-            addXP(2);
+            addXP(1, false); // silent — too frequent for floating text
         });
 
         renderPass();
     }
 
-    function addXP(amount) {
+    function addXP(amount, showFloat) {
         // Apply creature passive XP bonus
         if (typeof Creatures !== 'undefined') {
             var gs = Game.getState();
@@ -97,6 +104,8 @@ const Pass = (() => {
                 }
             }
         }
+
+        var prevTier = currentTier;
         currentXP += amount;
         var tierXP = xpForTier(currentTier + 1);
         while (currentXP >= tierXP && currentTier < TOTAL_TIERS) {
@@ -107,8 +116,58 @@ const Pass = (() => {
         if (currentTier >= TOTAL_TIERS) {
             currentXP = 0;
         }
+
+        // Show "+X XP" floating text for visible XP gains
+        if (showFloat) {
+            pendingXPDisplay += amount;
+            var now = Date.now();
+            if (now - lastXPFloatTime >= XP_FLOAT_COOLDOWN) {
+                showXPFloat(pendingXPDisplay);
+                pendingXPDisplay = 0;
+                lastXPFloatTime = now;
+            } else if (!xpFlushTimer) {
+                // Schedule a flush so accumulated XP is always shown
+                xpFlushTimer = setTimeout(function() {
+                    if (pendingXPDisplay > 0) {
+                        showXPFloat(pendingXPDisplay);
+                        pendingXPDisplay = 0;
+                        lastXPFloatTime = Date.now();
+                    }
+                    xpFlushTimer = null;
+                }, XP_FLOAT_COOLDOWN - (now - lastXPFloatTime) + 50);
+            }
+        }
+
+        // Tier-up notification
+        if (currentTier > prevTier) {
+            if (typeof Board !== 'undefined' && Board.showToast) {
+                var priority = (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.HIGH : 80;
+                Board.showToast('\u{1F3C6} Haven Pass Tier ' + currentTier + '!', priority);
+            }
+        }
+
         savePassState();
         renderPass();
+    }
+
+    var xpFlushTimer = null;
+
+    function showXPFloat(amount) {
+        var el = document.createElement('div');
+        el.className = 'floating-text xp-float';
+        el.textContent = '+' + amount + ' XP';
+        // Position near the top-right of the screen, offset from gems display
+        var gemsEl = document.getElementById('gems-display');
+        if (gemsEl) {
+            var rect = gemsEl.getBoundingClientRect();
+            el.style.left = (rect.left + rect.width / 2) + 'px';
+            el.style.top = (rect.bottom + 4) + 'px';
+        } else {
+            el.style.right = '80px';
+            el.style.top = '50px';
+        }
+        document.body.appendChild(el);
+        setTimeout(function() { el.remove(); }, 1200);
     }
 
     function claimTierReward(tier, track) {

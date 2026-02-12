@@ -714,6 +714,12 @@ body {
     animation: float-up 1.2s ease-out forwards;
 }
 
+.floating-text.xp-float {
+    font-size: 13px;
+    color: #7dd3fc;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
 /* ─── INTERACTIVE TUTORIAL ────────────────────────────────── */
 
 /* Full-screen blocker */

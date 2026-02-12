@@ -342,3 +342,42 @@
       shows "SURGE 23⚡" (count + lightning bolt).
     - Existing end-of-surge flat bonus (surgeMergeCount * 1.5 + 2 gems) is preserved
       as an additional reward on top of milestone rewards.
+
+2026-02-12 — Task 10: Battle Pass XP visibility + extension
+  Two changes that make battle pass progression visible and extend the season to ~30 days.
+
+  Files modified: js/pass.js, css/style.css
+
+  (a) "+X XP" floating text when merges award battle pass XP (pass.js):
+    - addXP() now accepts a showFloat parameter to control visual feedback.
+    - mergeCompleted and questCompleted events pass showFloat=true.
+    - itemSpawned passes showFloat=false (too frequent for visual noise).
+    - Throttle system: XP_FLOAT_COOLDOWN of 2 seconds between floating displays.
+      Rapid XP gains accumulate into pendingXPDisplay and show as a batched
+      "+X XP" when cooldown expires (e.g., "+15 XP" instead of five "+3 XP").
+    - xpFlushTimer ensures accumulated XP is always shown, never silently lost.
+    - showXPFloat() creates a floating-text element positioned below the gems
+      display, styled in light blue (#7dd3fc) to distinguish from gold gem text.
+    - Tier-up notification: when a tier is reached, shows a HIGH-priority toast
+      via Board.showToast ("Haven Pass Tier X!") with trophy emoji.
+
+  (b) Battle pass season extended from ~8-16 days to ~30 days (pass.js):
+    - XP per action reduced to match 30-day target:
+      mergeCompleted: 10 + tier*5 → 3 + tier*2 (avg ~8 XP vs ~25 XP)
+      questCompleted: 50 → 25
+      itemSpawned: 2 → 1
+    - XP-per-tier curve significantly steepened, especially for last 10 tiers:
+      Tiers 1-5: 60 → 150 XP (quick wins, ~1-2 days)
+      Tiers 6-15: 80 → 400 XP (moderate, ~5-6 days)
+      Tiers 16-25: 100 → 800 XP (standard, ~7-8 days)
+      Tiers 26-30: 100 → 1200 XP (harder, ~5-6 days)
+      Tiers 31-40: 130 → 2500 XP (final stretch, ~10-12 days)
+    - Total XP to complete: 3,900 → 43,750 (11.2x increase)
+    - Combined with 3-4x XP-per-action reduction, season extends to ~30 days.
+    - Last 10 tiers require 25,000 XP (57% of total), creating urgency in final
+      week and the "just one more session to hit the next tier" compulsion.
+    - SEASON_DURATION_MS was already 30 days (unchanged).
+
+  CSS (style.css):
+    - Added .floating-text.xp-float class: 13px font, #7dd3fc light blue color,
+      visually distinct from gold gem floating text.

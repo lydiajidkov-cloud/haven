@@ -60,7 +60,7 @@ These features directly increase the "one more merge" compulsion loop and player
 
 - [x] **9. Surge system improvements** — (a) Increase surge bar height from 18px to 24px (currently too easy to miss). (b) Add a distinct surge activation sound (whoosh + flash) — currently surge is hard to notice during fast play. (c) Add surge escalation milestones with scaling rewards: 5 merges during surge = +10 gems, 10 merges = +25 gems + star, 20 merges = +50 gems + rare egg. These create the "just 3 more merges to hit the next milestone" compulsion.
 
-- [ ] **10. Battle Pass XP visibility + extension** — (a) Show "+X XP" floating text when merges award battle pass XP (currently XP gain is invisible — players don't know they're progressing). (b) Extend the battle pass season from the current completion speed (8-16 days reported) to require ~30 days. Adjust XP curve so the last 10 tiers require significantly more XP, creating urgency in the final week.
+- [x] **10. Battle Pass XP visibility + extension** — (a) Show "+X XP" floating text when merges award battle pass XP (currently XP gain is invisible — players don't know they're progressing). (b) Extend the battle pass season from the current completion speed (8-16 days reported) to require ~30 days. Adjust XP curve so the last 10 tiers require significantly more XP, creating urgency in the final week.
 
 ## Phase 3: Economy Rebalancing
 
