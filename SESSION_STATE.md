@@ -1,47 +1,40 @@
 # Session State — Haven
-**Last checkpoint:** 2026-02-13 ~11:20
+**Last checkpoint:** 2026-02-13 14:00
 
 ## Current Goal
-Mobile UX/UI overhaul: fix layout issues, declutter, improve usability on phone
+Redesign Haven's economy for monetization, based on comprehensive research synthesis.
 
 ## Completed Steps
-- Fixed settings cog touch target (padding 4px to 8px)
-- Added mobile height media queries (max-height: 750px, 600px) for compact layout
-- Fixed powerup cost labels clipped (added bottom padding to powerup bar)
-- Fixed swipe: added pointer capture + touch-action:none to board
-- Moved collection counter + recipe book out of top bar into board toolbar row
-- Top bar now: energy, stars, gems, achievements, settings only
-- Changed collection counter icon from trophy to clipboard
-- Orders panel redesigned: single order at a time, auto-rotates every 5s, tap to cycle
-- Orders panel moved above the board (below powerup bar)
-- Hidden expand button and clutter warning to declutter bottom
-- Added board toolbar: collection (left) + powerups (center) + recipe book (right)
-- Achievements: added Claim All button, sort claimable first / claimed last
-- Added inline SVG favicon (island emoji)
-- Added cache-busting ?v=2 to modified CSS/JS files
-- Pushed all changes to GitHub Pages
+- Implemented 6-phase gameplay strategy (MIN_MERGE=2, rejection messages, mode tooltips, merge count badge, recipe book, chain tints)
+- Identified core friction problem: game has zero meaningful decisions, mashing spawn button is optimal
+- Sketched 5-system friction redesign (board pressure, energy economy, merge decisions, resource scarcity, obstacle pressure)
+- Read all existing research: competitive analysis, 5 playtest reports, 6 board reviews, synthesis
+- Ran parallel research agents on addiction psychology and 2025-2026 merge market trends
+- Created comprehensive synthesis: `haven/addiction-monetization-synthesis.md`
+- Key findings: Gossip Harbor $677M lifetime (100 events/month), board pressure is #1 spending trigger, narrative required for $500M+, ads HELP retention (53% D30 vs 13%)
+- Explored complete economy values across all JS files (game.js, board.js, powerups.js, shop.js, orders.js, hatchery.js, daily.js, pass.js, events.js, island.js)
+- Saved current values and design outline to plan file
 
 ## Next Steps
-- Verify changes appear on phone after cache bust deploys
-- Check if top bar icons still overlap on phone
-- Check orders panel renders correctly with new single-order display
-- Check recipe book button visible and not cut off in board toolbar
-- Continue UX polish based on phone testing feedback
+- IN PLAN MODE: Design concrete economy redesign with specific old value → new value for each lever
+- Launch Plan agent to design the 5-system economy overhaul
+- Get user approval on plan
+- Implement changes across all economy files
 
-## Files Modified
-- `css/style.css` — mobile media queries, expand btn hidden, board toolbar, orders panel, powerup padding, touch-action
-- `css/achievements.css` — Claim All button styles
-- `index.html` — top bar cleanup, board toolbar, orders panel position, favicon, cache bust
-- `js/achievements.js` — claimAll function, sort order, Claim All button
-- `js/board.js` — pointer capture for swipe
-- `js/orders.js` — single-order display with auto-rotate
+## Files Modified This Session
+- `haven/js/board.js` — MIN_MERGE=2, rejection messages, mode tooltips, merge count badge, chain tints, gem exponent 1.55, SURGE_PER_MERGE=25, group bonuses
+- `haven/js/items.js` — getRecipePairs() export
+- `haven/js/recipes.js` — count badge, tier note on undiscovered cards
+- `haven/js/events.js` — merge_mania updated to gem_multiplier
+- `haven/data/events.json` — merge_mania modifier changed
+- `haven/css/style.css` — rejection text, mode tooltip, merge count badge, chain tint classes
+- `haven/css/recipes.css` — count badge, card rule styles
+- `haven/addiction-monetization-synthesis.md` — NEW, full synthesis document
 
 ## Test Results / Status
-- Local server (localhost:8080): working
-- GitHub Pages: pushed, waiting for cache-busted deploy to verify on phone
-- Status: partially working, phone testing in progress
+- Previous 6-phase implementation: working, tested on phone via HTTP server
+- Economy redesign: in planning phase, no code changes yet
+- Current state: working (existing changes), plan mode active for economy redesign
 
 ## Resume Command
-```
-cd /c/Users/lydia/Documents/Claude/haven && python -m http.server 8080
-```
+Read plan file at `C:\Users\lydia\.claude\plans\lively-strolling-summit.md` and `haven/addiction-monetization-synthesis.md`, then continue designing the economy redesign plan.
