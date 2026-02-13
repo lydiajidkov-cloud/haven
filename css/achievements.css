@@ -141,6 +141,27 @@
     background: rgba(255, 255, 255, 0.15);
 }
 
+.achievement-claim-all-btn {
+    display: block;
+    margin-top: 8px;
+    width: 100%;
+    padding: 7px 0;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent-gold), #e8a000);
+    color: #1a1a2e;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: transform 0.12s;
+}
+
+.achievement-claim-all-btn:active {
+    transform: scale(0.97);
+}
+
 /* ─── SCROLLABLE BODY ────────────────────────────────────────────── */
 
 .achievements-body {

@@ -220,8 +220,9 @@ const Board = (() => {
             return;
         }
 
-        // Lock to this pointer
+        // Lock to this pointer and capture it (prevents browser stealing the gesture on mobile)
         activePointerId = e.pointerId;
+        try { boardEl.setPointerCapture(e.pointerId); } catch (_) {}
 
         // Cache grid layout once per interaction (handles resize/scroll)
         cacheGridLayout();
@@ -229,12 +230,14 @@ const Board = (() => {
         // If we already have a selection, handle the second tap
         if (selectedPos) {
             handleTapWithSelection(r, c);
+            try { boardEl.releasePointerCapture(e.pointerId); } catch (_) {}
             activePointerId = null;
             return;
         }
 
         // Nothing selected — need an item to interact with
         if (!items[r][c]) {
+            try { boardEl.releasePointerCapture(e.pointerId); } catch (_) {}
             activePointerId = null;
             return;
         }
@@ -393,6 +396,7 @@ const Board = (() => {
     // Handle pointer lost (finger left screen, browser cancelled, etc.)
     function onPointerCancel(e) {
         if (e.pointerId !== activePointerId) return;
+        try { boardEl.releasePointerCapture(e.pointerId); } catch (_) {}
         activePointerId = null;
 
         // Clean up any in-progress interaction

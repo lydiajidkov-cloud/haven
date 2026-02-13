@@ -486,6 +486,29 @@ const Achievements = (() => {
         return true;
     }
 
+    function claimAll() {
+        var totalGems = 0, totalStars = 0, count = 0;
+        for (var id in unlocked) {
+            if (unlocked[id] && !claimed[id]) {
+                var def = getDefinition(id);
+                if (!def) continue;
+                claimed[id] = true;
+                if (def.reward.gems) totalGems += def.reward.gems;
+                if (def.reward.stars) totalStars += def.reward.stars;
+                count++;
+            }
+        }
+        if (count > 0) {
+            if (totalGems) Game.addGems(totalGems);
+            if (totalStars) Game.addStars(totalStars);
+            Sound.playCelebration();
+            Game.vibrate([15, 30, 15]);
+            saveState();
+            renderPanel();
+        }
+        return count;
+    }
+
     // ─── TOAST NOTIFICATION ──────────────────────────────────────────
 
     function showUnlockToast(def) {
@@ -577,6 +600,9 @@ const Achievements = (() => {
         html += '</div>';
 
         html += '<button class="achievements-close-btn" id="achievements-close-btn">\u2715</button>';
+        if (unclaimedCount > 0) {
+            html += '<button class="achievement-claim-all-btn" id="achievements-claim-all-btn">Claim All (' + unclaimedCount + ')</button>';
+        }
         html += '</div>';
 
         // Scrollable body
@@ -592,14 +618,21 @@ const Achievements = (() => {
                 if (unlocked[items[j].id]) catUnlocked++;
             }
 
+            // Sort: claimable first, in-progress middle, claimed last
+            var sorted = items.slice().sort(function(a, b) {
+                var aState = claimed[a.id] ? 2 : unlocked[a.id] ? 0 : 1;
+                var bState = claimed[b.id] ? 2 : unlocked[b.id] ? 0 : 1;
+                return aState - bState;
+            });
+
             html += '<div class="achievements-category">';
             html += '<div class="achievements-category-header">';
             html += '<span class="achievements-category-name">' + catName + '</span>';
             html += '<span class="achievements-category-count">' + catUnlocked + '/' + items.length + '</span>';
             html += '</div>';
 
-            for (var k = 0; k < items.length; k++) {
-                var def = items[k];
+            for (var k = 0; k < sorted.length; k++) {
+                var def = sorted[k];
                 var isUnlocked = !!unlocked[def.id];
                 var isClaimed = !!claimed[def.id];
                 var current = Math.min(progress[def.id] || 0, def.target);
@@ -657,6 +690,15 @@ const Achievements = (() => {
         var closeBtn = modal.querySelector('#achievements-close-btn');
         if (closeBtn) {
             closeBtn.addEventListener('click', function() { closePanel(); });
+        }
+
+        // Bind claim all button
+        var claimAllBtn = modal.querySelector('#achievements-claim-all-btn');
+        if (claimAllBtn) {
+            claimAllBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                claimAll();
+            });
         }
 
         // Bind claim buttons
@@ -730,6 +772,7 @@ const Achievements = (() => {
         openPanel: openPanel,
         closePanel: closePanel,
         claimReward: claimReward,
+        claimAll: claimAll,
         getUnlockedCount: getUnlockedCount,
         getTotalCount: getTotalCount,
         getUnclaimedCount: getUnclaimedCount,

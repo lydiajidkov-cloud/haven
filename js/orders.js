@@ -405,91 +405,95 @@ const Orders = (() => {
 
     // ─── RENDERING (compact strip) ──────────────────────────
 
+    var currentOrderIndex = 0;
+    var orderRotateTimer = null;
+
     function renderOrders() {
         var panel = document.getElementById('orders-panel');
         if (!panel) return;
 
-        var pills = [];
-        for (var i = 0; i < orders.length; i++) {
-            var order = orders[i];
-            var isUrgent = order.orderType === 'urgent';
-            var isMega = order.orderType === 'mega';
-            var allDone = order.completed || order.claimed;
-
-            var pillClass = 'order-pill';
-            if (allDone) pillClass += ' complete';
-            if (isUrgent && !allDone) pillClass += ' urgent';
-            if (isMega) pillClass += ' mega';
-
-            var pillHtml = '<span class="' + pillClass + '">';
-
-            // Urgent timer prefix
-            if (isUrgent && !allDone && order.deadline) {
-                var timeLeft = Math.max(0, order.deadline - Date.now());
-                var mins = Math.floor(timeLeft / 60000);
-                var secs = Math.floor((timeLeft % 60000) / 1000);
-                pillHtml += '<span class="order-timer">⏰' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span> ';
-            }
-
-            // Mega prefix
-            if (isMega) {
-                pillHtml += '<span class="order-mega-tag">⭐M</span> ';
-            }
-
-            // Requirements
-            var reqParts = [];
-            for (var r = 0; r < order.requirements.length; r++) {
-                var req = order.requirements[r];
-                var chainData = Items.chains[req.chain];
-                var tierDef = chainData ? chainData.tiers[req.tier] : null;
-                var itemName = tierDef ? tierDef.name : 'T' + req.tier;
-                var chainIcon = chainData ? chainData.icon : '';
-                var reqDone = req.delivered >= req.count;
-
-                var part = chainIcon + ' ' + itemName;
-                if (req.count > 1 || req.delivered > 0) {
-                    part += ' ' + req.delivered + '/' + req.count;
-                }
-                if (reqDone) {
-                    part = '<span class="req-done">' + part + '</span>';
-                }
-                reqParts.push(part);
-            }
-            pillHtml += reqParts.join(', ');
-
-            if (allDone) {
-                pillHtml += ' ✓';
-            }
-
-            // Reward hint (compact)
-            pillHtml += '<span class="order-reward-hint">💎' + order.reward.gems + '</span>';
-
-            // Pin button for focus
-            if (!allDone) {
-                pillHtml += '<span class="order-pin-btn" data-order-index="' + i + '" title="Pin as focus">\uD83D\uDCCC</span>';
-            }
-
-            pillHtml += '</span>';
-            pills.push(pillHtml);
+        if (orders.length === 0) {
+            panel.innerHTML = '';
+            return;
         }
 
-        panel.innerHTML = pills.join('<span class="order-separator">&middot;</span>');
+        // Clamp index
+        if (currentOrderIndex >= orders.length) currentOrderIndex = 0;
 
-        // Pin button handlers
-        var pinBtns = panel.querySelectorAll('.order-pin-btn');
-        for (var p = 0; p < pinBtns.length; p++) {
-            (function(btn) {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    var idx = parseInt(btn.dataset.orderIndex);
-                    var order = orders[idx];
-                    if (order && typeof Game !== 'undefined' && Game.setFocusedGoal) {
-                        Game.setFocusedGoal({ type: 'order', id: order.id });
-                        Sound.playTap();
-                    }
-                });
-            })(pinBtns[p]);
+        // Find first incomplete order to show by default
+        var showIndex = currentOrderIndex;
+        var order = orders[showIndex];
+        var isUrgent = order.orderType === 'urgent';
+        var isMega = order.orderType === 'mega';
+        var allDone = order.completed || order.claimed;
+
+        var html = '<div class="order-display">';
+
+        // Counter: "1/3"
+        html += '<span class="order-counter">' + (showIndex + 1) + '/' + orders.length + '</span>';
+
+        // Urgent timer
+        if (isUrgent && !allDone && order.deadline) {
+            var timeLeft = Math.max(0, order.deadline - Date.now());
+            var mins = Math.floor(timeLeft / 60000);
+            var secs = Math.floor((timeLeft % 60000) / 1000);
+            html += '<span class="order-timer">⏰ ' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span>';
         }
+
+        // Mega tag
+        if (isMega) {
+            html += '<span class="order-mega-tag">⭐ MEGA</span>';
+        }
+
+        // Requirements
+        html += '<span class="order-reqs">';
+        for (var r = 0; r < order.requirements.length; r++) {
+            var req = order.requirements[r];
+            var chainData = Items.chains[req.chain];
+            var tierDef = chainData ? chainData.tiers[req.tier] : null;
+            var itemName = tierDef ? tierDef.name : 'T' + req.tier;
+            var chainIcon = chainData ? chainData.icon : '';
+            var reqDone = req.delivered >= req.count;
+
+            if (r > 0) html += '<span class="order-req-sep">+</span>';
+            html += '<span class="order-req' + (reqDone ? ' req-done' : '') + '">';
+            html += chainIcon + ' ' + itemName + ' ' + req.delivered + '/' + req.count;
+            html += '</span>';
+        }
+        html += '</span>';
+
+        // Reward
+        html += '<span class="order-reward-hint">💎' + order.reward.gems;
+        if (order.reward.stars) html += ' ⭐' + order.reward.stars;
+        html += '</span>';
+
+        if (allDone) {
+            html += '<span class="order-done-badge">✓</span>';
+        }
+
+        html += '</div>';
+
+        panel.innerHTML = html;
+
+        // Tap to cycle to next order
+        panel.onclick = function() {
+            currentOrderIndex = (currentOrderIndex + 1) % orders.length;
+            renderOrders();
+            resetOrderRotation();
+        };
+
+        // Auto-rotate every 5 seconds
+        resetOrderRotation();
+    }
+
+    function resetOrderRotation() {
+        if (orderRotateTimer) clearInterval(orderRotateTimer);
+        orderRotateTimer = setInterval(function() {
+            if (orders.length > 1) {
+                currentOrderIndex = (currentOrderIndex + 1) % orders.length;
+                renderOrders();
+            }
+        }, 5000);
     }
 
     // ─── PERSISTENCE ──────────────────────────────────────────
