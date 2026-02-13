@@ -1,30 +1,47 @@
 # Session State — Haven
-**Last checkpoint:** 2026-02-12
+**Last checkpoint:** 2026-02-13 ~11:20
 
 ## Current Goal
-Pre-soft-launch sprint: working through PRD.md tasks sequentially (Phase 0 → Phase 8).
+Mobile UX/UI overhaul: fix layout issues, declutter, improve usability on phone
 
 ## Completed Steps
-- Task 1: Fix 3 critical bugs
-  - (a) Audio clipping: Verified DynamicsCompressorNode already in place in js/audio.js — no change needed
-  - (b) Worker/companion mutual exclusion: Added guard in `assignWorker()` (js/island.js:531) and `equipCompanion()` (js/creatures.js:369)
-  - (c) double_reward wasting: Fixed max-tier merge path (js/board.js:812) to check and consume double_reward flag
+- Fixed settings cog touch target (padding 4px to 8px)
+- Added mobile height media queries (max-height: 750px, 600px) for compact layout
+- Fixed powerup cost labels clipped (added bottom padding to powerup bar)
+- Fixed swipe: added pointer capture + touch-action:none to board
+- Moved collection counter + recipe book out of top bar into board toolbar row
+- Top bar now: energy, stars, gems, achievements, settings only
+- Changed collection counter icon from trophy to clipboard
+- Orders panel redesigned: single order at a time, auto-rotates every 5s, tap to cycle
+- Orders panel moved above the board (below powerup bar)
+- Hidden expand button and clutter warning to declutter bottom
+- Added board toolbar: collection (left) + powerups (center) + recipe book (right)
+- Achievements: added Claim All button, sort claimable first / claimed last
+- Added inline SVG favicon (island emoji)
+- Added cache-busting ?v=2 to modified CSS/JS files
+- Pushed all changes to GitHub Pages
 
 ## Next Steps
-- Task 2: Wire event modifiers into gameplay (js/events.js → js/board.js + js/game.js)
-- Task 3: Harden save system
-- Continue through PRD.md task list in order
+- Verify changes appear on phone after cache bust deploys
+- Check if top bar icons still overlap on phone
+- Check orders panel renders correctly with new single-order display
+- Check recipe book button visible and not cut off in board toolbar
+- Continue UX polish based on phone testing feedback
 
 ## Files Modified
-- `js/board.js` — max-tier merge path now applies double_reward companion bonus
-- `js/creatures.js` — equipCompanion() rejects creatures assigned as workers
-- `js/island.js` — assignWorker() rejects creatures assigned as companions
-- `PRD.md` — Task 1 marked [x]
-- `progress.txt` — Task 1 logged with details
+- `css/style.css` — mobile media queries, expand btn hidden, board toolbar, orders panel, powerup padding, touch-action
+- `css/achievements.css` — Claim All button styles
+- `index.html` — top bar cleanup, board toolbar, orders panel position, favicon, cache bust
+- `js/achievements.js` — claimAll function, sort order, Claim All button
+- `js/board.js` — pointer capture for swipe
+- `js/orders.js` — single-order display with auto-rotate
 
 ## Test Results / Status
-- All 3 JS files verified syntactically correct (matching braces, proper guards)
-- Current state: working
+- Local server (localhost:8080): working
+- GitHub Pages: pushed, waiting for cache-busted deploy to verify on phone
+- Status: partially working, phone testing in progress
 
 ## Resume Command
-Open `index.html` in browser to test. Next Ralph Loop iteration picks up Task 2.
+```
+cd /c/Users/lydia/Documents/Claude/haven && python -m http.server 8080
+```
