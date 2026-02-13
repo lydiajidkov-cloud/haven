@@ -8,49 +8,49 @@ var PowerUps = (function() {
             name: 'Mass Match',
             icon: '\u{1F4A5}',
             desc: 'All items of one chain at same tier merge simultaneously',
-            cost: 25,
+            cost: 30,
             earnEvent: 'mergeCompleted',
-            earnThreshold: 30
+            earnThreshold: 60
         },
         sort_sweep: {
             name: 'Sort & Sweep',
             icon: '\u{1F9F9}',
             desc: 'Group items by chain, then auto-merge new matches',
-            cost: 20,
+            cost: 25,
             earnEvent: 'itemSpawned',
-            earnThreshold: 50
+            earnThreshold: 100
         },
         shuffle: {
             name: 'Shuffle',
             icon: '\u{1F500}',
             desc: 'Randomize all positions — may create lucky adjacencies',
             cost: 15,
-            earnEvent: 'mergeCompleted',
-            earnThreshold: 25
+            earnEvent: null,
+            earnThreshold: Infinity
         },
         upgrade_wand: {
             name: 'Upgrade Wand',
             icon: '\u{1FA84}',
             desc: 'Tap any item to promote it +1 tier instantly',
-            cost: 35,
+            cost: 40,
             earnEvent: 'mergeCompleted',
-            earnThreshold: 40
+            earnThreshold: 80
         },
         lightning: {
             name: 'Lightning',
             icon: '\u26A1',
             desc: 'Destroy all tier-0 items, +1 gem per destroyed item',
-            cost: 10,
+            cost: 15,
             earnEvent: 'itemSpawned',
-            earnThreshold: 20
+            earnThreshold: 50
         },
         golden_spawn: {
             name: 'Golden Spawn',
             icon: '\u{1F31F}',
             desc: 'Next 3 spawns guaranteed tier 2-3',
-            cost: 50,
+            cost: 60,
             earnEvent: 'mergeCompleted',
-            earnThreshold: 80
+            earnThreshold: 150
         }
     };
 

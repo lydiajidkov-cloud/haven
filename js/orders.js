@@ -188,14 +188,31 @@ const Orders = (() => {
         var now = Date.now();
         var changed = false;
         for (var i = 0; i < orders.length; i++) {
-            if (orders[i].orderType === 'urgent' && orders[i].deadline && !orders[i].completed && !orders[i].claimed) {
+            if (orders[i].deadline && !orders[i].completed && !orders[i].claimed) {
                 if (now >= orders[i].deadline) {
-                    // Time expired — replace with a normal order
-                    orders[i] = generateOrder();
-                    changed = true;
-                    if (typeof Board !== 'undefined' && Board.showToast) {
-                        Board.showToast('⏰ Urgent order expired!',
-                            (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.HIGH : undefined);
+                    // Check near-miss: if 80%+ complete, offer rush
+                    var totalReqs = 0, totalDelivered = 0;
+                    for (var r = 0; r < orders[i].requirements.length; r++) {
+                        totalReqs += orders[i].requirements[r].count;
+                        totalDelivered += orders[i].requirements[r].delivered;
+                    }
+                    var progress = totalReqs > 0 ? totalDelivered / totalReqs : 0;
+                    if (progress >= 0.8 && orders[i].rushCost) {
+                        // Near-miss: don't expire yet, flag for rush prompt
+                        orders[i].nearMissExpired = true;
+                        changed = true;
+                        if (typeof Board !== 'undefined' && Board.showToast) {
+                            Board.showToast('Almost done! Rush for ' + orders[i].rushCost + '\u{1F48E}?',
+                                (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.HIGH : undefined);
+                        }
+                    } else {
+                        // Time expired — replace with a new order (lost reward)
+                        orders[i] = generateOrder();
+                        changed = true;
+                        if (typeof Board !== 'undefined' && Board.showToast) {
+                            Board.showToast('\u23F0 Order expired!',
+                                (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.HIGH : undefined);
+                        }
                     }
                 }
             }
@@ -209,8 +226,8 @@ const Orders = (() => {
         var requirements = [];
         var usedChains = {};
 
-        // Scale difficulty with total orders completed
-        var difficultyBoost = Math.min(5, Math.floor(ordersCompleted / 8));
+        // Scale difficulty with total orders completed (cap raised to 60)
+        var difficultyBoost = Math.min(5, Math.floor(ordersCompleted / 10));
 
         for (var i = 0; i < reqCount; i++) {
             var chain;
@@ -239,14 +256,27 @@ const Orders = (() => {
             gemReward = Math.round(gemReward * 1.5);
         }
 
+        // Energy reward: +8-15 energy based on difficulty (orders are the primary energy source)
+        var energyReward = Math.min(15, Math.max(8, Math.round(difficulty / 4)));
+
+        // Timer: 4-8 hours based on difficulty (harder orders get more time)
+        var timerMinutes = Math.min(480, Math.max(240, Math.round(difficulty * 3)));
+        var deadline = Date.now() + timerMinutes * 60 * 1000;
+
+        // Rush cost: 10-30 gems based on difficulty
+        var rushCost = Math.min(30, Math.max(10, Math.round(difficulty / 3)));
+
         return {
             id: 'ord_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
             requirements: requirements,
             reward: {
                 gems: gemReward,
+                energy: energyReward,
                 stars: Math.max(1, Math.floor(difficulty / 10))
             },
             primaryChain: primaryChain,
+            deadline: deadline,
+            rushCost: rushCost,
             completed: false,
             claimed: false
         };
@@ -360,6 +390,7 @@ const Orders = (() => {
 
         // Grant base rewards
         Game.addGems(order.reward.gems);
+        if (order.reward.energy) Game.addEnergy(order.reward.energy);
         if (order.reward.stars) Game.addStars(order.reward.stars);
 
         // Grant chain-specific bonus
@@ -381,6 +412,7 @@ const Orders = (() => {
 
         // Show floating reward text
         var rewardText = '+' + order.reward.gems + '💎';
+        if (order.reward.energy) rewardText += ' +' + order.reward.energy + '⚡';
         if (order.reward.stars) rewardText += ' +' + order.reward.stars + '⭐';
         if (bonus && bonus.label) rewardText += ' ' + bonus.label;
 
@@ -432,12 +464,16 @@ const Orders = (() => {
         // Counter: "1/3"
         html += '<span class="order-counter">' + (showIndex + 1) + '/' + orders.length + '</span>';
 
-        // Urgent timer
-        if (isUrgent && !allDone && order.deadline) {
+        // Timer (all orders now have deadlines)
+        if (!allDone && order.deadline) {
             var timeLeft = Math.max(0, order.deadline - Date.now());
-            var mins = Math.floor(timeLeft / 60000);
+            var hrs = Math.floor(timeLeft / 3600000);
+            var mins = Math.floor((timeLeft % 3600000) / 60000);
             var secs = Math.floor((timeLeft % 60000) / 1000);
-            html += '<span class="order-timer">⏰ ' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span>';
+            var timeStr = hrs > 0 ? hrs + 'h ' + mins + 'm' : mins + ':' + (secs < 10 ? '0' : '') + secs;
+            var timerClass = isUrgent ? 'order-timer order-timer-urgent' : 'order-timer';
+            if (timeLeft < 1800000) timerClass += ' order-timer-low'; // < 30 min
+            html += '<span class="' + timerClass + '">\u23F0 ' + timeStr + '</span>';
         }
 
         // Mega tag
@@ -463,8 +499,10 @@ const Orders = (() => {
         html += '</span>';
 
         // Reward
-        html += '<span class="order-reward-hint">💎' + order.reward.gems;
-        if (order.reward.stars) html += ' ⭐' + order.reward.stars;
+        html += '<span class="order-reward-hint">';
+        if (order.reward.energy) html += '\u26A1' + order.reward.energy + ' ';
+        html += '\u{1F48E}' + order.reward.gems;
+        if (order.reward.stars) html += ' \u2B50' + order.reward.stars;
         html += '</span>';
 
         if (allDone) {
@@ -496,6 +534,47 @@ const Orders = (() => {
         }, 5000);
     }
 
+    // ─── RUSH ORDER ──────────────────────────────────────────
+
+    function rushOrder(orderIndex) {
+        var order = orders[orderIndex];
+        if (!order || order.completed || order.claimed) return false;
+        var cost = order.rushCost || 20;
+        if (Game.getGems() < cost) {
+            if (typeof Board !== 'undefined' && Board.showToast) {
+                Board.showToast('Not enough gems!', Board.TOAST_PRIORITY.HIGH);
+            }
+            Sound.playError();
+            return false;
+        }
+
+        Game.addGems(-cost);
+
+        // Auto-complete all remaining requirements
+        for (var r = 0; r < order.requirements.length; r++) {
+            order.requirements[r].delivered = order.requirements[r].count;
+        }
+
+        autoClaimOrder(orderIndex);
+        return true;
+    }
+
+    // Check for near-miss (1 item away from completion)
+    function checkNearMiss(orderIndex) {
+        var order = orders[orderIndex];
+        if (!order || order.completed || order.claimed) return null;
+
+        var totalRemaining = 0;
+        for (var r = 0; r < order.requirements.length; r++) {
+            totalRemaining += order.requirements[r].count - order.requirements[r].delivered;
+        }
+
+        if (totalRemaining === 1) {
+            return { orderIndex: orderIndex, rushCost: order.rushCost || 10 };
+        }
+        return null;
+    }
+
     // ─── PERSISTENCE ──────────────────────────────────────────
 
     function saveState() {
@@ -513,6 +592,8 @@ const Orders = (() => {
         getOrdersCompleted: function() { return ordersCompleted; },
         getDeliverableOrders: getDeliverableOrders,
         getDeliverableItemSpecs: getDeliverableItemSpecs,
-        deliverItem: deliverItem
+        deliverItem: deliverItem,
+        rushOrder: rushOrder,
+        checkNearMiss: checkNearMiss
     };
 })();

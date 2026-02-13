@@ -11,7 +11,7 @@ const Game = (() => {
     const DEFAULT_COLS = 6;
     var ROWS = DEFAULT_ROWS;
     var COLS = DEFAULT_COLS;
-    const MAX_ENERGY = 100;
+    const MAX_ENERGY = 50;
 
     // Board expansion tiers: [rows, cols, gem cost]
     const BOARD_EXPANSIONS = [
@@ -27,7 +27,7 @@ const Game = (() => {
         { id: 'shadow',  name: 'Shadow Realm',     icon: '\u{1F311}', cost: 300, desc: 'Deep darkness with crimson accents' }
     ];
 
-    const ENERGY_REGEN_MS = 2 * 60 * 1000; // 2 minutes
+    const ENERGY_REGEN_MS = 3 * 60 * 1000; // 3 minutes (full recharge: 2.5h from 0)
 
     let state = null;
     let listeners = {};

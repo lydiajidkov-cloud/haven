@@ -5,13 +5,10 @@ const Board = (() => {
     // Board dimensions — initialized from Game, updated on expansion
     var ROWS = Game.ROWS;
     var COLS = Game.COLS;
-    var MIN_MERGE = 3;
+    var MIN_MERGE = 2;
 
-    // Query current effective MIN_MERGE (may be overridden by event modifier)
+    // Query current effective MIN_MERGE
     function getEffectiveMinMerge() {
-        if (typeof Events !== 'undefined' && Events.hasModifier('min_merge_override')) {
-            return Events.getModifierValue('min_merge_override');
-        }
         return MIN_MERGE;
     }
 
@@ -29,14 +26,14 @@ const Board = (() => {
     var surgeHighestMilestone = 0; // highest milestone reached this surge (5/10/20)
     var SURGE_ACTIVATE = 30;      // level to activate (was 40 — easier to trigger)
     var SURGE_DEACTIVATE = 5;     // level to deactivate (was 10 — stays active longer)
-    var SURGE_PER_MERGE = 35;     // added per merge (was 30 — one merge nearly triggers)
+    var SURGE_PER_MERGE = 25;     // added per merge (reduced: more frequent merges with MIN_MERGE=2)
     var SURGE_DECAY_RATE = 8;     // lost per second (was 12 — wider window)
     var SURGE_ANIM_FAST = 140;    // ms merge animation during surge (was 180)
     var SURGE_ANIM_NORMAL = 250;  // ms merge animation normally (was 320)
 
     // Pity counter — guarantees gem multiplier every N merges
     var mergesSinceBonus = 0;
-    var PITY_THRESHOLD = 12;
+    var PITY_THRESHOLD = 20; // was 12
 
     // Tutorial overrides
     var forcedSpawnTier = null;
@@ -68,6 +65,11 @@ const Board = (() => {
     var swipeActive = false; // true when swiping across matching tiles
     var lastSwipeCell = null; // last cell entered during swipe
 
+    // Mode tooltip counters (persisted in save, max 5 each)
+    var dragTooltipCount = 0;
+    var swipeTooltipCount = 0;
+    var MODE_TOOLTIP_MAX = 5;
+
     function init() {
         containerEl = document.getElementById('board-container');
         boardEl = document.getElementById('board');
@@ -78,6 +80,9 @@ const Board = (() => {
 
         // Load sprite map for image-based rendering
         loadSpriteMap();
+
+        // Restore mode tooltip counts from save
+        loadTooltipCounts();
 
         // Apply CSS grid dimensions
         updateBoardGridCSS();
@@ -271,8 +276,10 @@ const Board = (() => {
                 // Start swipe-merge mode!
                 startSwipe(dragFrom.row, dragFrom.col);
                 addToSwipe(firstTarget.row, firstTarget.col);
+                maybeShowSwipeTooltip();
             } else {
                 startDragVisual(e);
+                maybeShowDragTooltip();
             }
         }
 
@@ -305,11 +312,14 @@ const Board = (() => {
             dragEl.style.left = (e.clientX - dragOffsetX) + 'px';
             dragEl.style.top = (e.clientY - dragOffsetY) + 'px';
 
-            // Highlight cell under pointer
+            // Highlight cell under pointer + update merge count badge
             clearHighlight('drag-over');
             var dragTarget = getCellFromCoords(e.clientX, e.clientY);
             if (dragTarget && !(dragTarget.row === dragFrom.row && dragTarget.col === dragFrom.col)) {
                 grid[dragTarget.row][dragTarget.col].classList.add('drag-over');
+                updateMergeCountBadge(dragTarget.row, dragTarget.col);
+            } else {
+                updateMergeCountBadge(-1, -1);
             }
         }
     }
@@ -361,6 +371,7 @@ const Board = (() => {
 
         // Cleanup drag visual
         if (dragEl) { dragEl.remove(); dragEl = null; }
+        dragCountBadge = null;
         clearHighlight('drag-over');
         clearHighlight('valid-target');
         clearHighlight('recipe-target');
@@ -384,6 +395,13 @@ const Board = (() => {
             var recipe = Items.getCrossChainResult(dragItem, items[tr][tc]);
             if (recipe) {
                 executeCrossChainMerge(dragFrom.row, dragFrom.col, tr, tc, recipe);
+            } else {
+                // Show why the merge failed
+                var rejection = getMergeRejection(dragItem, items[tr][tc]);
+                if (rejection) {
+                    showRejectionText(tr, tc, rejection);
+                    Sound.playError();
+                }
             }
         } else if (!items[tr][tc]) {
             moveItem(dragFrom.row, dragFrom.col, tr, tc);
@@ -402,6 +420,7 @@ const Board = (() => {
         // Clean up any in-progress interaction
         if (swipeActive) endSwipe();
         if (dragEl) { dragEl.remove(); dragEl = null; }
+        dragCountBadge = null;
         clearHighlight('drag-over');
         clearHighlight('valid-target');
         clearHighlight('recipe-target');
@@ -416,6 +435,8 @@ const Board = (() => {
         dragStarted = false;
     }
 
+    var dragCountBadge = null; // merge count badge on drag ghost
+
     function startDragVisual(e) {
         var cell = grid[dragFrom.row][dragFrom.col];
         var itemEl = cell.querySelector('.item');
@@ -428,6 +449,13 @@ const Board = (() => {
             'width:' + rect.width + 'px;height:' + rect.height + 'px;' +
             'left:' + rect.left + 'px;top:' + rect.top + 'px;' +
             'transition:none;opacity:0.85;will-change:left,top;';
+
+        // Add merge count badge
+        dragCountBadge = document.createElement('div');
+        dragCountBadge.className = 'merge-count-badge';
+        dragCountBadge.style.display = 'none';
+        dragEl.appendChild(dragCountBadge);
+
         document.body.appendChild(dragEl);
 
         dragOffsetX = e.clientX - rect.left;
@@ -435,6 +463,38 @@ const Board = (() => {
 
         itemEl.classList.add('drag-source');
         highlightTargets(dragItem, dragFrom.row, dragFrom.col);
+    }
+
+    function updateMergeCountBadge(hoverRow, hoverCol) {
+        if (!dragCountBadge || !dragItem) return;
+        // Only show badge when hovering over a cell with a matching item
+        if (hoverRow < 0 || hoverRow >= ROWS || hoverCol < 0 || hoverCol >= COLS) {
+            dragCountBadge.style.display = 'none';
+            return;
+        }
+        var target = items[hoverRow][hoverCol];
+        if (!target || !Items.canMerge(dragItem, target)) {
+            dragCountBadge.style.display = 'none';
+            return;
+        }
+
+        var connected = findConnected(hoverRow, hoverCol, dragItem.chain, dragItem.tier);
+        var total = connected.length + 1; // +1 for dragged item
+        var minMerge = getEffectiveMinMerge();
+
+        dragCountBadge.style.display = '';
+        dragCountBadge.className = 'merge-count-badge';
+
+        if (total >= 5) {
+            dragCountBadge.textContent = total;
+            dragCountBadge.classList.add('big-merge');
+        } else if (total >= minMerge) {
+            dragCountBadge.textContent = total + '/' + total;
+            dragCountBadge.classList.add('ready');
+        } else {
+            dragCountBadge.textContent = total + '/' + minMerge;
+            dragCountBadge.classList.add('insufficient');
+        }
     }
 
     // ─── TAP SELECTION ────────────────────────────────────────────
@@ -493,7 +553,9 @@ const Board = (() => {
             return;
         }
 
-        // Tap different non-matching item = select that one instead
+        // Tap different non-matching item = show why, then select that one instead
+        var rejection = getMergeRejection(items[sr][sc], items[r][c]);
+        if (rejection) showRejectionText(r, c, rejection);
         clearSelection();
         selectItem(r, c);
     }
@@ -661,12 +723,11 @@ const Board = (() => {
         startSurgeDecay();
     }
 
-    // Surge escalation milestones: scaling rewards for sustained surge play
-    // 5 merges = +10 gems, 10 merges = +25 gems + star, 20 merges = +50 gems + rare egg
+    // Surge escalation milestones: scaling rewards (~50% cut from original)
     var SURGE_MILESTONES = [
-        { count: 5,  gems: 10, star: false, egg: false, label: '5 SURGE MERGES!' },
-        { count: 10, gems: 25, star: true,  egg: false, label: '10 SURGE MERGES!' },
-        { count: 20, gems: 50, star: false, egg: true,  label: '20 SURGE MERGES!' }
+        { count: 5,  gems: 5,  star: false, egg: false, label: '5 SURGE MERGES!' },
+        { count: 10, gems: 12, star: true,  egg: false, label: '10 SURGE MERGES!' },
+        { count: 20, gems: 25, star: false, egg: true,  label: '20 SURGE MERGES!' }
     ];
 
     function checkSurgeMilestone() {
@@ -760,7 +821,7 @@ const Board = (() => {
 
         // End-of-surge summary (replaces old flat bonus — milestones now handle rewards)
         if (surgeMergeCount >= 3) {
-            var bonus = Math.floor(surgeMergeCount * 1.5) + 2;
+            var bonus = Math.floor(surgeMergeCount * 0.7) + 1;
             Game.addGems(bonus);
             showFloatingText(3, 2, 'Surge! +' + bonus + ' \u{1F48E}');
             showToast('\u26A1 Surge ended! ' + surgeMergeCount + ' merges \u2192 +' + bonus + ' gems', TOAST_PRIORITY.HIGH);
@@ -841,6 +902,86 @@ const Board = (() => {
         }
     }
 
+    // ─── MERGE REJECTION FEEDBACK ──────────────────────────────
+
+    // Returns {text, color} explaining why two items can't merge, or null if they can
+    function getMergeRejection(a, b) {
+        if (!a || !b) return null;
+        if (Items.canMerge(a, b)) return null;
+        if (Items.getCrossChainResult(a, b)) return null;
+
+        // Different chain (not a valid recipe pair either)
+        if (a.chain !== b.chain) {
+            // Check if it's a recipe pair but failing on tier/hybrid rules
+            var pair = [a.chain, b.chain].sort().join('+');
+            var isRecipePair = Items.getRecipePairs && Items.getRecipePairs()[pair];
+            if (isRecipePair) {
+                if (a.tier < 1 || b.tier < 1) return { text: 'Level up first!', color: '#ff9500' };
+                if (a.tier !== b.tier) return { text: 'Same level needed!', color: '#ff9500' };
+                return { text: "Can't combine these", color: '#ff4444' };
+            }
+            return { text: 'Different types!', color: '#ff4444' };
+        }
+
+        // Same chain, different tier
+        if (a.tier !== b.tier) return { text: 'Different levels!', color: '#ff4444' };
+
+        return null;
+    }
+
+    function showRejectionText(row, col, rejection) {
+        if (!rejection) return;
+        var cellRect = grid[row][col].getBoundingClientRect();
+        var el = document.createElement('div');
+        el.className = 'floating-text rejection-text';
+        el.textContent = rejection.text;
+        el.style.left = (cellRect.left + cellRect.width / 2) + 'px';
+        el.style.top = cellRect.top + 'px';
+        el.style.color = rejection.color;
+        document.body.appendChild(el);
+        setTimeout(function() { el.remove(); }, 1200);
+    }
+
+    // ─── MODE TOOLTIPS (first N interactions) ──────────────────
+
+    function showModeTooltip(text) {
+        var el = document.createElement('div');
+        el.className = 'mode-tooltip';
+        el.textContent = text;
+        document.body.appendChild(el);
+        setTimeout(function() { el.remove(); }, 1600);
+    }
+
+    function maybeShowDragTooltip() {
+        if (dragTooltipCount >= MODE_TOOLTIP_MAX) return;
+        dragTooltipCount++;
+        showModeTooltip('Drag to move or merge!');
+        persistTooltipCounts();
+    }
+
+    function maybeShowSwipeTooltip() {
+        if (swipeTooltipCount >= MODE_TOOLTIP_MAX) return;
+        swipeTooltipCount++;
+        showModeTooltip('Swipe across matching items to chain-merge!');
+        persistTooltipCounts();
+    }
+
+    function persistTooltipCounts() {
+        var state = Game.getState();
+        if (!state.tooltipCounts) state.tooltipCounts = {};
+        state.tooltipCounts.drag = dragTooltipCount;
+        state.tooltipCounts.swipe = swipeTooltipCount;
+        Game.save();
+    }
+
+    function loadTooltipCounts() {
+        var state = Game.getState();
+        if (state.tooltipCounts) {
+            dragTooltipCount = state.tooltipCounts.drag || 0;
+            swipeTooltipCount = state.tooltipCounts.swipe || 0;
+        }
+    }
+
     // ─── MERGE LOGIC ─────────────────────────────────────────────
 
     function attemptMerge(fromRow, fromCol, toRow, toCol) {
@@ -864,6 +1005,7 @@ const Board = (() => {
             items[fromRow][fromCol] = item;
             renderCell(fromRow, fromCol);
             Sound.playError();
+            showFloatingText(toRow, toCol, 'Move closer!');
 
             // Near-miss: flash matching items elsewhere on the board
             var nearMissPlayed = false;
@@ -919,10 +1061,27 @@ const Board = (() => {
         var nextTier = tier + 1;
         var isMaxTier = !Items.hasNextTier(chain, tier);
         var isBigMerge = totalCount >= 5;
-        // Near-miss: "Almost 5x!" when one more match would have been a big merge
-        if (totalCount === 4) {
-            showFloatingText(targetRow, targetCol, 'Almost 5x!');
+
+        // Proportional merge outputs: floor(N/2) items of next tier
+        var outputCount = Math.max(1, Math.floor(totalCount / 2));
+
+        // Gem bonus for larger groups (incentivises grouping over pair-merging)
+        var groupBonus = 0;
+        if (totalCount >= 8) {
+            groupBonus = 5;
+            showFloatingText(targetRow, targetCol, totalCount + 'x MEGA! +5 \u{1F48E}');
+        } else if (totalCount >= 6) {
+            groupBonus = 3;
+            showFloatingText(targetRow, targetCol, totalCount + 'x COMBO! +3 \u{1F48E}');
+        } else if (totalCount === 5) {
+            groupBonus = 2;
+            showFloatingText(targetRow, targetCol, '5x! +2 \u{1F48E}');
+        } else if (totalCount === 4) {
+            groupBonus = 0;
+        } else if (totalCount === 3) {
+            groupBonus = 1;
         }
+        if (groupBonus > 0) Game.addGems(groupBonus);
         var nextDef = Items.getItemDef(chain, isMaxTier ? tier : nextTier);
 
         // Lock all involved cells
@@ -967,7 +1126,7 @@ const Board = (() => {
                 Sound.playCelebration();
                 Game.vibrate([20, 40, 30, 40, 20]);
                 emitParticlesAtCell(targetRow, targetCol, 'legendary');
-                var maxTierGems = 10;
+                var maxTierGems = 5; // was 10
                 // Apply double_reward companion bonus to max-tier merges
                 if (typeof Creatures !== 'undefined' && Creatures.isDoubleRewardActive()) {
                     maxTierGems *= 2;
@@ -1002,7 +1161,7 @@ const Board = (() => {
                 return;
             }
 
-            // Critical merge: 4% chance of +2 tier jump
+            // Critical merge: 4% chance of +2 tier jump (applies to first output only)
             var actualTier = nextTier;
             if (Math.random() < 0.04 && Items.hasNextTier(chain, nextTier)) {
                 actualTier = nextTier + 1;
@@ -1012,7 +1171,7 @@ const Board = (() => {
                 emitParticlesAtCell(targetRow, targetCol, 'legendary');
             }
 
-            // Create merged item at target
+            // Create first merged item at target cell
             var newItem = Items.createItem(chain, actualTier);
             items[targetRow][targetCol] = newItem;
             unlockCell(targetRow, targetCol);
@@ -1037,21 +1196,22 @@ const Board = (() => {
                 count: isBigMerge ? 25 : 15
             });
 
-            // Big merge bonus: extra item
-            if (isBigMerge) {
-                var empty = getRandomEmptyCell();
-                if (empty) {
-                    var bonus = Items.createItem(chain, nextTier);
-                    items[empty.row][empty.col] = bonus;
-                    renderCell(empty.row, empty.col);
-                    var bonusEl = grid[empty.row][empty.col].querySelector('.item');
-                    if (bonusEl) {
-                        bonusEl.classList.add('spawn-in');
-                        setTimeout(function() { bonusEl.classList.remove('spawn-in'); }, 300);
+            // Proportional outputs: place additional items (outputCount - 1 extras)
+            for (var oi = 1; oi < outputCount; oi++) {
+                var extraCell = getRandomEmptyCell();
+                if (extraCell) {
+                    var extraItem = Items.createItem(chain, nextTier); // extras at base nextTier (no critical)
+                    items[extraCell.row][extraCell.col] = extraItem;
+                    renderCell(extraCell.row, extraCell.col);
+                    var extraEl = grid[extraCell.row][extraCell.col].querySelector('.item');
+                    if (extraEl) {
+                        extraEl.classList.add('spawn-in');
+                        setTimeout(function() { extraEl.classList.remove('spawn-in'); }, 300);
                     }
-                    emitParticlesAtCell(empty.row, empty.col, 'spawn', {
+                    emitParticlesAtCell(extraCell.row, extraCell.col, 'spawn', {
                         color: nextDef ? nextDef.glow : '#FFD700'
                     });
+                    Game.emit('itemProduced', { chain: chain, tier: nextTier });
                 }
             }
 
@@ -1093,15 +1253,15 @@ const Board = (() => {
                 setTimeout(function() { boardEl.classList.remove('screen-shake'); }, 250);
             }
 
-            // Gem rewards — exponential scaling, starts at tier 4
-            if (nextTier >= 4) {
-                var gemReward = Math.max(1, Math.floor(Math.pow(1.8, nextTier - 4)));
-                // Random multiplier — variable ratio reinforcement
+            // Gem rewards — exponential scaling, starts at tier 5 (was tier 4)
+            if (nextTier >= 5) {
+                var gemReward = Math.max(1, Math.floor(Math.pow(1.35, nextTier - 5)));
+                // Random multiplier — variable ratio reinforcement (no 3x, rarer 2x)
                 var roll = Math.random();
                 var gemMultiplier = 1;
                 mergesSinceBonus++;
-                if (roll < 0.05 || mergesSinceBonus >= PITY_THRESHOLD * 2) { gemMultiplier = 3; mergesSinceBonus = 0; }
-                else if (roll < 0.20 || mergesSinceBonus >= PITY_THRESHOLD) { gemMultiplier = 2; mergesSinceBonus = 0; }
+                if (roll < 0.08 || mergesSinceBonus >= PITY_THRESHOLD) { gemMultiplier = 2; mergesSinceBonus = 0; }
+                // Pity: weaker — 1.5x after PITY_THRESHOLD merges (no 3x exists)
                 if (gemMultiplier > 1) {
                     gemReward *= gemMultiplier;
                 }
@@ -1115,12 +1275,7 @@ const Board = (() => {
                     gemReward = Math.floor(gemReward * eventGemMult);
                 }
                 // Show appropriate floating text + distinct haptics per multiplier
-                if (gemMultiplier === 3) {
-                    showFloatingText(targetRow, targetCol, '3x JACKPOT! +' + gemReward + ' \u{1F48E}');
-                    Sound.playCelebration();
-                    Game.vibrate([10, 20, 10, 20, 10, 20, 30]);
-                    emitParticlesAtCell(targetRow, targetCol, 'legendary');
-                } else if (gemMultiplier === 2) {
+                if (gemMultiplier === 2) {
                     showFloatingText(targetRow, targetCol, '2x BONUS! +' + gemReward + ' \u{1F48E}');
                     Sound.playCelebration();
                     Game.vibrate([10, 20, 15]);
@@ -1178,9 +1333,9 @@ const Board = (() => {
             }
         }
         if (chainReactionTriggered) {
-            // Chain reaction bonus — exponential scaling for jackpot feel!
-            var chainGems = Math.floor(depth * depth * 2);
-            var chainEnergy = Math.min(depth, 3);
+            // Chain reaction bonus — linear scaling (was quadratic)
+            var chainGems = Math.floor(depth * 1.5);
+            var chainEnergy = Math.min(depth, 2);
             Game.addGems(chainGems);
             Game.addEnergy(chainEnergy);
             showFloatingText(row, col, 'Chain x' + depth + '! +' + chainGems + '\u{1F48E} +' + chainEnergy + '\u26A1');
@@ -1243,8 +1398,8 @@ const Board = (() => {
             // Item discovery reward for cross-chain results
             checkItemDiscovery(recipe.chain, recipe.tier, toRow, toCol);
 
-            // Cross-chain gem reward (base: tier-scaled)
-            var crossGems = Math.max(2, Math.floor(Math.pow(1.5, recipe.tier)));
+            // Cross-chain gem reward (base: tier-scaled, reduced)
+            var crossGems = Math.max(1, Math.floor(Math.pow(1.3, recipe.tier)));
             // Event modifier: crosschain_reward_multiplier (e.g., Chain Master 3x)
             if (typeof Events !== 'undefined' && Events.hasModifier('crosschain_reward_multiplier')) {
                 crossGems = Math.floor(crossGems * Events.getModifierValue('crosschain_reward_multiplier'));
@@ -1326,8 +1481,8 @@ const Board = (() => {
     // When too many tier-0 items clog the board, spawns cost extra energy.
     // This creates pressure to merge or clear junk, making Lightning and
     // merge planning strategically important.
-    var CLUTTER_THRESHOLD = 8;  // tier-0 items before tax kicks in
-    var CLUTTER_EXTRA_COST = 1; // extra energy per spawn when cluttered
+    var CLUTTER_THRESHOLD = 4;  // tier-0 items before tax kicks in (was 8)
+    var CLUTTER_EXTRA_COST = 2; // extra energy per spawn when cluttered (was 1)
 
     function countTierZero() {
         var count = 0;
@@ -1353,7 +1508,7 @@ const Board = (() => {
             if (!nodesEl.querySelector('.clutter-warning')) {
                 var warn = document.createElement('div');
                 warn.className = 'clutter-warning';
-                warn.textContent = 'Cluttered! Spawns cost 2 energy';
+                warn.textContent = 'Cluttered! Spawns cost ' + (3 + CLUTTER_EXTRA_COST) + ' energy';
                 nodesEl.appendChild(warn);
             }
         } else {
@@ -1364,9 +1519,10 @@ const Board = (() => {
     }
 
     function spawnItem(chain) {
-        // Check clutter tax: if board is cluttered with tier-0 items, extra energy cost
+        // Base spawn cost: 3 energy + clutter tax
+        var SPAWN_COST = 3;
         var cluttered = isCluttered();
-        var totalCost = 1 + (cluttered ? CLUTTER_EXTRA_COST : 0);
+        var totalCost = SPAWN_COST + (cluttered ? CLUTTER_EXTRA_COST : 0);
 
         if (Game.getEnergy() < totalCost) {
             Sound.playEnergyEmpty();
@@ -1377,9 +1533,7 @@ const Board = (() => {
                 showToast('Cluttered! Spawns cost ' + totalCost + ' energy. Merge or clear tier-0 items!', TOAST_PRIORITY.NORMAL);
             } else {
                 // Show energy-empty bottom sheet (ad + gem refill options)
-                if (typeof AdAdapter !== 'undefined' && AdAdapter.showEnergyBottomSheet) {
-                    AdAdapter.showEnergyBottomSheet();
-                }
+                showEnergyEmptyPrompt();
                 // Count available merges to encourage continued play
                 var availableMerges = 0;
                 var visitedCells = {};
@@ -1399,14 +1553,18 @@ const Board = (() => {
             return;
         }
 
-        // Consume energy (base cost)
-        if (!Game.useEnergy()) {
-            Sound.playEnergyEmpty();
-            return;
+        // Consume energy (base cost of 3)
+        for (var ei = 0; ei < SPAWN_COST; ei++) {
+            if (!Game.useEnergy()) {
+                Sound.playEnergyEmpty();
+                // Refund any already consumed
+                Game.addEnergy(ei);
+                return;
+            }
         }
         // Consume extra clutter tax energy
-        if (cluttered) {
-            Game.useEnergy(); // second point
+        for (var ci2 = 0; ci2 < CLUTTER_EXTRA_COST && cluttered; ci2++) {
+            Game.useEnergy();
         }
 
         var empty = getRandomEmptyCell();
@@ -1414,7 +1572,8 @@ const Board = (() => {
             Sound.playBoardFull();
             Game.addEnergy(totalCost); // Refund full cost
             showToast('Board is full! Merge some items first.', TOAST_PRIORITY.CRITICAL);
-            // Free shuffle safety valve if no merges possible
+            // No free shuffle — player must use Shuffle power-up (15 gems) or Lightning
+            // Check if any merges exist, suggest Shuffle if stuck
             var hasMerge = false;
             for (var fr = 0; fr < ROWS && !hasMerge; fr++) {
                 for (var fc = 0; fc < COLS && !hasMerge; fc++) {
@@ -1430,12 +1589,7 @@ const Board = (() => {
                 }
             }
             if (!hasMerge) {
-                showToast('No merges possible! Free shuffle incoming...', TOAST_PRIORITY.CRITICAL);
-                setTimeout(function() {
-                    if (typeof PowerUps !== 'undefined' && PowerUps.activateShuffle) {
-                        PowerUps.activateShuffle();
-                    }
-                }, 800);
+                showToast('No merges possible! Use Shuffle (15\u{1F48E}) or Lightning to clear space.', TOAST_PRIORITY.CRITICAL);
             }
             return;
         }
@@ -1493,16 +1647,9 @@ const Board = (() => {
         // Item discovery reward for spawned items (first encounter of each chain+tier)
         checkItemDiscovery(chain, item.tier, empty.row, empty.col);
 
-        // Check if spawn created an auto-merge
+        // Check if spawn created an auto-merge (no bonus gems — just execute the merge)
         var connected = autoMergeSuppressed ? [] : findConnected(empty.row, empty.col, item.chain, item.tier);
         if (connected.length >= getEffectiveMinMerge()) {
-            // Lucky auto-merge bonus!
-            var luckyGems = 2 + connected.length;
-            Game.addGems(luckyGems);
-            Game.addEnergy(1);
-            showFloatingText(empty.row, empty.col, 'Lucky! +' + luckyGems + ' \u{1F48E} +1\u26A1');
-            showToast('\u{1F340} Lucky merge! +' + luckyGems + ' gems, +1 energy', TOAST_PRIORITY.HIGH);
-            Game.emit('luckyMerge', { count: connected.length });
             setTimeout(function() {
                 executeMerge(connected, item.chain, item.tier, empty.row, empty.col, connected.length);
             }, 400);
@@ -1609,6 +1756,9 @@ const Board = (() => {
 
         var item = items[row][col];
         if (!item) return;
+
+        // Chain color tint on cell background
+        cell.classList.add('chain-' + item.chain);
 
         var def = Items.getItemDef(item.chain, item.tier);
         if (!def) return;

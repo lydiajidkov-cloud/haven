@@ -3,16 +3,22 @@
 
 const Shop = (() => {
     var shopItems = [
-        // Energy
-        { id: 'energy5',   name: 'Energy Pack',      desc: '5 Energy refill',             price: 20,  icon: '⚡', category: 'energy',
-          action: function() { Game.addEnergy(5); } },
-        { id: 'energy_full', name: 'Full Recharge',   desc: 'Fully recharge energy',       price: 75,  icon: '🔋', category: 'energy',
+        // Energy (adjusted for new max of 50)
+        { id: 'energy_small', name: 'Energy Drip',     desc: '15 Energy',                   price: 20,  icon: '\u26A1', category: 'energy',
+          action: function() { Game.addEnergy(15); } },
+        { id: 'energy_full',  name: 'Full Recharge',   desc: 'Fully recharge energy',       price: 50,  icon: '\u{1F50B}', category: 'energy',
           action: function() { Game.addEnergy(Game.MAX_ENERGY); } },
 
+        // Gem sinks (new)
+        { id: 'shuffle_buy',  name: 'Shuffle',          desc: 'Randomize board positions',   price: 15,  icon: '\u{1F500}', category: 'energy',
+          action: function() { if (typeof Board !== 'undefined') Board.shuffleBoard(); } },
+        { id: 'obstacle_clear', name: 'Clear Obstacle', desc: 'Remove one obstacle tile',    price: 10,  icon: '\u26A1', category: 'energy',
+          action: function() { if (typeof Board !== 'undefined' && Board.clearOneObstacle) Board.clearOneObstacle(); } },
+
         // Boosts
-        { id: 'lucky_spawn', name: 'Lucky Spawn',     desc: 'Next 5 spawns are rare+',     price: 30,  icon: '🍀', category: 'boost',
+        { id: 'lucky_spawn', name: 'Lucky Spawn',     desc: 'Next 5 spawns are rare+',     price: 30,  icon: '\u{1F340}', category: 'boost',
           action: function() { applyBoost('lucky_spawn', 5); } },
-        { id: 'merge_bonus', name: 'Merge Bonus',     desc: '2x gems from merges (10 min)', price: 40, icon: '✨', category: 'boost',
+        { id: 'merge_bonus', name: 'Merge Bonus',     desc: '2x gems from merges (10 min)', price: 40, icon: '\u2728', category: 'boost',
           action: function() { applyBoost('merge_bonus', 600); } },
 
         // Creature eggs

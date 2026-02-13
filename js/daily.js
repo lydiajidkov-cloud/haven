@@ -3,15 +3,15 @@
 
 const Daily = (() => {
     // ─── 7-DAY ROLLING CALENDAR REWARDS ─────────────────────
-    // Gem rewards reduced 40% from original (was 515/week, now 310/week ≈ 800/month)
+    // Gem rewards reduced ~48% (was 310/week, now 160/week ≈ 640/month)
     const CALENDAR_REWARDS = [
-        { day: 1, rewards: { gems: 15 },                              label: '15 gems',           icons: '\uD83D\uDC8E 15' },
-        { day: 2, rewards: { energy: 3, gems: 10 },                   label: '3 energy + 10 gems', icons: '\u26A1 3 + \uD83D\uDC8E 10' },
-        { day: 3, rewards: { gems: 30 },                              label: '30 gems',           icons: '\uD83D\uDC8E 30' },
-        { day: 4, rewards: { energy: 5, gems: 15 },                   label: '5 energy + 15 gems', icons: '\u26A1 5 + \uD83D\uDC8E 15' },
-        { day: 5, rewards: { gems: 60, stars: 1 },                    label: '60 gems + 1 star',  icons: '\uD83D\uDC8E 60 + \u2B50 1' },
-        { day: 6, rewards: { gems: 30, egg: 'common' },               label: 'Common Egg + 30 gems', icons: '\uD83E\uDD5A + \uD83D\uDC8E 30' },
-        { day: 7, rewards: { gems: 150, stars: 3, egg: 'rare' },      label: '150 gems + 3 stars + Rare Egg', icons: '\uD83C\uDF81 JACKPOT' }
+        { day: 1, rewards: { gems: 10 },                              label: '10 gems',           icons: '\uD83D\uDC8E 10' },
+        { day: 2, rewards: { energy: 3, gems: 5 },                    label: '3 energy + 5 gems', icons: '\u26A1 3 + \uD83D\uDC8E 5' },
+        { day: 3, rewards: { gems: 15 },                              label: '15 gems',           icons: '\uD83D\uDC8E 15' },
+        { day: 4, rewards: { energy: 5, gems: 10 },                   label: '5 energy + 10 gems', icons: '\u26A1 5 + \uD83D\uDC8E 10' },
+        { day: 5, rewards: { gems: 30, stars: 1 },                    label: '30 gems + 1 star',  icons: '\uD83D\uDC8E 30 + \u2B50 1' },
+        { day: 6, rewards: { gems: 15, egg: 'common' },               label: 'Common Egg + 15 gems', icons: '\uD83E\uDD5A + \uD83D\uDC8E 15' },
+        { day: 7, rewards: { gems: 75, stars: 3, egg: 'rare' },       label: '75 gems + 3 stars + Rare Egg', icons: '\uD83C\uDF81 JACKPOT' }
     ];
 
     // ─── STREAK SYSTEM CONSTANTS ──────────────────────────────
@@ -21,18 +21,18 @@ const Daily = (() => {
 
     // ─── DAILY QUESTS ───────────────────────────────────────
     const dailyQuestPool = [
-        { id: 'dq_merge5',   desc: 'Merge 5 times',       type: 'merge_count',  target: 5,  reward: { gems: 10 } },
-        { id: 'dq_merge15',  desc: 'Merge 15 times',      type: 'merge_count',  target: 15, reward: { gems: 20 } },
-        { id: 'dq_spawn5',   desc: 'Spawn 5 items',       type: 'spawn_count',  target: 5,  reward: { gems: 10 } },
-        { id: 'dq_spawn10',  desc: 'Spawn 10 items',      type: 'spawn_count',  target: 10, reward: { gems: 15 } },
-        { id: 'dq_tier2',    desc: 'Create a Tier 2 item', type: 'reach_tier',  tier: 2, target: 1, reward: { gems: 10 } },
-        { id: 'dq_tier3',    desc: 'Create a Tier 3 item', type: 'reach_tier',  tier: 3, target: 1, reward: { gems: 15 } },
-        { id: 'dq_wood',     desc: 'Produce 3 Wood items', type: 'produce_any', chain: 'wood',  target: 3, reward: { gems: 10 } },
-        { id: 'dq_stone',    desc: 'Produce 3 Stone items', type: 'produce_any', chain: 'stone', target: 3, reward: { gems: 10 } },
-        { id: 'dq_flora',    desc: 'Produce 3 Flora items', type: 'produce_any', chain: 'flora', target: 3, reward: { gems: 10 } },
-        { id: 'dq_crystal',  desc: 'Produce 3 Crystal items', type: 'produce_any', chain: 'crystal', target: 3, reward: { gems: 10 } },
-        { id: 'dq_powerup1', desc: 'Use a power-up',       type: 'powerup_use', target: 1, reward: { gems: 15 } },
-        { id: 'dq_powerup3', desc: 'Use 3 power-ups',      type: 'powerup_use', target: 3, reward: { gems: 25 } },
+        { id: 'dq_merge5',   desc: 'Merge 5 times',       type: 'merge_count',  target: 5,  reward: { gems: 5 } },
+        { id: 'dq_merge15',  desc: 'Merge 15 times',      type: 'merge_count',  target: 15, reward: { gems: 12 } },
+        { id: 'dq_spawn5',   desc: 'Spawn 5 items',       type: 'spawn_count',  target: 5,  reward: { gems: 5 } },
+        { id: 'dq_spawn10',  desc: 'Spawn 10 items',      type: 'spawn_count',  target: 10, reward: { gems: 8 } },
+        { id: 'dq_tier2',    desc: 'Create a Tier 2 item', type: 'reach_tier',  tier: 2, target: 1, reward: { gems: 5 } },
+        { id: 'dq_tier3',    desc: 'Create a Tier 3 item', type: 'reach_tier',  tier: 3, target: 1, reward: { gems: 8 } },
+        { id: 'dq_wood',     desc: 'Produce 3 Wood items', type: 'produce_any', chain: 'wood',  target: 3, reward: { gems: 5 } },
+        { id: 'dq_stone',    desc: 'Produce 3 Stone items', type: 'produce_any', chain: 'stone', target: 3, reward: { gems: 5 } },
+        { id: 'dq_flora',    desc: 'Produce 3 Flora items', type: 'produce_any', chain: 'flora', target: 3, reward: { gems: 5 } },
+        { id: 'dq_crystal',  desc: 'Produce 3 Crystal items', type: 'produce_any', chain: 'crystal', target: 3, reward: { gems: 5 } },
+        { id: 'dq_powerup1', desc: 'Use a power-up',       type: 'powerup_use', target: 1, reward: { gems: 8 } },
+        { id: 'dq_powerup3', desc: 'Use 3 power-ups',      type: 'powerup_use', target: 3, reward: { gems: 15 } },
     ];
 
     // Calendar state

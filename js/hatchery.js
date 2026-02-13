@@ -46,16 +46,20 @@ var Hatchery = (function() {
 
     var DISCOVERY_CHANCE = {
         0: 0.0,
-        1: 0.30,
-        2: 0.40,
-        3: 0.50,
-        4: 0.60,
-        5: 0.70,
-        6: 0.80,
-        7: 1.00
+        1: 0.12,
+        2: 0.18,
+        3: 0.22,
+        4: 0.28,
+        5: 0.35,
+        6: 0.45,
+        7: 0.60
     };
 
-    var PITY_THRESHOLD = 30; // guaranteed legendary every 30 egg discoveries
+    var PITY_THRESHOLD = 50; // guaranteed legendary every 50 egg discoveries (was 30)
+
+    // Discovery cooldown: minimum 30 seconds between discoveries
+    var DISCOVERY_COOLDOWN_MS = 30000;
+    var lastDiscoveryTime = 0;
 
     var discovered = {};
     var collapsedBiomes = {}; // track collapsed state per biome
@@ -135,6 +139,9 @@ var Hatchery = (function() {
     function onItemProduced(data) {
         if (data.chain !== 'creature') return;
 
+        // Discovery cooldown: max 1 discovery per 30 seconds
+        if (Date.now() - lastDiscoveryTime < DISCOVERY_COOLDOWN_MS) return;
+
         var tier = data.tier;
         var chance = DISCOVERY_CHANCE[tier] || 0;
         // Apply creature passive discovery chance bonus
@@ -181,6 +188,9 @@ var Hatchery = (function() {
         }
 
         if (!candidate) return;
+
+        // Record discovery time for cooldown
+        lastDiscoveryTime = Date.now();
 
         discovered[candidate.id] = {
             discoveredAt: Date.now(),
