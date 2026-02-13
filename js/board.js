@@ -18,6 +18,17 @@ const Board = (() => {
     // Per-cell locking replaces global `animating` — allows rapid tapping
     var lockedCells = {};  // "row,col" → true for cells in mid-animation
 
+    // ─── OBSTACLE TILES ──────────────────────────────────────────────
+    // Types: thorns (cleared by tier-3+ merge adjacent), rocks (cleared by stone merge adjacent),
+    //        ice (cleared after 3 merges anywhere — melts passively)
+    var obstacles = [];    // [row][col] = null or { type: 'thorns'|'rocks'|'ice', hp: number }
+    var OBSTACLE_TYPES = ['thorns', 'rocks', 'ice'];
+    var OBSTACLE_SPAWN_MS = 45000;  // spawn one every 45 seconds
+    var OBSTACLE_MAX = 6;           // max on board at once
+    var OBSTACLE_EXTRA_ENERGY = 1;  // extra energy to spawn onto an obstacle cell
+    var obstacleSpawnTimer = null;
+    var mergesSinceLastIceTick = 0; // track merges for ice melting
+
     // ─── SURGE MOMENTUM SYSTEM ──────────────────────────────────────
     var surgeLevel = 0;           // 0–100
     var surgeActive = false;
@@ -122,6 +133,9 @@ const Board = (() => {
 
         // Check clutter state on load
         updateClutterIndicator();
+
+        // Initialize obstacle grid and load saved obstacles
+        initObstacles();
 
         // Board expansion button
         renderExpandButton();
@@ -1304,6 +1318,9 @@ const Board = (() => {
                 }
             }
 
+            // Check obstacle clear conditions from this merge
+            checkObstacleClear(targetRow, targetCol, chain, isMaxTier ? tier : nextTier);
+
             // Check chain reactions after a short delay
             setTimeout(function() {
                 checkChainReaction(targetRow, targetCol, 1);
@@ -1516,6 +1533,223 @@ const Board = (() => {
             var existing = nodesEl.querySelector('.clutter-warning');
             if (existing) existing.remove();
         }
+    }
+
+    // ─── OBSTACLE TILE SYSTEM ─────────────────────────────────────────
+    // Obstacles spawn on empty cells every 45s, max 6 on board.
+    // Paused during surge. Cleared by specific conditions per type.
+
+    function initObstacles() {
+        // Initialize obstacle grid
+        obstacles = [];
+        for (var r = 0; r < ROWS; r++) {
+            obstacles[r] = [];
+            for (var c = 0; c < COLS; c++) {
+                obstacles[r][c] = null;
+            }
+        }
+
+        // Load saved obstacles
+        var state = Game.getState();
+        if (state.obstacles) {
+            for (var r2 = 0; r2 < ROWS; r2++) {
+                if (!state.obstacles[r2]) continue;
+                for (var c2 = 0; c2 < COLS; c2++) {
+                    if (state.obstacles[r2][c2]) {
+                        obstacles[r2][c2] = state.obstacles[r2][c2];
+                    }
+                }
+            }
+        }
+
+        // Render existing obstacles
+        for (var r3 = 0; r3 < ROWS; r3++) {
+            for (var c3 = 0; c3 < COLS; c3++) {
+                if (obstacles[r3][c3]) renderObstacleOnCell(r3, c3);
+            }
+        }
+
+        // Start obstacle spawn timer
+        startObstacleSpawnTimer();
+    }
+
+    function startObstacleSpawnTimer() {
+        if (obstacleSpawnTimer) clearInterval(obstacleSpawnTimer);
+        obstacleSpawnTimer = setInterval(function() {
+            // Pause spawning during surge
+            if (surgeActive) return;
+            spawnObstacle();
+        }, OBSTACLE_SPAWN_MS);
+    }
+
+    function countObstacles() {
+        var count = 0;
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (obstacles[r][c]) count++;
+            }
+        }
+        return count;
+    }
+
+    function spawnObstacle() {
+        if (countObstacles() >= OBSTACLE_MAX) return;
+
+        // Find empty cells (no item AND no obstacle already)
+        var candidates = [];
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (!items[r][c] && !obstacles[r][c]) {
+                    candidates.push({ row: r, col: c });
+                }
+            }
+        }
+        if (candidates.length === 0) return;
+
+        var cell = candidates[Math.floor(Math.random() * candidates.length)];
+        var type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+        var hp = (type === 'ice') ? 3 : 1; // ice takes 3 merges to melt
+
+        obstacles[cell.row][cell.col] = { type: type, hp: hp };
+        renderObstacleOnCell(cell.row, cell.col);
+        saveObstacleState();
+    }
+
+    function renderObstacleOnCell(row, col) {
+        var cellEl = grid[row][col];
+        if (!cellEl) return;
+
+        // Remove existing obstacle overlay if any
+        var existing = cellEl.querySelector('.obstacle-overlay');
+        if (existing) existing.remove();
+
+        var obs = obstacles[row][col];
+        if (!obs) return;
+
+        var overlay = document.createElement('div');
+        overlay.className = 'obstacle-overlay obstacle-' + obs.type;
+
+        var icon = '';
+        if (obs.type === 'thorns') icon = '\u{1F33F}'; // herb/thorns
+        else if (obs.type === 'rocks') icon = '\u{1FAA8}'; // rock
+        else if (obs.type === 'ice') icon = '\u{1F9CA}'; // ice
+
+        overlay.textContent = icon;
+
+        // Show hp for ice
+        if (obs.type === 'ice' && obs.hp > 1) {
+            var hpEl = document.createElement('span');
+            hpEl.className = 'obstacle-hp';
+            hpEl.textContent = obs.hp;
+            overlay.appendChild(hpEl);
+        }
+
+        cellEl.appendChild(overlay);
+        cellEl.classList.add('has-obstacle');
+    }
+
+    function removeObstacle(row, col) {
+        if (!obstacles[row] || !obstacles[row][col]) return;
+        obstacles[row][col] = null;
+
+        var cellEl = grid[row][col];
+        if (cellEl) {
+            var overlay = cellEl.querySelector('.obstacle-overlay');
+            if (overlay) {
+                overlay.classList.add('obstacle-clear');
+                setTimeout(function() { overlay.remove(); }, 400);
+            }
+            cellEl.classList.remove('has-obstacle');
+        }
+
+        saveObstacleState();
+    }
+
+    // Check obstacle clear conditions after a merge at (row, col)
+    function checkObstacleClear(mergeRow, mergeCol, chain, tier) {
+        var adjacent = [
+            [mergeRow - 1, mergeCol], [mergeRow + 1, mergeCol],
+            [mergeRow, mergeCol - 1], [mergeRow, mergeCol + 1]
+        ];
+
+        for (var i = 0; i < adjacent.length; i++) {
+            var ar = adjacent[i][0], ac = adjacent[i][1];
+            if (ar < 0 || ar >= ROWS || ac < 0 || ac >= COLS) continue;
+            var obs = obstacles[ar][ac];
+            if (!obs) continue;
+
+            if (obs.type === 'thorns' && tier >= 3) {
+                // Thorns cleared by tier-3+ merge adjacent
+                removeObstacle(ar, ac);
+                showFloatingText(ar, ac, '\u{1F33F} Cleared!');
+            } else if (obs.type === 'rocks' && chain === 'stone') {
+                // Rocks cleared by stone chain merge adjacent
+                removeObstacle(ar, ac);
+                showFloatingText(ar, ac, '\u{1FAA8} Cleared!');
+            }
+        }
+
+        // Ice melts passively: every 3 merges anywhere, all ice loses 1 hp
+        mergesSinceLastIceTick++;
+        if (mergesSinceLastIceTick >= 3) {
+            mergesSinceLastIceTick = 0;
+            tickIceObstacles();
+        }
+    }
+
+    function tickIceObstacles() {
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (obstacles[r][c] && obstacles[r][c].type === 'ice') {
+                    obstacles[r][c].hp--;
+                    if (obstacles[r][c].hp <= 0) {
+                        removeObstacle(r, c);
+                        showFloatingText(r, c, '\u{1F9CA} Melted!');
+                    } else {
+                        renderObstacleOnCell(r, c);
+                    }
+                }
+            }
+        }
+        saveObstacleState();
+    }
+
+    // Clear one random obstacle (used by shop purchase)
+    function clearOneObstacle() {
+        var obsCells = [];
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                if (obstacles[r][c]) obsCells.push({ row: r, col: c });
+            }
+        }
+        if (obsCells.length === 0) {
+            showToast('No obstacles to clear!', TOAST_PRIORITY.NORMAL);
+            return false;
+        }
+        var pick = obsCells[Math.floor(Math.random() * obsCells.length)];
+        removeObstacle(pick.row, pick.col);
+        emitParticlesAtCell(pick.row, pick.col, 'merge', { color: '#ffffff', count: 15 });
+        showFloatingText(pick.row, pick.col, 'Cleared!');
+        return true;
+    }
+
+    function hasObstacle(row, col) {
+        return obstacles[row] && obstacles[row][col] !== null;
+    }
+
+    function saveObstacleState() {
+        var state = Game.getState();
+        state.obstacles = [];
+        for (var r = 0; r < ROWS; r++) {
+            state.obstacles[r] = [];
+            for (var c = 0; c < COLS; c++) {
+                state.obstacles[r][c] = obstacles[r][c] ? {
+                    type: obstacles[r][c].type,
+                    hp: obstacles[r][c].hp
+                } : null;
+            }
+        }
+        Game.save();
     }
 
     function spawnItem(chain) {
@@ -1753,6 +1987,11 @@ const Board = (() => {
         var cell = grid[row][col];
         cell.innerHTML = '';
         cell.className = 'cell';
+
+        // Render obstacle overlay if present (even on empty cells)
+        if (obstacles[row] && obstacles[row][col]) {
+            renderObstacleOnCell(row, col);
+        }
 
         var item = items[row][col];
         if (!item) return;
@@ -2155,6 +2394,118 @@ const Board = (() => {
             }, 300);
             currentToastDismissTimer = null;
         }, 2000);
+    }
+
+    // ─── ENERGY-EMPTY PROMPT ─────────────────────────────────────────
+    // Bottom-sheet shown when player tries to spawn with 0 energy.
+    // Options: watch ad (+8 energy), spend gems (20g → 15 energy), buy pack.
+
+    var energyPromptEl = null;
+
+    function showEnergyEmptyPrompt() {
+        if (energyPromptEl) return; // already showing
+
+        var overlay = document.createElement('div');
+        overlay.className = 'energy-prompt-overlay';
+
+        var sheet = document.createElement('div');
+        sheet.className = 'energy-prompt-sheet';
+
+        var title = document.createElement('h3');
+        title.className = 'energy-prompt-title';
+        title.textContent = '\u26A1 Out of Energy!';
+        sheet.appendChild(title);
+
+        var subtitle = document.createElement('p');
+        subtitle.className = 'energy-prompt-sub';
+        subtitle.textContent = 'Your energy will refill over time, or choose an option:';
+        sheet.appendChild(subtitle);
+
+        var options = document.createElement('div');
+        options.className = 'energy-prompt-options';
+
+        // Option 1: Watch ad (if ads available)
+        var adState = Game.getState();
+        var dailyAdsUsed = (adState.dailyAdsUsed || 0);
+        var adsRemaining = Math.max(0, 5 - dailyAdsUsed);
+
+        if (adsRemaining > 0) {
+            var adBtn = document.createElement('button');
+            adBtn.className = 'energy-prompt-btn energy-prompt-ad';
+            adBtn.innerHTML = '\u{1F4FA} Watch Ad <span class="energy-prompt-reward">+8 \u26A1</span><span class="energy-prompt-note">' + adsRemaining + ' remaining today</span>';
+            adBtn.addEventListener('click', function() {
+                dismissEnergyPrompt();
+                // Track daily ad usage
+                var st = Game.getState();
+                st.dailyAdsUsed = (st.dailyAdsUsed || 0) + 1;
+                Game.addEnergy(8);
+                Game.save();
+                showToast('+8 energy from ad!', TOAST_PRIORITY.HIGH);
+            });
+            options.appendChild(adBtn);
+        }
+
+        // Option 2: Spend gems
+        var gemBtn = document.createElement('button');
+        gemBtn.className = 'energy-prompt-btn energy-prompt-gems';
+        var hasGems = Game.getGems() >= 20;
+        gemBtn.innerHTML = '\u{1F48E} 20 Gems <span class="energy-prompt-reward">+15 \u26A1</span>';
+        if (!hasGems) {
+            gemBtn.classList.add('energy-prompt-disabled');
+            gemBtn.innerHTML += '<span class="energy-prompt-note">Not enough gems</span>';
+        }
+        gemBtn.addEventListener('click', function() {
+            if (Game.getGems() < 20) {
+                Sound.playError();
+                return;
+            }
+            dismissEnergyPrompt();
+            Game.addGems(-20);
+            Game.addEnergy(15);
+            showToast('+15 energy for 20 gems!', TOAST_PRIORITY.HIGH);
+        });
+        options.appendChild(gemBtn);
+
+        // Option 3: Buy pack (IAP placeholder)
+        var buyBtn = document.createElement('button');
+        buyBtn.className = 'energy-prompt-btn energy-prompt-buy';
+        buyBtn.innerHTML = '\u{1F4B3} Energy Pack <span class="energy-prompt-reward">50 \u26A1 + 5 \u{1F48E}</span><span class="energy-prompt-note">$0.99</span>';
+        buyBtn.addEventListener('click', function() {
+            dismissEnergyPrompt();
+            // IAP placeholder: grant the items for now
+            Game.addEnergy(50);
+            Game.addGems(5);
+            showToast('Energy Pack purchased! +50 \u26A1 +5 \u{1F48E}', TOAST_PRIORITY.HIGH);
+        });
+        options.appendChild(buyBtn);
+
+        sheet.appendChild(options);
+
+        // Close button
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'energy-prompt-close';
+        closeBtn.textContent = 'Wait for refill';
+        closeBtn.addEventListener('click', function() {
+            dismissEnergyPrompt();
+        });
+        sheet.appendChild(closeBtn);
+
+        overlay.appendChild(sheet);
+        document.getElementById('app').appendChild(overlay);
+        energyPromptEl = overlay;
+
+        // Animate in
+        requestAnimationFrame(function() {
+            overlay.classList.add('energy-prompt-show');
+        });
+    }
+
+    function dismissEnergyPrompt() {
+        if (!energyPromptEl) return;
+        energyPromptEl.classList.remove('energy-prompt-show');
+        var el = energyPromptEl;
+        energyPromptEl = null;
+        setTimeout(function() { el.remove(); }, 300);
     }
 
     // ─── POWER-UP METHODS ─────────────────────────────────────────
@@ -2608,12 +2959,14 @@ const Board = (() => {
                 boardEl.appendChild(cell);
                 grid[r][c] = cell;
                 items[r][c] = null;
+                if (obstacles[r]) obstacles[r][c] = null;
             }
         }
         // Then add new rows
         for (var nr = ROWS; nr < newRows; nr++) {
             grid[nr] = [];
             items[nr] = [];
+            obstacles[nr] = [];
             for (var nc = 0; nc < newCols; nc++) {
                 var newCell = document.createElement('div');
                 newCell.className = 'cell';
@@ -2622,6 +2975,7 @@ const Board = (() => {
                 boardEl.appendChild(newCell);
                 grid[nr][nc] = newCell;
                 items[nr][nc] = null;
+                obstacles[nr][nc] = null;
             }
         }
 
@@ -2676,6 +3030,9 @@ const Board = (() => {
         shuffleBoard: shuffleBoard,
         upgradeItem: upgradeItem,
         clearTierZero: clearTierZero,
+        clearOneObstacle: clearOneObstacle,
+        hasObstacle: hasObstacle,
+        countObstacles: countObstacles,
         getItemAt: function(r, c) { return items[r] ? items[r][c] : null; },
         isCluttered: isCluttered,
         countTierZero: countTierZero,

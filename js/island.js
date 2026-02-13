@@ -111,6 +111,13 @@ var Island = (function() {
     var WORKER_INCOME = { common: 2, uncommon: 4, rare: 8, legendary: 15 }; // gems per hour (~50% cut)
     var MAX_OFFLINE_HOURS = 8;
 
+    // ─── ISLAND TRANSFORMATION STAGES ──────────────────────────
+    // Each region has 4 stages based on assigned creature count
+    // Stage 0: Dormant (default), 1: Stirring (3 creatures), 2: Growing (8), 3: Awakened (15)
+    var STAGE_THRESHOLDS = [0, 3, 8, 15];
+    var STAGE_NAMES = ['Dormant', 'Stirring', 'Growing', 'Awakened'];
+    var regionStages = {}; // regionIndex → stage number (0-3)
+
     // ─── OLD AREA ID → NODE INDEX MAP (for migration) ────────────
     var OLD_AREA_MAP = {
         'coral-shore': 0, 'sandy-beach': 1, 'tide-pools': 2,
@@ -187,8 +194,19 @@ var Island = (function() {
             workers = state.island.workers;
         }
 
+        // Load region stages from save
+        if (state.island && state.island.regionStages) {
+            regionStages = state.island.regionStages;
+        }
+
         // Auto-collect worker income on app open
         collectAllWorkerIncome();
+
+        // Check for creature "found something!" events
+        checkCreatureFoundEvents();
+
+        // Calculate region stages from current worker assignments
+        updateRegionStages();
 
         Game.on('starsChanged', function() { renderRoadmap(); });
         Game.on('questCompleted', function() { renderRoadmap(); });
@@ -319,9 +337,11 @@ var Island = (function() {
             if (node.regionIndex !== currentRegionIndex) {
                 currentRegionIndex = node.regionIndex;
                 var regionLabel = document.createElement('div');
-                regionLabel.className = 'roadmap-region-label';
+                var rStage = getRegionStage(node.regionIndex);
+                regionLabel.className = 'roadmap-region-label region-stage-' + rStage;
                 regionLabel.style.top = (yPos - 30) + 'px';
-                regionLabel.innerHTML = '<span>' + node.region.icon + ' ' + node.region.name + '</span>';
+                regionLabel.innerHTML = '<span>' + node.region.icon + ' ' + node.region.name +
+                    '</span><span class="region-stage-badge">' + STAGE_NAMES[rStage] + '</span>';
                 inner.appendChild(regionLabel);
             }
 
@@ -364,11 +384,19 @@ var Island = (function() {
             if (isUnlocked && node.boss && node.creature) {
                 nodeInner = '<span class="roadmap-node-emoji">' + node.creature.emoji + '</span>';
             } else if (isUnlocked) {
-                // Show worker creature or "+" slot
+                // Show worker creature with idle behaviour or "+" slot
                 var wk = workers[i];
                 if (wk && typeof Creatures !== 'undefined') {
                     var wCreature = Creatures.getCreatureById(wk.creatureId);
-                    nodeInner = '<span class="roadmap-node-emoji">' + (wCreature ? wCreature.emoji : '\u2705') + '</span>';
+                    var idleBehaviours = ['idle-bob', 'idle-sway', 'idle-peek', 'idle-nap'];
+                    var idleClass = idleBehaviours[i % idleBehaviours.length];
+                    var rStageHere = getRegionStage(node.regionIndex);
+                    var moodClass = rStageHere >= 3 ? 'mood-happy' : (rStageHere >= 1 ? 'mood-content' : 'mood-sleepy');
+                    nodeInner = '<span class="roadmap-node-emoji creature-sprite ' + idleClass + ' ' + moodClass + '">' +
+                        (wCreature ? wCreature.emoji : '\u2705') + '</span>';
+                    if (wCreature) {
+                        nodeInner += '<span class="creature-name-tag">' + wCreature.name + '</span>';
+                    }
                 } else {
                     nodeInner = '<span class="roadmap-node-emoji" style="opacity:0.3;font-size:16px;">+</span>';
                 }
@@ -538,7 +566,8 @@ var Island = (function() {
         state.island = {
             unlockedNodes: unlockedNodes,
             currentNode: currentNode,
-            workers: workers
+            workers: workers,
+            regionStages: regionStages
         };
         Game.save();
     }
@@ -567,12 +596,14 @@ var Island = (function() {
             lastCollected: Date.now()
         };
         saveIslandState();
+        updateRegionStages();
         renderRoadmap();
     }
 
     function removeWorker(nodeIndex) {
         delete workers[nodeIndex];
         saveIslandState();
+        updateRegionStages();
         renderRoadmap();
     }
 
@@ -611,6 +642,60 @@ var Island = (function() {
         }
     }
 
+    // ─── CREATURE FOUND SOMETHING! EVENTS ──────────────────────
+    // Random chance per worker creature to find a small reward on app open
+
+    var FOUND_EVENTS = [
+        { text: 'found a crystal shard', reward: 'gems', value: 2 },
+        { text: 'found a shiny pebble', reward: 'gems', value: 1 },
+        { text: 'discovered a hidden spring', reward: 'energy', value: 3 },
+        { text: 'unearthed a tiny gem', reward: 'gems', value: 3 },
+        { text: 'brought back a spark', reward: 'energy', value: 2 },
+        { text: 'found a lucky coin', reward: 'gems', value: 5 }
+    ];
+
+    function checkCreatureFoundEvents() {
+        if (typeof Creatures === 'undefined') return;
+        var wKeys = Object.keys(workers);
+        var findings = [];
+
+        for (var i = 0; i < wKeys.length; i++) {
+            var worker = workers[wKeys[i]];
+            if (!worker) continue;
+
+            // 15% chance per creature per session
+            if (Math.random() > 0.15) continue;
+
+            var creature = Creatures.getCreatureById(worker.creatureId);
+            if (!creature) continue;
+
+            var evt = FOUND_EVENTS[Math.floor(Math.random() * FOUND_EVENTS.length)];
+            findings.push({ creature: creature, event: evt });
+
+            if (evt.reward === 'gems') {
+                Game.addGems(evt.value);
+            } else if (evt.reward === 'energy') {
+                Game.addEnergy(evt.value);
+            }
+        }
+
+        if (findings.length > 0) {
+            // Store findings for welcome-back overlay
+            if (typeof window !== 'undefined') {
+                window._havenCreatureFindings = findings;
+            }
+            // Show toast for first finding
+            var f = findings[0];
+            var rewardIcon = f.event.reward === 'gems' ? '\u{1F48E}' : '\u26A1';
+            if (typeof Board !== 'undefined' && Board.showToast) {
+                Board.showToast(
+                    f.creature.emoji + ' ' + f.creature.name + ' ' + f.event.text + '! +' + f.event.value + rewardIcon,
+                    Board.TOAST_PRIORITY.NORMAL
+                );
+            }
+        }
+    }
+
     function getAssignedCreatureIds() {
         var ids = {};
         var keys = Object.keys(workers);
@@ -620,6 +705,77 @@ var Island = (function() {
             }
         }
         return ids;
+    }
+
+    // ─── ISLAND TRANSFORMATION STAGE SYSTEM ───────────────────────
+    // Counts creatures assigned as workers in each region, calculates stage
+
+    function getCreaturesPerRegion() {
+        var counts = {};
+        for (var r = 0; r < REGIONS.length; r++) {
+            counts[r] = 0;
+        }
+        var wKeys = Object.keys(workers);
+        for (var i = 0; i < wKeys.length; i++) {
+            var nodeIdx = parseInt(wKeys[i], 10);
+            if (!workers[wKeys[i]]) continue;
+            var node = allNodes[nodeIdx];
+            if (node) {
+                counts[node.regionIndex] = (counts[node.regionIndex] || 0) + 1;
+            }
+        }
+        return counts;
+    }
+
+    function calculateRegionStage(creatureCount) {
+        var stage = 0;
+        for (var s = STAGE_THRESHOLDS.length - 1; s >= 0; s--) {
+            if (creatureCount >= STAGE_THRESHOLDS[s]) {
+                stage = s;
+                break;
+            }
+        }
+        return stage;
+    }
+
+    function updateRegionStages() {
+        var counts = getCreaturesPerRegion();
+        var changed = false;
+        for (var r = 0; r < REGIONS.length; r++) {
+            var newStage = calculateRegionStage(counts[r] || 0);
+            if (regionStages[r] !== newStage) {
+                var oldStage = regionStages[r] || 0;
+                regionStages[r] = newStage;
+                changed = true;
+                // Notify on stage-up
+                if (newStage > oldStage) {
+                    Game.emit('regionStageUp', {
+                        region: r,
+                        name: REGIONS[r].name,
+                        stage: newStage,
+                        stageName: STAGE_NAMES[newStage]
+                    });
+                    if (typeof Board !== 'undefined' && Board.showToast) {
+                        Board.showToast(
+                            REGIONS[r].icon + ' ' + REGIONS[r].name + ' is now ' + STAGE_NAMES[newStage] + '!',
+                            Board.TOAST_PRIORITY.HIGH
+                        );
+                    }
+                }
+            }
+        }
+        if (changed) {
+            saveIslandState();
+        }
+        return changed;
+    }
+
+    function getRegionStage(regionIndex) {
+        return regionStages[regionIndex] || 0;
+    }
+
+    function getRegionStageName(regionIndex) {
+        return STAGE_NAMES[regionStages[regionIndex] || 0];
     }
 
     function showWorkerAssignModal(nodeIndex, node) {
@@ -745,6 +901,10 @@ var Island = (function() {
         assignWorker: assignWorker,
         removeWorker: removeWorker,
         collectAllWorkerIncome: collectAllWorkerIncome,
-        getAssignedCreatureIds: getAssignedCreatureIds
+        getAssignedCreatureIds: getAssignedCreatureIds,
+        getRegionStage: getRegionStage,
+        getRegionStageName: getRegionStageName,
+        updateRegionStages: updateRegionStages,
+        STAGE_NAMES: STAGE_NAMES
     };
 })();

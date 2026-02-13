@@ -757,6 +757,84 @@ body {
     text-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
 
+.floating-text.rejection-text {
+    font-size: 14px;
+    font-weight: 700;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+
+/* ─── MODE TOOLTIP PILL ──────────────────────────────────── */
+
+.mode-tooltip {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 20px;
+    z-index: 250;
+    pointer-events: none;
+    opacity: 0;
+    animation: tooltip-pop 1.5s ease-out forwards;
+}
+
+@keyframes tooltip-pop {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+    10%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -60%) scale(0.95); }
+}
+
+/* ─── MERGE COUNT BADGE ──────────────────────────────────── */
+
+.merge-count-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 22px;
+    text-align: center;
+    padding: 0 4px;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    pointer-events: none;
+    z-index: 210;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.merge-count-badge.insufficient {
+    background: #ff6b35;
+}
+
+.merge-count-badge.ready {
+    background: #22c55e;
+}
+
+.merge-count-badge.big-merge {
+    background: linear-gradient(135deg, #ffd700, #ff8c00);
+    transform: scale(1.15);
+}
+
+/* ─── CHAIN COLOR CELL TINTS ─────────────────────────────── */
+
+.cell.chain-wood    { background: rgba(160, 132, 92, 0.12); }
+.cell.chain-stone   { background: rgba(142, 153, 164, 0.12); }
+.cell.chain-flora   { background: rgba(107, 142, 35, 0.12); }
+.cell.chain-crystal { background: rgba(106, 158, 200, 0.12); }
+.cell.chain-creature{ background: rgba(245, 230, 208, 0.12); }
+.cell.chain-living  { background: rgba(100, 160, 60, 0.12); }
+.cell.chain-arcane  { background: rgba(140, 100, 180, 0.12); }
+.cell.chain-shelter { background: rgba(160, 140, 110, 0.12); }
+.cell.chain-mystic  { background: rgba(180, 100, 160, 0.12); }
+
 /* ─── INTERACTIVE TUTORIAL ────────────────────────────────── */
 
 /* Full-screen blocker */
@@ -1241,6 +1319,32 @@ body {
 
 .order-separator {
     display: none;
+}
+
+.order-timer-low {
+    color: #ff3333;
+    animation: timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.order-rush-btn {
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid var(--gems-color);
+    border-radius: 10px;
+    background: rgba(155, 136, 255, 0.15);
+    color: var(--gems-color);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.order-rush-btn:active {
+    background: rgba(155, 136, 255, 0.35);
 }
 
 /* ─── COMPANION BAR ──────────────────────────────────────── */
@@ -1835,6 +1939,135 @@ body {
 .collection-close-btn:active {
     background: var(--bg-cell-hover);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ENERGY-EMPTY PROMPT (Bottom Sheet)
+   ═══════════════════════════════════════════════════════════════ */
+
+.energy-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.energy-prompt-overlay.energy-prompt-show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.energy-prompt-sheet {
+    background: var(--bg-medium);
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px 24px;
+    width: 100%;
+    max-width: 400px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.energy-prompt-overlay.energy-prompt-show .energy-prompt-sheet {
+    transform: translateY(0);
+}
+
+.energy-prompt-title {
+    text-align: center;
+    color: var(--energy-color);
+    font-size: 1.2em;
+    margin-bottom: 6px;
+}
+
+.energy-prompt-sub {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    margin-bottom: 16px;
+}
+
+.energy-prompt-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.energy-prompt-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--bg-light);
+    color: var(--text-primary);
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    flex-wrap: wrap;
+}
+
+.energy-prompt-btn:active {
+    transform: scale(0.97);
+    background: var(--bg-cell-hover);
+}
+
+.energy-prompt-reward {
+    margin-left: auto;
+    color: var(--energy-color);
+    font-weight: bold;
+}
+
+.energy-prompt-note {
+    width: 100%;
+    font-size: 0.75em;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.energy-prompt-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.energy-prompt-disabled:active {
+    transform: none;
+    background: var(--bg-light);
+}
+
+.energy-prompt-ad {
+    border-left: 3px solid var(--accent-green);
+}
+
+.energy-prompt-gems {
+    border-left: 3px solid var(--gems-color);
+}
+
+.energy-prompt-buy {
+    border-left: 3px solid var(--accent-gold);
+}
+
+.energy-prompt-close {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    border: none;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.energy-prompt-close:active {
+    color: var(--text-primary);
+}
+
 
 /* Desktop/wide screens */
 @media (min-width: 500px) and (min-height: 800px) {

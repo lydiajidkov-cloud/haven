@@ -506,15 +506,34 @@ const Orders = (() => {
         html += '</span>';
 
         if (allDone) {
-            html += '<span class="order-done-badge">✓</span>';
+            html += '<span class="order-done-badge">\u2713</span>';
+        }
+
+        // Rush button (only for incomplete, timed orders)
+        if (!allDone && order.rushCost) {
+            html += '<button class="order-rush-btn" data-order="' + showIndex + '">\u{1F48E}' + order.rushCost + ' Rush</button>';
         }
 
         html += '</div>';
 
         panel.innerHTML = html;
 
+        // Wire up rush button
+        var rushBtn = panel.querySelector('.order-rush-btn');
+        if (rushBtn) {
+            rushBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var idx = parseInt(this.dataset.order, 10);
+                if (!isNaN(idx)) {
+                    rushOrder(idx);
+                    renderOrders();
+                }
+            });
+        }
+
         // Tap to cycle to next order
-        panel.onclick = function() {
+        panel.onclick = function(e) {
+            if (e.target.classList.contains('order-rush-btn')) return; // don't cycle on rush click
             currentOrderIndex = (currentOrderIndex + 1) % orders.length;
             renderOrders();
             resetOrderRotation();

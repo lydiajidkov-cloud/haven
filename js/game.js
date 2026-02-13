@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 12;
+    const SAVE_VERSION = 13;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const DEFAULT_ROWS = 8;
@@ -266,6 +266,36 @@ const Game = (() => {
         if (data._saveVersion < 12) {
             if (!data.spawnQueues) data.spawnQueues = {};
             data._saveVersion = 12;
+        }
+        // v12 → v13: Economy redesign — cap energy, add obstacles, order timers, island stages
+        if (data._saveVersion < 13) {
+            // Cap energy and maxEnergy to new max of 50
+            if (data.maxEnergy > 50) data.maxEnergy = 50;
+            if (data.energy > 50) data.energy = 50;
+            // Initialize obstacle grid (empty)
+            if (!data.obstacles) data.obstacles = null;
+            // Reset daily ad counter
+            if (!data.dailyAdsUsed) data.dailyAdsUsed = 0;
+            // Add deadline to existing orders that don't have one
+            if (data.orders && data.orders.active) {
+                var now = Date.now();
+                for (var oi = 0; oi < data.orders.active.length; oi++) {
+                    var ord = data.orders.active[oi];
+                    if (!ord.deadline) {
+                        ord.deadline = now + 6 * 3600000; // 6 hours default
+                    }
+                    if (!ord.rushCost) {
+                        ord.rushCost = 15;
+                    }
+                    if (!ord.reward) ord.reward = {};
+                    if (!ord.reward.energy) ord.reward.energy = 10;
+                }
+            }
+            // Initialize island stage tracking
+            if (data.island && !data.island.regionStages) {
+                data.island.regionStages = {};
+            }
+            data._saveVersion = 13;
         }
         return data;
     }

@@ -1025,3 +1025,66 @@
 #board.board-theme-shadow .cell.valid-target {
     background: rgba(180, 50, 50, 0.15);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   OBSTACLE TILES
+   ═══════════════════════════════════════════════════════════════ */
+
+.obstacle-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4em;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.7;
+    animation: obstacle-appear 0.4s ease-out;
+}
+
+.obstacle-thorns {
+    background: rgba(60, 120, 40, 0.25);
+    border: 1.5px dashed rgba(80, 160, 50, 0.5);
+}
+
+.obstacle-rocks {
+    background: rgba(120, 100, 80, 0.3);
+    border: 1.5px solid rgba(160, 140, 100, 0.4);
+}
+
+.obstacle-ice {
+    background: rgba(150, 220, 255, 0.25);
+    border: 1.5px solid rgba(180, 230, 255, 0.5);
+    backdrop-filter: blur(1px);
+}
+
+.obstacle-hp {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 0.5em;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: bold;
+}
+
+.cell.has-obstacle {
+    position: relative;
+}
+
+.obstacle-clear {
+    animation: obstacle-shatter 0.4s ease-out forwards;
+}
+
+@keyframes obstacle-appear {
+    0%   { opacity: 0; transform: scale(0.5); }
+    100% { opacity: 0.7; transform: scale(1); }
+}
+
+@keyframes obstacle-shatter {
+    0%   { opacity: 0.7; transform: scale(1); }
+    50%  { opacity: 0.4; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(0.3) rotate(15deg); }
+}
