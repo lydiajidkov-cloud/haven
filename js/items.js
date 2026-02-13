@@ -222,6 +222,46 @@ const Items = (() => {
         return Object.keys(chains);
     }
 
+    // ─── SPAWN QUEUE (pre-generated for preview) ────────────
+
+    function generateSpawnQueue(chain, count) {
+        var queue = [];
+        var maxSpawnTier = Math.min(3, chains[chain].tiers.length - 1);
+        for (var i = 0; i < count; i++) {
+            var tier = getRandomSpawnTier();
+            tier = Math.min(tier, maxSpawnTier);
+            queue.push(tier);
+        }
+        return queue;
+    }
+
+    function ensureSpawnQueue(chain, minSize) {
+        var state = Game.getState();
+        if (!state.spawnQueues) state.spawnQueues = {};
+        if (!state.spawnQueues[chain] || state.spawnQueues[chain].length < minSize) {
+            state.spawnQueues[chain] = generateSpawnQueue(chain, 10);
+            Game.save();
+        }
+    }
+
+    function peekSpawnQueue(chain, count) {
+        ensureSpawnQueue(chain, count);
+        return Game.getState().spawnQueues[chain].slice(0, count);
+    }
+
+    function consumeFromQueue(chain) {
+        ensureSpawnQueue(chain, 1);
+        var state = Game.getState();
+        var tier = state.spawnQueues[chain].shift();
+        // Refill when running low
+        if (state.spawnQueues[chain].length < 4) {
+            var more = generateSpawnQueue(chain, 10);
+            state.spawnQueues[chain] = state.spawnQueues[chain].concat(more);
+        }
+        Game.save();
+        return createItem(chain, tier);
+    }
+
     return {
         chains,
         createItem,
@@ -232,6 +272,8 @@ const Items = (() => {
         getMaxTier,
         hasNextTier,
         getChainNames,
+        peekSpawnQueue,
+        consumeFromQueue,
         setNextId(id) { nextId = id; }
     };
 })();

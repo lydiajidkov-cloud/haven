@@ -28,11 +28,11 @@ const Combo = (() => {
 
     // ─── MILESTONE DEFINITIONS ───────────────────────────────
     var MILESTONES = {
-        5:  { text: 'Nice!',         size: '',              color: 'ms-white' },
-        10: { text: 'Amazing!',       size: 'milestone-big', color: 'ms-gold' },
-        15: { text: 'Incredible!',    size: 'milestone-big', color: 'ms-orange' },
-        20: { text: 'UNSTOPPABLE!',   size: 'milestone-epic', color: 'ms-red' },
-        25: { text: 'LEGENDARY!',     size: 'milestone-epic', color: 'ms-rainbow' }
+        5:  { text: 'Nice!',         size: '',              color: 'ms-white',   gems: 5,  energy: 0 },
+        10: { text: 'Amazing!',       size: 'milestone-big', color: 'ms-gold',    gems: 10, energy: 1 },
+        15: { text: 'Incredible!',    size: 'milestone-big', color: 'ms-orange',  gems: 15, energy: 0 },
+        20: { text: 'UNSTOPPABLE!',   size: 'milestone-epic', color: 'ms-red',    gems: 25, energy: 2 },
+        25: { text: 'LEGENDARY!',     size: 'milestone-epic', color: 'ms-rainbow', gems: 50, energy: 3 }
     };
 
     // ─── INIT ────────────────────────────────────────────────
@@ -222,6 +222,21 @@ const Combo = (() => {
         if (!milestone) return;
 
         showMilestoneFlash(milestone, count);
+
+        // Grant combo milestone rewards
+        if (milestone.gems) {
+            Game.addGems(milestone.gems);
+        }
+        if (milestone.energy) {
+            Game.addEnergy(milestone.energy);
+        }
+
+        // Show floating reward text
+        var rewardText = '+' + milestone.gems + ' \u{1F48E}';
+        if (milestone.energy) rewardText += ' +' + milestone.energy + ' \u26A1';
+        if (typeof Board !== 'undefined' && Board.showFloatingText) {
+            Board.showFloatingText(3, 3, rewardText);
+        }
 
         // Edge glow for x10+
         if (count >= 10) {

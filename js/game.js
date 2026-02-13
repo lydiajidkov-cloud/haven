@@ -4,7 +4,7 @@
 const Game = (() => {
     const SAVE_KEY = 'haven_save';
     const BACKUP_KEY = 'haven-backup';
-    const SAVE_VERSION = 10;
+    const SAVE_VERSION = 12;
     const SAVE_DEBOUNCE_MS = 200;
     const QUOTA_WARN_BYTES = 4.5 * 1024 * 1024; // Warn at 4.5MB (localStorage limit ~5MB)
     const DEFAULT_ROWS = 8;
@@ -72,13 +72,16 @@ const Game = (() => {
                 powerupBar: false
             },
             discoveredItems: {},
+            collection: [],
             evolvedCreatures: {},
             boardTheme: null,
             ownedThemes: {},
             firstPurchaseMade: false,
             vipSubscription: null, // { subscribedAt, expiresAt } or null
+            spawnQueues: {},
             soundEnabled: true,
-            vibrationEnabled: true
+            vibrationEnabled: true,
+            focusedGoal: null
         };
     }
 
@@ -254,6 +257,16 @@ const Game = (() => {
             }
             data._saveVersion = 10;
         }
+        // v10 → v11: Collection system
+        if (data._saveVersion < 11) {
+            if (!data.collection) data.collection = [];
+            data._saveVersion = 11;
+        }
+        // v11 → v12: Spawn queue preview
+        if (data._saveVersion < 12) {
+            if (!data.spawnQueues) data.spawnQueues = {};
+            data._saveVersion = 12;
+        }
         return data;
     }
 
@@ -401,6 +414,35 @@ const Game = (() => {
     function addStars(n) {
         state.stars = (state.stars || 0) + n;
         emit('starsChanged', state.stars);
+        save();
+    }
+
+    function addToCollection(entry) {
+        // entry: {chain, tier, timestamp}
+        if (!state.collection) state.collection = [];
+        state.collection.push(entry);
+        emit('collectionChanged', state.collection);
+        save();
+    }
+
+    function getCollection() {
+        return (state && state.collection) ? state.collection : [];
+    }
+
+    function setFocusedGoal(goal) {
+        // goal: {type: 'order'|'quest', id: string} or null
+        state.focusedGoal = goal;
+        emit('focusChanged', goal);
+        save();
+    }
+
+    function getFocusedGoal() {
+        return state ? state.focusedGoal : null;
+    }
+
+    function clearFocusedGoal() {
+        state.focusedGoal = null;
+        emit('focusChanged', null);
         save();
     }
 
@@ -627,6 +669,11 @@ const Game = (() => {
         addEnergy: addEnergy,
         addGems: addGems,
         addStars: addStars,
+        addToCollection: addToCollection,
+        getCollection: getCollection,
+        setFocusedGoal: setFocusedGoal,
+        getFocusedGoal: getFocusedGoal,
+        clearFocusedGoal: clearFocusedGoal,
         updateStat: updateStat,
         vibrate: vibrate,
         on: on,

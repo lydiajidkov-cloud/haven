@@ -100,9 +100,14 @@ const Quests = (() => {
 
     function fillQuests() {
         while (activeQuests.length < MAX_ACTIVE) {
+            // If we can show a choice, do so for the first empty slot
+            if (activeQuests.length === MAX_ACTIVE - 1) {
+                // Last slot: show choice overlay
+                showQuestChoice();
+                return; // Don't fill further until player chooses
+            }
             var next = pickNextQuest();
             if (!next) break;
-            // Endowed progress: pre-fill based on current stats (makes quests feel achievable)
             var startProgress = 0;
             if (next.type === 'merge_count' || next.type === 'spawn_count') {
                 startProgress = Math.min(Math.floor(next.target * 0.2), next.target - 1);
@@ -121,6 +126,135 @@ const Quests = (() => {
             });
         }
         saveQuestState();
+    }
+
+    var questChoiceTimer = null;
+
+    function showQuestChoice() {
+        var option1 = pickNextQuest();
+        if (!option1) {
+            // No quests available, just fill normally
+            var fallback = pickNextQuest();
+            if (fallback) addQuestDirect(fallback);
+            return;
+        }
+
+        // Pick a second option (exclude the first)
+        var tempExclude = option1.id;
+        var option2 = pickNextQuestExcluding(tempExclude);
+        if (!option2) {
+            // Only one quest available, auto-assign
+            addQuestDirect(option1);
+            return;
+        }
+
+        // Show overlay
+        var overlay = document.createElement('div');
+        overlay.id = 'quest-choice-overlay';
+        overlay.className = 'quest-choice-overlay';
+
+        var chainIcon1 = getQuestChainIcon(option1);
+        var chainIcon2 = getQuestChainIcon(option2);
+
+        overlay.innerHTML =
+            '<div class="quest-choice-card">' +
+                '<h3>Choose Your Quest</h3>' +
+                '<p class="quest-choice-subtitle">Pick one to pursue</p>' +
+                '<div class="quest-choice-options">' +
+                    '<button class="quest-choice-option" data-choice="0">' +
+                        '<span class="quest-choice-icon">' + chainIcon1 + '</span>' +
+                        '<span class="quest-choice-desc">' + option1.desc + '</span>' +
+                        '<span class="quest-choice-reward">' +
+                            (option1.reward.stars ? '\u2B50' + option1.reward.stars + ' ' : '') +
+                            (option1.reward.gems ? '\u{1F48E}' + option1.reward.gems : '') +
+                        '</span>' +
+                    '</button>' +
+                    '<button class="quest-choice-option" data-choice="1">' +
+                        '<span class="quest-choice-icon">' + chainIcon2 + '</span>' +
+                        '<span class="quest-choice-desc">' + option2.desc + '</span>' +
+                        '<span class="quest-choice-reward">' +
+                            (option2.reward.stars ? '\u2B50' + option2.reward.stars + ' ' : '') +
+                            (option2.reward.gems ? '\u{1F48E}' + option2.reward.gems : '') +
+                        '</span>' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+
+        var app = document.getElementById('app');
+        if (app) app.appendChild(overlay);
+
+        // Handle choice
+        var buttons = overlay.querySelectorAll('.quest-choice-option');
+        buttons[0].addEventListener('click', function() {
+            addQuestDirect(option1);
+            dismissQuestChoice();
+        });
+        buttons[1].addEventListener('click', function() {
+            addQuestDirect(option2);
+            dismissQuestChoice();
+        });
+
+        // Auto-pick after 30 seconds
+        questChoiceTimer = setTimeout(function() {
+            addQuestDirect(option1);
+            dismissQuestChoice();
+        }, 30000);
+    }
+
+    function dismissQuestChoice() {
+        if (questChoiceTimer) {
+            clearTimeout(questChoiceTimer);
+            questChoiceTimer = null;
+        }
+        var overlay = document.getElementById('quest-choice-overlay');
+        if (overlay) overlay.remove();
+    }
+
+    function addQuestDirect(questDef) {
+        var startProgress = 0;
+        if (questDef.type === 'merge_count' || questDef.type === 'spawn_count') {
+            startProgress = Math.min(Math.floor(questDef.target * 0.2), questDef.target - 1);
+        }
+        activeQuests.push({
+            id: questDef.id,
+            desc: questDef.desc,
+            type: questDef.type,
+            chain: questDef.chain || null,
+            tier: questDef.tier || 0,
+            target: questDef.target,
+            current: startProgress,
+            reward: questDef.reward,
+            completed: false,
+            claimed: false
+        });
+        saveQuestState();
+        renderQuestPanel();
+    }
+
+    function pickNextQuestExcluding(excludeId) {
+        var usedIds = {};
+        for (var i = 0; i < activeQuests.length; i++) usedIds[activeQuests[i].id] = true;
+        for (var j = 0; j < completedIds.length; j++) usedIds[completedIds[j]] = true;
+        usedIds[excludeId] = true;
+
+        var available = questPool.filter(function(q) { return !usedIds[q.id]; });
+
+        if (available.length === 0) return null;
+
+        available.sort(function(a, b) { return a.reward.stars - b.reward.stars; });
+        var pickRange = Math.max(1, Math.ceil(available.length * 0.6));
+        var idx = Math.floor(Math.random() * pickRange);
+        return available[idx];
+    }
+
+    function getQuestChainIcon(questDef) {
+        if (questDef.chain) {
+            var chainData = Items.chains[questDef.chain];
+            return chainData ? chainData.icon : '';
+        }
+        if (questDef.type === 'crosschain_count') return '\u{1F52E}';
+        if (questDef.type === 'big_merge') return '\u{1F4A5}';
+        return '\u2B50';
     }
 
     function pickNextQuest() {

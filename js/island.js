@@ -604,21 +604,10 @@ var Island = (function() {
             Game.addGems(totalGems);
             Sound.playWorkerCollect();
             saveIslandState();
-            // Toast notification
-            setTimeout(function() {
-                var toast = document.createElement('div');
-                toast.className = 'toast';
-                toast.textContent = '\u{1F48E} Your workers earned ' + totalGems + ' gems while you were away!';
-                var app = document.getElementById('app');
-                if (app) {
-                    app.appendChild(toast);
-                    setTimeout(function() { toast.classList.add('toast-show'); }, 10);
-                    setTimeout(function() {
-                        toast.classList.remove('toast-show');
-                        setTimeout(function() { toast.remove(); }, 300);
-                    }, 3000);
-                }
-            }, 500);
+            // Store away earnings for welcome-back overlay
+            if (typeof window !== 'undefined') {
+                window._havenAwayEarnings = totalGems;
+            }
         }
     }
 

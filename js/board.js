@@ -135,6 +135,20 @@ const Board = (() => {
         // Cache grid layout for touch coordinate math
         requestAnimationFrame(function() { cacheGridLayout(); });
         window.addEventListener('resize', function() { cacheGridLayout(); });
+
+        // Refresh deliverable highlights when orders change or items are produced
+        Game.on('orderCompleted', function() {
+            setTimeout(refreshDeliverableHighlights, 700);
+        });
+        Game.on('itemProduced', function() {
+            setTimeout(refreshDeliverableHighlights, 50);
+        });
+
+        Game.on('collectionChanged', function() {
+            renderCollectionCounter();
+        });
+        // Initial render
+        setTimeout(renderCollectionCounter, 500);
     }
 
     // ─── TAP-TO-SELECT + DRAG + SWIPE ──────────────────────────────
@@ -197,20 +211,6 @@ const Board = (() => {
         if (isCellLocked(r, c)) return;
 
         e.preventDefault();
-
-        // Order delivery mode: intercept tap to deliver items
-        if (typeof Orders !== 'undefined' && Orders.getDeliveryMode()) {
-            if (items[r][c] && Orders.canDeliverItem(items[r][c])) {
-                Orders.deliverItem(items[r][c]);
-                items[r][c] = null;
-                renderCell(r, c);
-                emitParticlesAtCell(r, c, 'spawn', { color: '#ffd700' });
-                syncToGameState();
-            } else {
-                Orders.exitDeliveryMode();
-            }
-            return;
-        }
 
         // Power-up target mode: intercept tap for Upgrade Wand
         if (typeof PowerUps !== 'undefined' && PowerUps.getActivePowerUp()) {
@@ -337,7 +337,16 @@ const Board = (() => {
         }
 
         if (!dragStarted) {
-            // It was a TAP — select the item
+            // It was a TAP
+            // Check if item is deliverable and show deliver button
+            var tappedItem = items[dragFrom.row][dragFrom.col];
+            if (tappedItem && !selectedPos &&
+                grid[dragFrom.row][dragFrom.col].classList.contains('deliverable')) {
+                showDeliverButton(dragFrom.row, dragFrom.col);
+            } else {
+                removeDeliverButton();
+            }
+            // Select the item
             selectItem(dragFrom.row, dragFrom.col);
             dragItem = null;
             dragFrom = null;
@@ -442,6 +451,7 @@ const Board = (() => {
         selectedPos = null;
         clearHighlight('valid-target');
         clearHighlight('recipe-target');
+        removeDeliverButton();
     }
 
     function handleTapWithSelection(r, c) {
@@ -965,6 +975,12 @@ const Board = (() => {
                 showFloatingText(targetRow, targetCol, '+' + maxTierGems + ' \u{1F48E}');
                 Game.addGems(maxTierGems);
                 Game.addStars(1);
+                // Add to permanent collection
+                Game.addToCollection({
+                    chain: chain,
+                    tier: tier,
+                    timestamp: Date.now()
+                });
                 // Item discovery reward for reaching max tier
                 checkItemDiscovery(chain, tier, targetRow, targetCol);
                 // Celebration overlay for max-tier merge
@@ -1260,8 +1276,45 @@ const Board = (() => {
             (function(btn) {
                 btn.addEventListener('click', function() {
                     spawnItem(btn.dataset.chain);
+                    renderSpawnPreviews();
                 });
+                // Add preview dots container
+                if (!btn.querySelector('.spawn-preview')) {
+                    var dotsEl = document.createElement('div');
+                    dotsEl.className = 'spawn-preview';
+                    btn.appendChild(dotsEl);
+                }
             })(nodes[i]);
+        }
+        // Initial render of preview dots
+        setTimeout(renderSpawnPreviews, 300);
+    }
+
+    function renderSpawnPreviews() {
+        var nodes = document.querySelectorAll('.node');
+        for (var i = 0; i < nodes.length; i++) {
+            var btn = nodes[i];
+            var chain = btn.dataset.chain;
+            if (!chain || !Items.chains[chain]) continue;
+
+            var dotsEl = btn.querySelector('.spawn-preview');
+            if (!dotsEl) continue;
+
+            var upcoming = Items.peekSpawnQueue(chain, 3);
+            dotsEl.innerHTML = '';
+
+            for (var d = 0; d < upcoming.length; d++) {
+                var tier = upcoming[d];
+                var def = Items.getItemDef(chain, tier);
+                var dot = document.createElement('span');
+                dot.className = 'spawn-dot';
+                dot.style.background = def ? def.glow : '#888';
+                dot.title = def ? def.name : 'T' + tier;
+                // Larger dot for higher tiers
+                if (tier >= 2) dot.classList.add('spawn-dot-rare');
+                if (tier >= 3) dot.classList.add('spawn-dot-epic');
+                dotsEl.appendChild(dot);
+            }
         }
     }
 
@@ -1392,7 +1445,7 @@ const Board = (() => {
             item = Items.createItem(chain, gsTier);
             PowerUps.consumeGoldenSpawn();
         } else {
-            item = Items.spawnRandomItem(chain);
+            item = Items.consumeFromQueue(chain);
             // Apply spawn quality bonus — chance to upgrade tier
             if (typeof Creatures !== 'undefined') {
                 var gs = Game.getState();
@@ -1604,7 +1657,112 @@ const Board = (() => {
             el.appendChild(dotsEl);
         }
 
+        // Check if item is deliverable to an active order
+        if (typeof Orders !== 'undefined' && Orders.getDeliverableItemSpecs) {
+            var specs = Orders.getDeliverableItemSpecs();
+            for (var s = 0; s < specs.length; s++) {
+                if (specs[s].chain === item.chain && specs[s].tier === item.tier) {
+                    cell.classList.add('deliverable');
+                    break;
+                }
+            }
+        }
+
         cell.appendChild(el);
+    }
+
+    // ─── DELIVERY BUTTON ──────────────────────────────────────────
+
+    var activeDeliverBtn = null; // track floating deliver button
+
+    function showDeliverButton(row, col) {
+        removeDeliverButton();
+
+        var cell = grid[row][col];
+        var cellRect = cell.getBoundingClientRect();
+        var appRect = document.getElementById('app').getBoundingClientRect();
+
+        var btn = document.createElement('button');
+        btn.className = 'deliver-btn';
+        btn.textContent = 'Deliver';
+        btn.style.position = 'absolute';
+        btn.style.left = (cellRect.left - appRect.left + cellRect.width / 2) + 'px';
+        btn.style.top = (cellRect.top - appRect.top - 6) + 'px';
+        btn.style.zIndex = '50';
+
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var item = items[row][col];
+            if (!item) { removeDeliverButton(); return; }
+
+            var success = Orders.deliverItem(item.chain, item.tier);
+            if (success) {
+                // Remove item from board
+                items[row][col] = null;
+                renderCell(row, col);
+
+                // Gold particle burst for delivery
+                emitParticlesAtCell(row, col, 'chain', {
+                    color: '#ffd700',
+                    count: 20
+                });
+
+                Sound.playOrderClaim();
+                Game.vibrate([10, 20, 10]);
+
+                // Re-render all cells to update deliverable highlights
+                refreshDeliverableHighlights();
+
+                syncToGameState();
+            }
+            removeDeliverButton();
+        });
+
+        document.getElementById('app').appendChild(btn);
+        activeDeliverBtn = btn;
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(function() {
+            if (activeDeliverBtn === btn) {
+                removeDeliverButton();
+            }
+        }, 3000);
+    }
+
+    function removeDeliverButton() {
+        if (activeDeliverBtn) {
+            activeDeliverBtn.remove();
+            activeDeliverBtn = null;
+        }
+    }
+
+    function refreshDeliverableHighlights() {
+        for (var r = 0; r < ROWS; r++) {
+            for (var c = 0; c < COLS; c++) {
+                var cell = grid[r][c];
+                cell.classList.remove('deliverable');
+                if (items[r][c] && typeof Orders !== 'undefined' && Orders.getDeliverableItemSpecs) {
+                    var specs = Orders.getDeliverableItemSpecs();
+                    for (var s = 0; s < specs.length; s++) {
+                        if (specs[s].chain === items[r][c].chain && specs[s].tier === items[r][c].tier) {
+                            cell.classList.add('deliverable');
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function renderCollectionCounter() {
+        var counter = document.getElementById('collection-counter');
+        if (!counter) return;
+
+        var collection = Game.getCollection();
+        var total = Object.keys(Items.chains).length;
+
+        counter.textContent = collection.length + '/' + total;
+        counter.classList.remove('hidden');
     }
 
     // ─── UTILITIES ───────────────────────────────────────────────
@@ -2370,6 +2528,9 @@ const Board = (() => {
         CLUTTER_THRESHOLD: CLUTTER_THRESHOLD,
         showToast: showToast,
         showFloatingText: showFloatingText,
-        TOAST_PRIORITY: TOAST_PRIORITY
+        TOAST_PRIORITY: TOAST_PRIORITY,
+        refreshDeliverableHighlights: refreshDeliverableHighlights,
+        renderCollectionCounter: renderCollectionCounter,
+        renderSpawnPreviews: renderSpawnPreviews
     };
 })();

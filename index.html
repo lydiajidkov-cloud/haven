@@ -33,7 +33,7 @@
                 <span id="energy-timer" class="hidden"></span>
             </div>
             <h1 id="game-title">Haven</h1>
-            <div style="display:flex;align-items:center;gap:6px;">
+            <div style="display:flex;align-items:center;gap:4px;">
                 <div id="stars-display">
                     <span class="stars-icon">⭐</span>
                     <span id="stars-count">0</span>
@@ -59,8 +59,21 @@
                     <span id="surge-label"></span>
                 </div>
                 <div id="piggy-surge-indicator" class="hidden">🐷 <span id="piggy-surge-count">0</span> 💎</div>
+                <button id="collection-counter-btn" class="collection-counter-btn" title="Collection">
+                    <span>🏆</span> <span id="collection-counter" class="hidden">0</span>
+                </button>
                 <div id="powerup-bar"></div>
                 <div id="orders-panel"></div>
+                <button id="recipe-book-btn" class="recipe-book-btn hidden" title="Recipe Book">📖</button>
+                <div id="focus-bar" class="focus-bar hidden">
+                    <span id="focus-icon" class="focus-icon"></span>
+                    <span id="focus-desc" class="focus-desc"></span>
+                    <div class="focus-progress-wrap">
+                        <div id="focus-progress" class="focus-progress-fill"></div>
+                    </div>
+                    <span id="focus-count" class="focus-count"></span>
+                    <button id="focus-clear" class="focus-clear-btn" title="Unpin">&times;</button>
+                </div>
                 <div id="board-wrapper">
                     <div id="board-container">
                         <canvas id="particle-canvas"></canvas>
@@ -164,6 +177,66 @@
                 <span class="nav-label">Shop</span>
             </button>
         </nav>
+
+        <!-- Recipe Book Overlay -->
+        <div id="recipe-book-overlay" class="hidden">
+            <div class="recipe-book-card">
+                <h3>📖 Recipe Book</h3>
+                <p class="recipe-book-subtitle">Combine items from different chains at the same tier</p>
+                <div class="recipe-list">
+                    <div class="recipe-row">
+                        <span class="recipe-input">🌸 Flora</span>
+                        <span class="recipe-plus">+</span>
+                        <span class="recipe-input">🌲 Wood</span>
+                        <span class="recipe-arrow">→</span>
+                        <span class="recipe-output">🌿 Living</span>
+                    </div>
+                    <div class="recipe-row">
+                        <span class="recipe-input">💎 Crystal</span>
+                        <span class="recipe-plus">+</span>
+                        <span class="recipe-input">⛰️ Stone</span>
+                        <span class="recipe-arrow">→</span>
+                        <span class="recipe-output">🔮 Arcane</span>
+                    </div>
+                    <div class="recipe-row">
+                        <span class="recipe-input">⛰️ Stone</span>
+                        <span class="recipe-plus">+</span>
+                        <span class="recipe-input">🌲 Wood</span>
+                        <span class="recipe-arrow">→</span>
+                        <span class="recipe-output">🏠 Shelter</span>
+                    </div>
+                    <div class="recipe-row">
+                        <span class="recipe-input">💎 Crystal</span>
+                        <span class="recipe-plus">+</span>
+                        <span class="recipe-input">🌸 Flora</span>
+                        <span class="recipe-arrow">→</span>
+                        <span class="recipe-output">✨ Mystic</span>
+                    </div>
+                </div>
+                <p class="recipe-book-hint">Drag one item onto another from a different chain at the same tier!</p>
+                <button class="recipe-book-close-btn">Close</button>
+            </div>
+        </div>
+
+        <!-- Away Earnings Overlay -->
+        <div id="away-earnings-overlay" class="hidden">
+            <div class="away-earnings-card">
+                <h3>Welcome Back!</h3>
+                <p class="away-earnings-detail">Your workers earned gems while you were away</p>
+                <div class="away-earnings-gems">💎 <span id="away-earnings-amount">0</span></div>
+                <button class="away-earnings-collect-btn">Collect!</button>
+            </div>
+        </div>
+
+        <!-- Collection Overlay -->
+        <div id="collection-overlay" class="hidden">
+            <div class="collection-card">
+                <h3>🏆 Collection</h3>
+                <p class="collection-subtitle">Max-tier items you've created</p>
+                <div id="collection-grid" class="collection-grid"></div>
+                <button class="collection-close-btn">Close</button>
+            </div>
+        </div>
 
         <!-- Settings Modal -->
         <div id="settings-modal" class="hidden">
@@ -318,15 +391,21 @@
             }
         });
 
-        // Board hint — hide after 3 spawns
-        var hintSpawnCount = 0;
-        Game.on('itemSpawned', function() {
-            hintSpawnCount++;
-            if (hintSpawnCount >= 3) {
-                var hint = document.getElementById('board-hint');
+        // Board hint — hide once player has spawned 3+ items (persisted in save)
+        (function() {
+            var hint = document.getElementById('board-hint');
+            var stats = Game.getState().stats || {};
+            if (stats.totalSpawns >= 3) {
                 if (hint) hint.classList.add('hidden');
+            } else {
+                Game.on('itemSpawned', function() {
+                    var s = Game.getState().stats || {};
+                    if (s.totalSpawns >= 3 && hint) {
+                        hint.classList.add('hidden');
+                    }
+                });
             }
-        });
+        })();
 
         // Stars display (top bar + panels)
         Game.on('starsChanged', function(stars) {
@@ -374,6 +453,202 @@
         // ─── TUTORIAL / FIRST PLAY ───────────────────────────
 
         Tutorial.start();
+
+        // ─── RECIPE BOOK ──────────────────────────────────────
+        (function() {
+            var btn = document.getElementById('recipe-book-btn');
+            var overlay = document.getElementById('recipe-book-overlay');
+            if (!btn || !overlay) return;
+
+            // Show button only after tutorial completes
+            var state = Game.getState();
+            if (!state.firstPlay) {
+                btn.classList.remove('hidden');
+            } else {
+                Game.on('tutorialComplete', function() {
+                    btn.classList.remove('hidden');
+                });
+            }
+
+            btn.addEventListener('click', function() {
+                overlay.classList.remove('hidden');
+                Sound.playTap();
+            });
+
+            overlay.querySelector('.recipe-book-close-btn').addEventListener('click', function() {
+                overlay.classList.add('hidden');
+            });
+
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) overlay.classList.add('hidden');
+            });
+        })();
+
+        // ─── AWAY EARNINGS OVERLAY ────────────────────────────
+        (function() {
+            var overlay = document.getElementById('away-earnings-overlay');
+            if (!overlay) return;
+
+            // Check if there are pending away earnings
+            setTimeout(function() {
+                var earnings = window._havenAwayEarnings || 0;
+                if (earnings > 0) {
+                    document.getElementById('away-earnings-amount').textContent = earnings;
+                    overlay.classList.remove('hidden');
+                }
+            }, 800);
+
+            overlay.querySelector('.away-earnings-collect-btn').addEventListener('click', function() {
+                overlay.classList.add('hidden');
+                Sound.playCelebration();
+                Game.vibrate([15, 30, 15]);
+                window._havenAwayEarnings = 0;
+            });
+
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) {
+                    overlay.classList.add('hidden');
+                    window._havenAwayEarnings = 0;
+                }
+            });
+        })();
+
+        // ─── COLLECTION OVERLAY ───────────────────────────────
+        (function() {
+            var btn = document.getElementById('collection-counter-btn');
+            var overlay = document.getElementById('collection-overlay');
+            if (!btn || !overlay) return;
+
+            btn.addEventListener('click', function() {
+                var collection = Game.getCollection();
+                var gridEl = document.getElementById('collection-grid');
+                if (!gridEl) return;
+
+                gridEl.innerHTML = '';
+
+                if (collection.length === 0) {
+                    gridEl.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:20px;font-size:13px;">No max-tier items yet. Keep merging!</p>';
+                } else {
+                    // Group by chain
+                    var byChain = {};
+                    for (var i = 0; i < collection.length; i++) {
+                        var c = collection[i];
+                        if (!byChain[c.chain]) byChain[c.chain] = { count: 0, tier: c.tier };
+                        byChain[c.chain].count++;
+                    }
+
+                    var chains = Object.keys(byChain);
+                    for (var j = 0; j < chains.length; j++) {
+                        var chainKey = chains[j];
+                        var data = byChain[chainKey];
+                        var chainData = Items.chains[chainKey];
+                        if (!chainData) continue;
+
+                        var tierDef = chainData.tiers[data.tier];
+                        var itemEl = document.createElement('div');
+                        itemEl.className = 'collection-item';
+                        itemEl.innerHTML =
+                            '<span class="collection-item-icon">' + (tierDef ? tierDef.symbol : chainData.icon) + '</span>' +
+                            '<span class="collection-item-name">' + (tierDef ? tierDef.name : chainData.name) + '</span>' +
+                            '<span class="collection-item-count">x' + data.count + '</span>';
+                        gridEl.appendChild(itemEl);
+                    }
+                }
+
+                overlay.classList.remove('hidden');
+                Sound.playTap();
+            });
+
+            overlay.querySelector('.collection-close-btn').addEventListener('click', function() {
+                overlay.classList.add('hidden');
+            });
+
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) overlay.classList.add('hidden');
+            });
+        })();
+
+        // ─── FOCUS BAR ────────────────────────────────────────
+        (function() {
+            var focusBar = document.getElementById('focus-bar');
+            var focusIcon = document.getElementById('focus-icon');
+            var focusDesc = document.getElementById('focus-desc');
+            var focusProgress = document.getElementById('focus-progress');
+            var focusCount = document.getElementById('focus-count');
+            var focusClear = document.getElementById('focus-clear');
+            if (!focusBar) return;
+
+            function updateFocusBar() {
+                var goal = Game.getFocusedGoal();
+                if (!goal) {
+                    focusBar.classList.add('hidden');
+                    return;
+                }
+
+                if (goal.type === 'order' && typeof Orders !== 'undefined') {
+                    // Find the order by ID
+                    var state = Game.getState();
+                    var orderState = state.orders;
+                    if (!orderState || !orderState.active) { focusBar.classList.add('hidden'); return; }
+
+                    var order = null;
+                    for (var i = 0; i < orderState.active.length; i++) {
+                        if (orderState.active[i].id === goal.id) {
+                            order = orderState.active[i];
+                            break;
+                        }
+                    }
+
+                    if (!order || order.completed || order.claimed) {
+                        // Goal completed or gone
+                        Game.clearFocusedGoal();
+                        focusBar.classList.add('hidden');
+                        return;
+                    }
+
+                    // Calculate progress
+                    var totalNeeded = 0;
+                    var totalDelivered = 0;
+                    var reqDescs = [];
+                    for (var r = 0; r < order.requirements.length; r++) {
+                        var req = order.requirements[r];
+                        totalNeeded += req.count;
+                        totalDelivered += req.delivered;
+                        var chainData = Items.chains[req.chain];
+                        var tierDef = chainData ? chainData.tiers[req.tier] : null;
+                        reqDescs.push((tierDef ? tierDef.name : 'T' + req.tier));
+                    }
+
+                    var chainData = Items.chains[order.primaryChain];
+                    focusIcon.textContent = chainData ? chainData.icon : '\uD83D\uDCE6';
+                    focusDesc.textContent = reqDescs.join(', ');
+                    focusProgress.style.width = (totalNeeded > 0 ? (totalDelivered / totalNeeded * 100) : 0) + '%';
+                    focusCount.textContent = totalDelivered + '/' + totalNeeded;
+                    focusBar.classList.remove('hidden');
+                } else {
+                    focusBar.classList.add('hidden');
+                }
+            }
+
+            Game.on('focusChanged', updateFocusBar);
+            Game.on('orderCompleted', function(data) {
+                var goal = Game.getFocusedGoal();
+                if (goal && goal.type === 'order' && goal.id === data.orderId) {
+                    Game.clearFocusedGoal();
+                }
+            });
+
+            // Update focus bar when orders change
+            var origInterval = setInterval(updateFocusBar, 2000);
+
+            focusClear.addEventListener('click', function() {
+                Game.clearFocusedGoal();
+                Sound.playTap();
+            });
+
+            // Initial render
+            setTimeout(updateFocusBar, 600);
+        })();
 
         // ─── EXIT HOOK (return retention) ────────────────────
         Game.initExitHook();

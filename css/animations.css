@@ -513,41 +513,7 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════════════
-   19. DELIVERY-TARGET — cells matching order: golden glow pulse
-   ═══════════════════════════════════════════════════════════════ */
-
-.cell.delivery-target {
-    animation: delivery-glow-pulse 0.7s ease-in-out infinite alternate;
-    will-change: box-shadow;
-}
-
-@keyframes delivery-glow-pulse {
-    0% {
-        box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.5),
-                    0 0 6px rgba(255, 215, 0, 0.2),
-                    inset 0 0 4px rgba(255, 215, 0, 0.1);
-    }
-    100% {
-        box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.8),
-                    0 0 16px rgba(255, 215, 0, 0.4),
-                    inset 0 0 10px rgba(255, 215, 0, 0.2);
-    }
-}
-
-/* Delivery target item gets a gentle bounce to draw attention */
-.cell.delivery-target .item {
-    animation: delivery-item-bounce 0.7s ease-in-out infinite alternate;
-}
-
-@keyframes delivery-item-bounce {
-    0% {
-        transform: scale(1);
-    }
-    100% {
-        transform: scale(1.04) translateY(-1px);
-    }
-}
+/* (delivery-target styles removed — orders now auto-fulfill) */
 
 
 /* ═══════════════════════════════════════════════════════════════

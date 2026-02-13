@@ -1,4 +1,4 @@
-// Haven - Orders System: Delivery contracts that give each chain purpose
+// Haven - Orders System: Player-directed delivery contracts
 'use strict';
 
 const Orders = (() => {
@@ -6,15 +6,14 @@ const Orders = (() => {
 
     // Chain-specific bonuses — THIS is what makes each chain different
     var CHAIN_BONUSES = {
-        wood:     { type: 'stars',     value: 1, label: '+1 \u2B50',       icon: '\u{1F332}' },
-        stone:    { type: 'stars',     value: 1, label: '+1 \u2B50',       icon: '\u26F0\uFE0F' },
-        flora:    { type: 'energy',    value: 3, label: '+3 \u26A1',       icon: '\u{1F338}' },
-        crystal:  { type: 'gem_mult',  value: 1.5, label: '+50% \u{1F48E}', icon: '\u{1F48E}' },
-        creature: { type: 'discovery', value: 1, label: '\u{1F50D} Discovery', icon: '\u{1F95A}' }
+        wood:     { type: 'stars',     value: 1, label: '+1 ⭐',       icon: '🌲' },
+        stone:    { type: 'stars',     value: 1, label: '+1 ⭐',       icon: '⛰️' },
+        flora:    { type: 'energy',    value: 3, label: '+3 ⚡',       icon: '🌸' },
+        crystal:  { type: 'gem_mult',  value: 1.5, label: '+50% 💎', icon: '💎' },
+        creature: { type: 'discovery', value: 1, label: '🔍 Discovery', icon: '🥚' }
     };
 
     var orders = [];
-    var deliveryMode = null; // null or { orderIndex: N }
     var ordersCompleted = 0;
     var specialSchedule = null; // loaded from data/orders.json
     var urgentTimerId = null;
@@ -52,6 +51,9 @@ const Orders = (() => {
                 renderOrders();
             }, 1000);
         });
+
+        // Player-directed delivery: no auto-fulfillment
+        // Items must be manually delivered by tapping deliverable items on the board
     }
 
     function loadOrderSchedule(callback) {
@@ -192,7 +194,7 @@ const Orders = (() => {
                     orders[i] = generateOrder();
                     changed = true;
                     if (typeof Board !== 'undefined' && Board.showToast) {
-                        Board.showToast('\u23F0 Urgent order expired!',
+                        Board.showToast('⏰ Urgent order expired!',
                             (typeof Board.TOAST_PRIORITY !== 'undefined') ? Board.TOAST_PRIORITY.HIGH : undefined);
                     }
                 }
@@ -250,92 +252,110 @@ const Orders = (() => {
         };
     }
 
-    // ─── DELIVERY MODE ────────────────────────────────────────
+    // ─── PLAYER-DIRECTED DELIVERY ────────────────────────────
 
-    function enterDeliveryMode(orderIndex) {
-        if (orders[orderIndex].completed || orders[orderIndex].claimed) return;
-        // Toggle off if same order tapped again
-        if (deliveryMode && deliveryMode.orderIndex === orderIndex) {
-            exitDeliveryMode();
-            return;
-        }
-        deliveryMode = { orderIndex: orderIndex };
-        highlightMatchingItems();
-        renderOrders();
-    }
+    // Returns array of {orderIndex, reqIndex} for orders that need this chain+tier
+    function getDeliverableOrders(chain, tier) {
+        var results = [];
+        for (var i = 0; i < orders.length; i++) {
+            var order = orders[i];
+            if (order.completed || order.claimed) continue;
 
-    function exitDeliveryMode() {
-        deliveryMode = null;
-        clearHighlights();
-        renderOrders();
-    }
-
-    function getDeliveryMode() {
-        return deliveryMode;
-    }
-
-    // Check if an item at (row, col) matches any unfulfilled requirement of active order
-    // EXACT-TIER matching: items must be precisely the requested tier.
-    // This creates "deliver now vs. keep merging" tension — if you merge past
-    // the needed tier, that item can no longer fill this order.
-    function canDeliverItem(item) {
-        if (!deliveryMode) return false;
-        var order = orders[deliveryMode.orderIndex];
-        if (!order || order.completed) return false;
-
-        for (var i = 0; i < order.requirements.length; i++) {
-            var req = order.requirements[i];
-            if (req.delivered >= req.count) continue;
-            if (item.chain === req.chain && item.tier === req.tier) {
-                return true;
+            for (var r = 0; r < order.requirements.length; r++) {
+                var req = order.requirements[r];
+                if (req.delivered >= req.count) continue;
+                if (req.chain === chain && req.tier === tier) {
+                    results.push({ orderIndex: i, reqIndex: r });
+                }
             }
         }
-        return false;
+        return results;
     }
 
-    // Called by Board when player taps a cell in delivery mode
-    // Returns true if item was consumed
-    function deliverItem(item) {
-        if (!deliveryMode) return false;
-        var order = orders[deliveryMode.orderIndex];
-        if (!order || order.completed) return false;
+    // Returns list of {chain, tier} pairs needed by any active order (for board highlighting)
+    function getDeliverableItemSpecs() {
+        var specs = [];
+        var seen = {};
+        for (var i = 0; i < orders.length; i++) {
+            var order = orders[i];
+            if (order.completed || order.claimed) continue;
 
-        for (var i = 0; i < order.requirements.length; i++) {
-            var req = order.requirements[i];
-            if (req.delivered >= req.count) continue;
-            if (item.chain === req.chain && item.tier === req.tier) {
-                req.delivered++;
-                Sound.playOrderDeliver();
-
-                // Check if order is fully completed
-                var allDone = true;
-                for (var j = 0; j < order.requirements.length; j++) {
-                    if (order.requirements[j].delivered < order.requirements[j].count) {
-                        allDone = false;
-                        break;
-                    }
+            for (var r = 0; r < order.requirements.length; r++) {
+                var req = order.requirements[r];
+                if (req.delivered >= req.count) continue;
+                var key = req.chain + '_' + req.tier;
+                if (!seen[key]) {
+                    seen[key] = true;
+                    specs.push({ chain: req.chain, tier: req.tier });
                 }
-                if (allDone) {
-                    order.completed = true;
-                    exitDeliveryMode();
-                    Sound.playOrderComplete();
-                    Game.vibrate([15, 30, 15]);
-                } else {
-                    highlightMatchingItems();
-                }
-
-                saveState();
-                renderOrders();
-                return true;
             }
         }
-        return false;
+        return specs;
     }
 
-    function claimOrder(orderIndex) {
+    // Deliver an item to a specific order. Returns true if successful.
+    function deliverItem(chain, tier, orderIndex) {
+        if (orderIndex === undefined) {
+            // Auto-pick: deliver to whichever matching order has fewer remaining reqs
+            var matches = getDeliverableOrders(chain, tier);
+            if (matches.length === 0) return false;
+
+            // Pick the order with fewest remaining requirements (simplest UX)
+            var bestMatch = matches[0];
+            var bestRemaining = Infinity;
+            for (var m = 0; m < matches.length; m++) {
+                var order = orders[matches[m].orderIndex];
+                var remaining = 0;
+                for (var rr = 0; rr < order.requirements.length; rr++) {
+                    remaining += order.requirements[rr].count - order.requirements[rr].delivered;
+                }
+                if (remaining < bestRemaining) {
+                    bestRemaining = remaining;
+                    bestMatch = matches[m];
+                }
+            }
+            orderIndex = bestMatch.orderIndex;
+        }
+
         var order = orders[orderIndex];
-        if (!order || !order.completed || order.claimed) return;
+        if (!order || order.completed || order.claimed) return false;
 
+        // Find matching requirement
+        var delivered = false;
+        for (var r = 0; r < order.requirements.length; r++) {
+            var req = order.requirements[r];
+            if (req.delivered >= req.count) continue;
+            if (req.chain === chain && req.tier === tier) {
+                req.delivered++;
+                delivered = true;
+                break;
+            }
+        }
+
+        if (!delivered) return false;
+
+        // Check if order is fully completed
+        var allDone = true;
+        for (var j = 0; j < order.requirements.length; j++) {
+            if (order.requirements[j].delivered < order.requirements[j].count) {
+                allDone = false;
+                break;
+            }
+        }
+        if (allDone) {
+            autoClaimOrder(orderIndex);
+        }
+
+        renderOrders();
+        saveState();
+        return true;
+    }
+
+    function autoClaimOrder(orderIndex) {
+        var order = orders[orderIndex];
+        if (!order) return;
+
+        order.completed = true;
         order.claimed = true;
 
         // Grant base rewards
@@ -359,154 +379,116 @@ const Orders = (() => {
             }
         }
 
+        // Show floating reward text
+        var rewardText = '+' + order.reward.gems + '💎';
+        if (order.reward.stars) rewardText += ' +' + order.reward.stars + '⭐';
+        if (bonus && bonus.label) rewardText += ' ' + bonus.label;
+
+        if (typeof Board !== 'undefined' && Board.showToast) {
+            Board.showToast('✅ Order complete! ' + rewardText, Board.TOAST_PRIORITY.HIGH);
+        }
+
         Sound.playOrderClaim();
         Game.vibrate([10, 20, 10]);
 
         ordersCompleted++;
 
-        // Replace with new order
-        orders[orderIndex] = generateOrder();
-        saveState();
-        renderOrders();
+        // Replace with new order after a brief visual moment
+        setTimeout(function() {
+            orders[orderIndex] = generateOrder();
+            saveState();
+            renderOrders();
+        }, 600);
 
         Game.emit('orderCompleted', { orderId: order.id });
     }
 
-    // ─── BOARD HIGHLIGHTING ───────────────────────────────────
-
-    function highlightMatchingItems() {
-        clearHighlights();
-        if (!deliveryMode) return;
-
-        var order = orders[deliveryMode.orderIndex];
-        if (!order) return;
-
-        var boardEl = document.getElementById('board');
-        if (!boardEl) return;
-        var cells = boardEl.querySelectorAll('.cell');
-
-        cells.forEach(function(cell) {
-            var r = parseInt(cell.dataset.row);
-            var c = parseInt(cell.dataset.col);
-            // Access board items through the Board module's exposed method
-            if (typeof Board !== 'undefined' && Board.getItemAt) {
-                var item = Board.getItemAt(r, c);
-                if (item && canDeliverItem(item)) {
-                    cell.classList.add('delivery-target');
-                }
-            }
-        });
-    }
-
-    function clearHighlights() {
-        var cells = document.querySelectorAll('.delivery-target');
-        for (var i = 0; i < cells.length; i++) {
-            cells[i].classList.remove('delivery-target');
-        }
-    }
-
-    // ─── RENDERING ────────────────────────────────────────────
+    // ─── RENDERING (compact strip) ──────────────────────────
 
     function renderOrders() {
         var panel = document.getElementById('orders-panel');
         if (!panel) return;
 
-        var html = '';
+        var pills = [];
         for (var i = 0; i < orders.length; i++) {
             var order = orders[i];
-            var isActive = deliveryMode && deliveryMode.orderIndex === i;
-            var primaryBonus = CHAIN_BONUSES[order.primaryChain];
-
             var isUrgent = order.orderType === 'urgent';
             var isMega = order.orderType === 'mega';
+            var allDone = order.completed || order.claimed;
 
-            html += '<div class="order-card' +
-                (order.completed ? ' order-complete' : '') +
-                (isActive ? ' order-active' : '') +
-                (isUrgent ? ' order-urgent' : '') +
-                (isMega ? ' order-mega' : '') +
-                '" data-order="' + i + '">';
+            var pillClass = 'order-pill';
+            if (allDone) pillClass += ' complete';
+            if (isUrgent && !allDone) pillClass += ' urgent';
+            if (isMega) pillClass += ' mega';
 
-            // Special order badge
-            if (isUrgent && !order.completed) {
-                var timeLeft = Math.max(0, (order.deadline || 0) - Date.now());
+            var pillHtml = '<span class="' + pillClass + '">';
+
+            // Urgent timer prefix
+            if (isUrgent && !allDone && order.deadline) {
+                var timeLeft = Math.max(0, order.deadline - Date.now());
                 var mins = Math.floor(timeLeft / 60000);
                 var secs = Math.floor((timeLeft % 60000) / 1000);
-                html += '<div class="order-badge order-urgent-badge">\u23F0 ' + mins + ':' + (secs < 10 ? '0' : '') + secs + ' <span class="order-mult">2x</span></div>';
-            } else if (isMega) {
-                html += '<div class="order-badge order-mega-badge">\u2B50 MEGA <span class="order-mult">3x</span></div>';
+                pillHtml += '<span class="order-timer">⏰' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span> ';
+            }
+
+            // Mega prefix
+            if (isMega) {
+                pillHtml += '<span class="order-mega-tag">⭐M</span> ';
             }
 
             // Requirements
-            html += '<div class="order-reqs">';
+            var reqParts = [];
             for (var r = 0; r < order.requirements.length; r++) {
                 var req = order.requirements[r];
                 var chainData = Items.chains[req.chain];
                 var tierDef = chainData ? chainData.tiers[req.tier] : null;
-                var itemName = tierDef ? tierDef.name : 'Tier ' + req.tier;
+                var itemName = tierDef ? tierDef.name : 'T' + req.tier;
                 var chainIcon = chainData ? chainData.icon : '';
-                var done = req.delivered >= req.count;
+                var reqDone = req.delivered >= req.count;
 
-                var remaining = req.count - req.delivered;
-                html += '<div class="order-req' + (done ? ' req-done' : '') + (remaining === 1 ? ' req-almost' : '') + '">';
-                html += '<span class="order-req-icon">' + chainIcon + '</span>';
-                html += '<span class="order-req-text">' + req.delivered + '/' + req.count + ' ' + itemName + '</span>';
-                if (!done) {
-                    html += '<span class="order-exact-badge">Exact</span>';
+                var part = chainIcon + ' ' + itemName;
+                if (req.count > 1 || req.delivered > 0) {
+                    part += ' ' + req.delivered + '/' + req.count;
                 }
-                if (!done && remaining === 1) {
-                    html += '<span class="order-almost-badge">1 away!</span>';
+                if (reqDone) {
+                    part = '<span class="req-done">' + part + '</span>';
                 }
-                html += '</div>';
+                reqParts.push(part);
             }
-            html += '</div>';
+            pillHtml += reqParts.join(', ');
 
-            // Rewards row
-            html += '<div class="order-rewards">';
-            html += '<span class="order-gem-reward">\u{1F48E}' + order.reward.gems + '</span>';
-            if (order.reward.stars) {
-                html += '<span class="order-star-reward">\u2B50' + order.reward.stars + '</span>';
-            }
-            if (primaryBonus) {
-                html += '<span class="order-chain-bonus">' + primaryBonus.label + '</span>';
-            }
-            html += '</div>';
-
-            // Action
-            if (order.completed && !order.claimed) {
-                html += '<button class="order-claim-btn" data-claim="' + i + '">Claim!</button>';
-            } else if (!order.completed) {
-                html += '<div class="order-deliver-hint">' + (isActive ? 'Tap item \u2192' : 'Tap to fill') + '</div>';
+            if (allDone) {
+                pillHtml += ' ✓';
             }
 
-            html += '</div>';
+            // Reward hint (compact)
+            pillHtml += '<span class="order-reward-hint">💎' + order.reward.gems + '</span>';
+
+            // Pin button for focus
+            if (!allDone) {
+                pillHtml += '<span class="order-pin-btn" data-order-index="' + i + '" title="Pin as focus">\uD83D\uDCCC</span>';
+            }
+
+            pillHtml += '</span>';
+            pills.push(pillHtml);
         }
 
-        panel.innerHTML = html;
+        panel.innerHTML = pills.join('<span class="order-separator">&middot;</span>');
 
-        // Attach event listeners
-        var cards = panel.querySelectorAll('.order-card');
-        for (var ci = 0; ci < cards.length; ci++) {
-            (function(card) {
-                var idx = parseInt(card.dataset.order);
-                card.addEventListener('click', function(e) {
-                    // Don't trigger delivery mode if clicking claim button
-                    if (e.target.classList.contains('order-claim-btn')) return;
-                    if (orders[idx].completed) return;
-                    enterDeliveryMode(idx);
-                    Sound.playTap();
-                });
-            })(cards[ci]);
-        }
-
-        var claimBtns = panel.querySelectorAll('.order-claim-btn');
-        for (var cb = 0; cb < claimBtns.length; cb++) {
+        // Pin button handlers
+        var pinBtns = panel.querySelectorAll('.order-pin-btn');
+        for (var p = 0; p < pinBtns.length; p++) {
             (function(btn) {
                 btn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    claimOrder(parseInt(btn.dataset.claim));
+                    var idx = parseInt(btn.dataset.orderIndex);
+                    var order = orders[idx];
+                    if (order && typeof Game !== 'undefined' && Game.setFocusedGoal) {
+                        Game.setFocusedGoal({ type: 'order', id: order.id });
+                        Sound.playTap();
+                    }
                 });
-            })(claimBtns[cb]);
+            })(pinBtns[p]);
         }
     }
 
@@ -523,11 +505,10 @@ const Orders = (() => {
 
     return {
         init: init,
-        getDeliveryMode: getDeliveryMode,
-        canDeliverItem: canDeliverItem,
-        deliverItem: deliverItem,
-        exitDeliveryMode: exitDeliveryMode,
         renderOrders: renderOrders,
-        getOrdersCompleted: function() { return ordersCompleted; }
+        getOrdersCompleted: function() { return ordersCompleted; },
+        getDeliverableOrders: getDeliverableOrders,
+        getDeliverableItemSpecs: getDeliverableItemSpecs,
+        deliverItem: deliverItem
     };
 })();
