@@ -102,7 +102,17 @@ A 3-phase AI agent review simulating 6 department heads evaluating Haven for com
 - All 13 review files complete
 - Pushed to GitHub
 
+### Mobile UX Overhaul (Feb 13, 2026)
+- Decluttered mobile layout: top bar stripped to essentials, board toolbar for collection/powerups/recipe book
+- Orders panel redesigned: single order at a time, auto-rotates, tap to cycle
+- Hidden expand button and clutter warning to reclaim vertical space
+- Fixed touch targets, pointer capture for swipe, responsive media queries at 3 breakpoints
+- Achievements: Claim All button, sorted by state (claimable > in-progress > claimed)
+- **Status:** Pushed with cache-busting, pending phone verification
+
 ### Next Steps
+- Verify mobile UX changes on phone after cache-bust deploy
+- Continue UX polish based on phone testing feedback
 - Resolve 4 unresolved tensions (energy monetization UX, FOMO aggressiveness, social features timing, narrative investment)
 - Begin implementing the top-10 action list from the synthesis
 - Run economy rebalancing after adding gem sinks
